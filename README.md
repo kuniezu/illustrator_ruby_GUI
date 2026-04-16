@@ -38,7 +38,7 @@ Adobe Illustrator上で、選択したテキストにルビ（ふりがな）を
 1. `Illustrator Ruby GUI.jsx` をダウンロードします。
    ページ上部の[Illustrator Ruby GUI.jsx](https://github.com/akiyo-as/illustrator_ruby_GUI/blob/main/Illustrator%20Ruby%20GUI.jsx)をクリック。
    右側にあるアイコンの並びから、以下のアイコンをクリックするとダウンロード可能です。
-   ![ダウンロード方法](images/install.png)
+![ダウンロード方法](images/install.png)
 2. Illustratorのスクリプトフォルダに移動します。
    - **macOS**: `/Applications/Adobe Illustrator [Version]/Presets/[Language]/Scripts`
    - **Windows**: `C:\Program Files\Adobe\Adobe Illustrator [Version]\Presets\[Language]\Scripts`
