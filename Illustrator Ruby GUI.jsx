@@ -1220,7 +1220,7 @@ function rubyMetadataEncode(value) {
     try {
         return encodeURIComponent(text);
     } catch (e) {
-        return text.replace(/%/g, "%25").replace(/;/g, "%3B").replace(/=/g, "%3D");
+        return text.replace(/%/g, "%25").replace(/;/g, "%3B").split("=").join("%3D");
     }
 }
 
