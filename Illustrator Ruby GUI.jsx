@@ -1192,6 +1192,11 @@ function placeRubys(textFrames, rubyData, settings) {
                 }
             }
         }
+
+        // 本文と生成ルビを元の親配下へまとめる。安全条件を満たさない場合は従来構造を維持する。
+        if (allRubies.length > 0) {
+            wrapRubyPair(frame, frameGroup);
+        }
     }
 
     alert(totalRubyCount + " \u500B\u306E\u30EB\u30D3\u3092\u914D\u7F6E\u3057\u307E\u3057\u305F");
@@ -1358,39 +1363,82 @@ function readRubyRecords(doc) {
     var records = [];
     if (!doc) return records;
 
-    var rubyLayer = null;
-    try {
-        rubyLayer = doc.layers.getByName("Ruby");
-    } catch (layerError) {
-        return records;
-    }
-
-    // 現行生成物はフレーム別グループ直下にルビTextFrameを持つ。
-    for (var gi = 0; gi < rubyLayer.groupItems.length; gi++) {
-        var frameGroup = rubyLayer.groupItems[gi];
-        for (var ti = 0; ti < frameGroup.textFrames.length; ti++) {
-            var item = frameGroup.textFrames[ti];
-            var record = null;
-            try { record = parseRubyRecord(item.note); } catch (noteError) {}
-
-            // noteが読めない場合は、nameに全体を保持したフォールバックを試す。
-            if (!record) {
-                try {
-                    if (item.name.indexOf(rubyMetadataNamePrefix) === 0) {
-                        record = parseRubyRecord(rubyMetadataDecode(item.name.substr(rubyMetadataNamePrefix.length)));
-                    }
-                } catch (nameError) {}
-            }
-
-            if (record) {
-                if (!record.groupName) {
-                    try { record.groupName = frameGroup.name || ""; } catch (groupNameError) {}
-                }
-                records.push(record);
-            }
+    // 旧構造のRubyレイヤーと、Phase 1Bのラッパー構造の両方を再帰的に読む。
+    for (var li = 0; li < doc.layers.length; li++) {
+        var layer = doc.layers[li];
+        for (var gi = 0; gi < layer.groupItems.length; gi++) {
+            collectRubyRecordsFromGroup(layer.groupItems[gi], records);
         }
     }
     return records;
+}
+
+function collectRubyRecordsFromGroup(group, records) {
+    if (!group || !records) return;
+
+    for (var ti = 0; ti < group.textFrames.length; ti++) {
+        var item = group.textFrames[ti];
+        var record = null;
+        try { record = parseRubyRecord(item.note); } catch (noteError) {}
+
+        // noteが読めない場合は、nameに全体を保持したフォールバックを試す。
+        if (!record) {
+            try {
+                if (item.name.indexOf(rubyMetadataNamePrefix) === 0) {
+                    record = parseRubyRecord(rubyMetadataDecode(item.name.substr(rubyMetadataNamePrefix.length)));
+                }
+            } catch (nameError) {}
+        }
+
+        if (record) {
+            if (!record.groupName) {
+                try { record.groupName = group.name || ""; } catch (groupNameError) {}
+            }
+            records.push(record);
+        }
+    }
+
+    for (var gi = 0; gi < group.groupItems.length; gi++) {
+        collectRubyRecordsFromGroup(group.groupItems[gi], records);
+    }
+}
+
+function wrapRubyPair(textFrame, rubyGroup) {
+    if (!textFrame || !rubyGroup) return false;
+
+    var parent = null;
+    try { parent = textFrame.parent; } catch (parentError) {}
+    if (!parent || (parent.typename !== "Layer" && parent.typename !== "GroupItem")) return false;
+
+    try {
+        if (textFrame.locked || textFrame.hidden || parent.locked || parent.hidden) return false;
+        if (textFrame.nextFrame || textFrame.previousFrame) return false;
+        if (parent.typename === "GroupItem" && (parent.clipped || parent.clipping)) return false;
+    } catch (stateError) {
+        return false;
+    }
+
+    var wrapper = null;
+    var movedText = false;
+    var movedRuby = false;
+    try {
+        wrapper = parent.groupItems.add();
+        var frameId = readRubyFrameId(textFrame);
+        wrapper.name = "rubyPair_" + (frameId || makeRubyFrameId());
+        // 新規GroupItemを本文の元位置へ置き、兄弟との重なり順をできるだけ維持する。
+        wrapper.move(textFrame, ElementPlacement.PLACEBEFORE);
+        textFrame.move(wrapper, ElementPlacement.PLACEATEND);
+        movedText = true;
+        rubyGroup.move(wrapper, ElementPlacement.PLACEATEND);
+        movedRuby = true;
+        return true;
+    } catch (wrapError) {
+        // 片方だけ移動した場合も、可能な範囲で元の親へ戻してからラッパーを破棄する。
+        try { if (movedRuby) rubyGroup.move(parent, ElementPlacement.PLACEATEND); } catch (rollbackRubyError) {}
+        try { if (movedText) textFrame.move(parent, ElementPlacement.PLACEATEND); } catch (rollbackTextError) {}
+        try { if (wrapper) wrapper.remove(); } catch (removeWrapperError) {}
+        return false;
+    }
 }
 
 function resolveBaseAnchor(contents, record) {
