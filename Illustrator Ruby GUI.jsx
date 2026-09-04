@@ -1038,6 +1038,7 @@ function showRubyGUI(textFrames, options) {
 // ============================================================
 function placeRubys(textFrames, rubyData, settings) {
     var doc = app.activeDocument;
+    rubyMetadataWriteFailureCount = 0;
 
     // Rubyレイヤー取得/作成
     var rubyLayer;
@@ -1194,6 +1195,9 @@ function placeRubys(textFrames, rubyData, settings) {
     }
 
     alert(totalRubyCount + " \u500B\u306E\u30EB\u30D3\u3092\u914D\u7F6E\u3057\u307E\u3057\u305F");
+    if (rubyMetadataWriteFailureCount > 0) {
+        alert(rubyMetadataWriteFailureCount + "件のルビでメタデータを書き込めませんでした。配置結果は変更していません。");
+    }
 }
 
 // ============================================================
@@ -1209,6 +1213,7 @@ var rubyRecordSequence = 0;
 var rubyMetadataPrefix = "illustrator-ruby-v1;";
 var rubyMetadataNamePrefix = "ruby-meta-v1:";
 var rubyAnchorNeedsReviewCount = 0;
+var rubyMetadataWriteFailureCount = 0;
 
 function rubyMetadataEncode(value) {
     var text = value === undefined || value === null ? "" : String(value);
@@ -1237,6 +1242,7 @@ function serializeRubyRecord(record) {
         "schema=" + rubyMetadataEncode(record.schema || "illustrator-ruby/v1"),
         "recordId=" + rubyMetadataEncode(record.recordId || makeRubyRecordId()),
         "frameName=" + rubyMetadataEncode(record.frameName || ""),
+        "groupName=" + rubyMetadataEncode(record.groupName || ""),
         "baseText=" + rubyMetadataEncode(record.baseText || ""),
         "start=" + rubyMetadataEncode(record.start === undefined ? "" : record.start),
         "length=" + rubyMetadataEncode(record.length === undefined ? 1 : record.length),
@@ -1326,7 +1332,12 @@ function readRubyRecords(doc) {
                 } catch (nameError) {}
             }
 
-            if (record) records.push(record);
+            if (record) {
+                if (!record.groupName) {
+                    try { record.groupName = frameGroup.name || ""; } catch (groupNameError) {}
+                }
+                records.push(record);
+            }
         }
     }
     return records;
@@ -1337,6 +1348,8 @@ function resolveBaseAnchor(contents, record) {
     if (!contents || !record || !record.baseText) return result;
 
     var candidates = [];
+    var oldStart = parseInt(record.start, 10);
+    var hasOldStart = !isNaN(oldStart) && oldStart >= 0;
     var searchFrom = 0;
     var found;
     while ((found = contents.indexOf(record.baseText, searchFrom)) >= 0) {
@@ -1344,12 +1357,19 @@ function resolveBaseAnchor(contents, record) {
         var afterStart = found + record.baseText.length;
         var beforeMatch = !record.before || contents.substr(beforeStart, record.before.length) === record.before;
         var afterMatch = !record.after || contents.substr(afterStart, record.after.length) === record.after;
-        if (beforeMatch && afterMatch) candidates.push(found);
+        if (beforeMatch && afterMatch) {
+            candidates.push({
+                index: found,
+                distanceFromOldStart: hasOldStart ? Math.abs(found - oldStart) : Number.MAX_VALUE
+            });
+        }
         searchFrom = found + Math.max(1, record.baseText.length);
     }
 
+    // 旧位置は候補の評価順と診断に使うが、候補が複数ある場合の自動決定には使わない。
+    candidates.sort(function (a, b) { return a.distanceFromOldStart - b.distanceFromOldStart; });
     if (candidates.length === 1) {
-        result.index = candidates[0];
+        result.index = candidates[0].index;
         result.needsReview = false;
     }
     return result;
@@ -1361,10 +1381,22 @@ function rubyDataFromRecords(textFrame, records) {
 
     rubyAnchorNeedsReviewCount = 0;
     var contents = textFrame.contents;
+    var currentFrameName = "";
+    try { currentFrameName = textFrame.name || ""; } catch (frameNameError) {}
+    var expectedGroupName = currentFrameName ? "ruby_" + currentFrameName : "";
     for (var i = 0; i < records.length; i++) {
         var record = records[i];
-        if (record.needsReview) continue;
-        if (record.frameName && textFrame.name && record.frameName !== textFrame.name) continue;
+        if (record.needsReview) {
+            rubyAnchorNeedsReviewCount++;
+            continue;
+        }
+        // 本文フレーム名または生成グループ名が欠けるレコードは別フレームへ混ぜない。
+        if (!record.frameName || !currentFrameName || record.frameName !== currentFrameName ||
+            !record.groupName || (expectedGroupName && record.groupName !== expectedGroupName)) {
+            record.needsReview = true;
+            rubyAnchorNeedsReviewCount++;
+            continue;
+        }
 
         var resolved = resolveBaseAnchor(contents, record);
         if (resolved.needsReview) {
@@ -1555,11 +1587,14 @@ function placeOneRuby(textFrame, group, characterIndex, baseLength, rubyText, se
     var afterStart = characterIndex + baseLength;
     var frameName = "";
     try { frameName = textFrame.name || ""; } catch (frameNameError) {}
+    var groupName = "";
+    try { groupName = group.name || ""; } catch (groupNameError) {}
 
-    writeRubyRecord(rubyFrame, {
+    var metadataWritten = writeRubyRecord(rubyFrame, {
         schema: "illustrator-ruby/v1",
         recordId: makeRubyRecordId(),
         frameName: frameName,
+        groupName: groupName,
         baseText: baseText,
         start: characterIndex,
         length: baseLength,
@@ -1569,6 +1604,7 @@ function placeOneRuby(textFrame, group, characterIndex, baseLength, rubyText, se
         state: "auto",
         needsReview: false
     });
+    if (!metadataWritten) rubyMetadataWriteFailureCount++;
 
     return rubyFrame;
 }
