@@ -1212,6 +1212,7 @@ function placeRubys(textFrames, rubyData, settings) {
 var rubyRecordSequence = 0;
 var rubyMetadataPrefix = "illustrator-ruby-v1;";
 var rubyMetadataNamePrefix = "ruby-meta-v1:";
+var rubyFrameMetadataPrefix = "illustrator-ruby-frame-v1;frameId=";
 var rubyAnchorNeedsReviewCount = 0;
 var rubyMetadataWriteFailureCount = 0;
 
@@ -1237,10 +1238,59 @@ function makeRubyRecordId() {
     return "ruby-" + (new Date().getTime()) + "-" + rubyRecordSequence;
 }
 
+function makeRubyFrameId() {
+    rubyRecordSequence++;
+    return "frame-" + (new Date().getTime()) + "-" + rubyRecordSequence;
+}
+
+function readFrameUuid(textFrame) {
+    try {
+        var uuid = textFrame.uuid;
+        if (uuid !== undefined && uuid !== null && String(uuid) !== "") return "uuid:" + String(uuid);
+    } catch (uuidError) {}
+    return "";
+}
+
+function readFrameNote(textFrame) {
+    try { return textFrame.note || ""; } catch (noteError) { return ""; }
+}
+
+function readFrameNoteId(textFrame) {
+    var note = readFrameNote(textFrame);
+    var markerIndex = note.indexOf(rubyFrameMetadataPrefix);
+    if (markerIndex < 0) return "";
+    var value = note.substr(markerIndex + rubyFrameMetadataPrefix.length);
+    var lineEnd = value.indexOf("\n");
+    if (lineEnd >= 0) value = value.substr(0, lineEnd);
+    return rubyMetadataDecode(value);
+}
+
+function readRubyFrameId(textFrame) {
+    return readFrameUuid(textFrame) || readFrameNoteId(textFrame);
+}
+
+function ensureRubyFrameId(textFrame) {
+    if (!textFrame) return "";
+
+    var existingId = readRubyFrameId(textFrame);
+    if (existingId) return existingId;
+
+    var frameId = makeRubyFrameId();
+    var marker = rubyFrameMetadataPrefix + rubyMetadataEncode(frameId);
+    var originalNote = readFrameNote(textFrame);
+    var updatedNote = originalNote ? originalNote + "\n" + marker : marker;
+    try {
+        textFrame.note = updatedNote;
+        if (readFrameNote(textFrame) === updatedNote) return frameId;
+    } catch (noteWriteError) {}
+    return "";
+}
+
 function serializeRubyRecord(record) {
     var fields = [
         "schema=" + rubyMetadataEncode(record.schema || "illustrator-ruby/v1"),
         "recordId=" + rubyMetadataEncode(record.recordId || makeRubyRecordId()),
+        "frameId=" + rubyMetadataEncode(record.frameId || ""),
         "frameName=" + rubyMetadataEncode(record.frameName || ""),
         "groupName=" + rubyMetadataEncode(record.groupName || ""),
         "baseText=" + rubyMetadataEncode(record.baseText || ""),
@@ -1276,7 +1326,7 @@ function parseRubyRecord(serialized) {
 }
 
 function writeRubyRecord(pageItem, record) {
-    if (!pageItem || !record) return false;
+    if (!pageItem || !record || !record.frameId) return false;
 
     var serialized = serializeRubyRecord(record);
     var wrote = false;
@@ -1383,16 +1433,15 @@ function rubyDataFromRecords(textFrame, records) {
     var contents = textFrame.contents;
     var currentFrameName = "";
     try { currentFrameName = textFrame.name || ""; } catch (frameNameError) {}
-    var expectedGroupName = currentFrameName ? "ruby_" + currentFrameName : "";
+    var currentFrameId = readRubyFrameId(textFrame);
     for (var i = 0; i < records.length; i++) {
         var record = records[i];
         if (record.needsReview) {
             rubyAnchorNeedsReviewCount++;
             continue;
         }
-        // 本文フレーム名または生成グループ名が欠けるレコードは別フレームへ混ぜない。
-        if (!record.frameName || !currentFrameName || record.frameName !== currentFrameName ||
-            !record.groupName || (expectedGroupName && record.groupName !== expectedGroupName)) {
+        // frameIdが欠ける・一致しないレコードは別フレームへ混ぜない。
+        if (!record.frameId || !currentFrameId || record.frameId !== currentFrameId) {
             record.needsReview = true;
             rubyAnchorNeedsReviewCount++;
             continue;
@@ -1589,10 +1638,12 @@ function placeOneRuby(textFrame, group, characterIndex, baseLength, rubyText, se
     try { frameName = textFrame.name || ""; } catch (frameNameError) {}
     var groupName = "";
     try { groupName = group.name || ""; } catch (groupNameError) {}
+    var frameId = ensureRubyFrameId(textFrame);
 
     var metadataWritten = writeRubyRecord(rubyFrame, {
         schema: "illustrator-ruby/v1",
         recordId: makeRubyRecordId(),
+        frameId: frameId,
         frameName: frameName,
         groupName: groupName,
         baseText: baseText,
