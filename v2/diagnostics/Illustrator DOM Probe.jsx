@@ -19,7 +19,7 @@
         if (!selection || selection.length !== 1 || selection[0].typename !== "TextFrame") throw Error("TextFrameを1個だけ選択してください");
         var source = selection[0], range = source.textRange;
         line("Formal Step 2 DOM capability probe");
-        probeObject("frame", source, ["typename", "kind", "orientation", "left", "top", "width", "height", "geometricBounds", "visibleBounds"]);
+        probeObject("frame", source, ["typename", "kind", "orientation", "left", "top", "width", "height", "geometricBounds", "visibleBounds", "position", "anchor"]);
         probeObject("textRange", range, ["start", "end"]);
         read("textRange.lines.length", function () { return range.lines.length; });
         var i, currentLine, firstCharacter;
@@ -38,6 +38,7 @@
                 read("line[" + i + "].firstCharacter.paragraphAttributes.autoLeadingAmount", function () { return firstCharacter.paragraphAttributes.autoLeadingAmount; });
                 read("line[" + i + "].firstCharacter.paragraphAttributes.justification", function () { return firstCharacter.paragraphAttributes.justification; });
                 read("line[" + i + "].firstCharacter.paragraphAttributes.firstLineIndent", function () { return firstCharacter.paragraphAttributes.firstLineIndent; });
+                read("line[" + i + "].firstCharacter.characterAttributes.baselineDirection", function () { return firstCharacter.characterAttributes.baselineDirection; });
             }
         }
     } catch (e) { line("probe=ERROR: " + (e.message || e)); }
