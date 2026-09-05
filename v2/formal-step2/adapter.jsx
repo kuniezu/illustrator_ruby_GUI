@@ -43,20 +43,49 @@ function FormalStep2Adapter(doc, source) {
             if (probe) try { probe.remove(); } catch (ignore) { mark("observe.measurement", "cleanup-failed"); }
         }
     }
+    function outlineLines(leading) {
+        var duplicate, outline, items = [], clusters = [], i, j, bounds, glyph, center, placed, outlined = false;
+        try {
+            duplicate = source.duplicate(source.layer, ElementPlacement.PLACEATEND);
+            outline = duplicate.createOutline(); outlined = true;
+            for (i = 0; i < outline.pageItems.length; i++) {
+                bounds = outline.pageItems[i].visibleBounds;
+                if (!bounds || bounds.length < 4) bounds = outline.pageItems[i].geometricBounds;
+                if (!bounds || bounds.length < 4) continue;
+                glyph = {left: bounds[0], top: bounds[1], right: bounds[2], bottom: bounds[3], center: (bounds[1] + bounds[3]) / 2};
+                items.push(glyph);
+            }
+            items.sort(function (a, b) { return b.center - a.center; });
+            for (i = 0; i < items.length; i++) {
+                glyph = items[i]; placed = false;
+                for (j = 0; j < clusters.length; j++) if (Math.abs(glyph.center - clusters[j].center) <= leading * .5) {
+                    clusters[j].left = Math.min(clusters[j].left, glyph.left); clusters[j].top = Math.max(clusters[j].top, glyph.top); clusters[j].right = Math.max(clusters[j].right, glyph.right); clusters[j].bottom = Math.min(clusters[j].bottom, glyph.bottom); clusters[j].center = (clusters[j].center * clusters[j].count + glyph.center) / (clusters[j].count + 1); clusters[j].count++; placed = true; break;
+                }
+                if (!placed) clusters.push({left: glyph.left, top: glyph.top, right: glyph.right, bottom: glyph.bottom, center: glyph.center, count: 1});
+            }
+            return clusters.length === source.textRange.lines.length ? clusters : null;
+        } catch (e) { mark("observe.outline", "failed:" + (e.message || e)); return null; }
+        finally {
+            if (outline && outline.parent) try { outline.remove(); } catch (ignore) { mark("observe.outline", "cleanup-failed"); }
+            if (!outlined && duplicate && duplicate.parent) try { duplicate.remove(); } catch (ignoreDuplicate) { mark("observe.outline", "cleanup-failed"); }
+        }
+    }
     function observe() {
         mark("observe:start", "kind=" + String(source.kind) + ",orientation=" + String(source.orientation));
         if (source.kind !== TextType.AREATEXT || source.orientation !== TextOrientation.HORIZONTAL) return {status: "unresolved", reasons: ["area-text-horizontal-only"]};
         var range = source.textRange, lines = [], i, line, total = String(source.contents).length, leading = range.characters[0].characterAttributes.leading;
         if (typeof leading !== "number" || !isFinite(leading)) return {status: "unresolved", reasons: ["leading-unavailable"]};
+        var visualLines = outlineLines(leading);
+        if (!visualLines) return {status: "unresolved", reasons: ["outline-line-geometry-unavailable"]};
         for (i = 0; i < range.lines.length; i++) {
             line = range.lines[i];
             var start = line.start - range.start, end = line.end - range.start;
             if (start < 0 || end <= start || end > total || !line.characters.length) return {status: "unresolved", reasons: ["line-map-unverified"]};
             var first = line.characters[0], measured = measure(String(source.contents).substring(start, end), first);
             if (!measured) return {status: "unresolved", reasons: ["measurement-unavailable"]};
-            var gap = first.characterAttributes.size * .15;
-            mark("observe.measurement", "line=" + i + ",left=" + measured.left + ",top=" + measured.top + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
-            lines.push({start: start, end: end, geometry: {left: measured.left, top: measured.top - i * leading - gap, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: measured.top - i * leading, measuredWidth: measured.width, leading: leading, gap: gap}});
+            var gap = first.characterAttributes.size * .15, visual = visualLines[i];
+            mark("observe.measurement", "line=" + i + ",left=" + visual.left + ",top=" + visual.top + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
+            lines.push({start: start, end: end, geometry: {left: visual.left, top: visual.top - gap, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: visual.top, measuredWidth: measured.width, leading: leading, gap: gap, visualRight: visual.right}});
         }
         mark("observe.line-map", "complete"); return {status: "complete", lines: lines};
     }
