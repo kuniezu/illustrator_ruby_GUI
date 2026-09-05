@@ -84,8 +84,9 @@ function FormalStep2Adapter(doc, source) {
             var first = line.characters[0], measured = measure(String(source.contents).substring(start, end), first);
             if (!measured) return {status: "unresolved", reasons: ["measurement-unavailable"]};
             var gap = first.characterAttributes.size * .15, visual = visualLines[i];
-            mark("observe.measurement", "line=" + i + ",left=" + visual.left + ",top=" + visual.top + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
-            lines.push({start: start, end: end, geometry: {left: visual.left, top: visual.top - gap, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: visual.top, measuredWidth: measured.width, leading: leading, gap: gap, visualRight: visual.right}});
+            var rubyTop = visual.top + gap; /* Illustrator document Y increases upward for this horizontal AreaText. */
+            mark("observe.measurement", "line=" + i + ",left=" + visual.left + ",glyphTop=" + visual.top + ",rubyTop=" + rubyTop + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
+            lines.push({start: start, end: end, geometry: {left: visual.left, top: rubyTop, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: visual.top, measuredWidth: measured.width, leading: leading, gap: gap, visualRight: visual.right}});
         }
         mark("observe.line-map", "complete"); return {status: "complete", lines: lines};
     }
