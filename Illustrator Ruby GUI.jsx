@@ -136,8 +136,20 @@ function getSelectedTextFrames() {
     var frames = [];
     if (!app.activeDocument || !app.activeDocument.selection) return frames;
     var sel = app.activeDocument.selection;
+    rubyPairDiagnostic("selection.length=" + sel.length);
     for (var i = 0; i < sel.length; i++) {
         var item = sel[i];
+        var itemName = "";
+        var parentType = "";
+        var parentName = "";
+        try { itemName = item.name || ""; } catch (itemNameError) {}
+        try {
+            parentType = item.parent ? item.parent.typename : "";
+            parentName = item.parent ? (item.parent.name || "") : "";
+        } catch (parentError) {}
+        rubyPairDiagnostic("selection[" + i + "] typename=" + item.typename +
+            " name=" + itemName + " parent.typename=" + parentType +
+            " parent.name=" + parentName);
         if (item.typename === "TextFrame") {
             frames.push(item);
             continue;
@@ -159,26 +171,46 @@ function resolveRubyPairTextFrame(wrapper) {
     if (wrapperName.indexOf(prefix) !== 0) return null;
     var frameId = wrapperName.substr(prefix.length);
     if (!frameId) return null;
+    rubyPairDiagnostic("resolve wrapper.name=" + wrapperName + " frameId=" + frameId);
 
     var candidates = [];
     collectRubyPairTextFrames(wrapper, candidates);
+    rubyPairDiagnostic("candidates.length=" + candidates.length);
     var matched = [];
     for (var i = 0; i < candidates.length; i++) {
         var candidate = candidates[i];
-        if (readRubyRecordFromTextFrame(candidate)) continue;
-        if (readRubyFrameId(candidate) === frameId) matched.push(candidate);
+        var rubyRecord = readRubyRecordFromTextFrame(candidate);
+        var noteId = readFrameNoteId(candidate);
+        var nativeId = readFrameUuid(candidate);
+        var resolvedId = readRubyFrameId(candidate);
+        rubyPairDiagnostic("candidate[" + i + "] rubyRecord=" + (rubyRecord ? "yes" : "no") +
+            " noteId=" + noteId + " nativeId=" + nativeId + " frameId=" + resolvedId);
+        if (rubyRecord) continue;
+        if (resolvedId === frameId) matched.push(candidate);
     }
-    if (matched.length === 1) return matched[0];
+    rubyPairDiagnostic("matched.length=" + matched.length);
+    if (matched.length === 1) {
+        rubyPairDiagnostic("resolve result=matched");
+        return matched[0];
+    }
 
-    // 保存・再オープンでnative uuidが変わった既存文書を移行する。
-    // rubyRecordを持たない本文候補が一意の場合だけ旧suffixを永続化する。
     var unmarked = [];
     for (var j = 0; j < candidates.length; j++) {
         if (readRubyRecordFromTextFrame(candidates[j])) continue;
         if (!readFrameNoteId(candidates[j])) unmarked.push(candidates[j]);
     }
-    if (unmarked.length !== 1) return null;
-    if (writeRubyFrameId(unmarked[0], frameId)) return unmarked[0];
+    rubyPairDiagnostic("unmarked.length=" + unmarked.length);
+    if (unmarked.length !== 1) {
+        rubyPairDiagnostic("resolve result=null");
+        return null;
+    }
+    var migrated = writeRubyFrameId(unmarked[0], frameId);
+    rubyPairDiagnostic("writeRubyFrameId=" + migrated);
+    if (migrated) {
+        rubyPairDiagnostic("resolve result=migrated");
+        return unmarked[0];
+    }
+    rubyPairDiagnostic("resolve result=null");
     return null;
 }
 
@@ -1322,6 +1354,13 @@ var rubyMetadataNamePrefix = "ruby-meta-v1:";
 var rubyFrameMetadataPrefix = "illustrator-ruby-frame-v1;frameId=";
 var rubyAnchorNeedsReviewCount = 0;
 var rubyMetadataWriteFailureCount = 0;
+var rubyPairDiagnosticsEnabled = true;
+var rubyPairBuildMarker = "phase1b-wrapper-selection-diagnostics-20260905";
+
+function rubyPairDiagnostic(message) {
+    if (!rubyPairDiagnosticsEnabled) return;
+    try { $.writeln("[" + rubyPairBuildMarker + "] " + message); } catch (diagnosticError) {}
+}
 
 function rubyMetadataEncode(value) {
     var text = value === undefined || value === null ? "" : String(value);
@@ -1383,7 +1422,6 @@ function ensureRubyFrameId(textFrame) {
     var noteId = readFrameNoteId(textFrame);
     if (noteId) return noteId;
 
-    // uuidを取得できても、その値をnoteへ永続化してから使用する。
     var nativeId = readFrameUuid(textFrame);
     if (nativeId) {
         if (writeRubyFrameId(textFrame, nativeId)) return nativeId;
