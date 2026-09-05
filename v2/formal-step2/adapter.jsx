@@ -105,6 +105,15 @@ function FormalStep2Adapter(doc, source) {
             item.textRange.characterAttributes.tracking = tracking;
             if (tracking) mark("render.width-fit", "tracking=" + tracking);
             item.left = geometry.left + (geometry.width - item.width) / 2; item.top = geometry.top;
+            var rubyBounds = item.visibleBounds;
+            if (!rubyBounds || rubyBounds.length < 4) rubyBounds = item.geometricBounds;
+            if (!rubyBounds || rubyBounds.length < 4 || typeof geometry.measuredTop !== "number") throw Error("ruby-bounds-unavailable");
+            var desiredBottom = geometry.measuredTop + geometry.gap, deltaY = desiredBottom - rubyBounds[3];
+            item.top += deltaY;
+            rubyBounds = item.visibleBounds;
+            if (!rubyBounds || rubyBounds.length < 4) rubyBounds = item.geometricBounds;
+            if (!rubyBounds || rubyBounds.length < 4 || rubyBounds[3] < desiredBottom) throw Error("ruby-bottom-gap-unverified");
+            mark("render.vertical-fit", "glyphTop=" + geometry.measuredTop + ",rubyBottom=" + rubyBounds[3] + ",desiredBottom=" + desiredBottom + ",gap=" + geometry.gap);
         }
         mark("render:update", "complete");
     }
