@@ -20,6 +20,26 @@ function FormalStep2Adapter(doc, source) {
         if (String(source.note) !== String(next)) throw Error("store-readback-mismatch");
         return next;
     }
+    function measure(text, sample) {
+        var probe;
+        try {
+            probe = source.layer.textFrames.add();
+            probe.kind = TextType.POINTTEXT;
+            probe.contents = text;
+            probe.textRange.characterAttributes.textFont = sample.characterAttributes.textFont;
+            probe.textRange.characterAttributes.size = sample.characterAttributes.size;
+            probe.textRange.characterAttributes.tracking = sample.characterAttributes.tracking;
+            probe.left = 0; probe.top = 0;
+            var result = {width: probe.width, height: probe.height};
+            if (typeof result.width !== "number" || !isFinite(result.width)) return null;
+            return result;
+        } catch (e) {
+            mark("observe.measurement", "failed:" + (e.message || e));
+            return null;
+        } finally {
+            if (probe) try { probe.remove(); } catch (ignore) { mark("observe.measurement", "cleanup-failed"); }
+        }
+    }
     function observe() {
         mark("observe:start", "kind=" + String(source.kind) + ",orientation=" + String(source.orientation));
         if (source.kind !== TextType.AREATEXT || source.orientation !== TextOrientation.HORIZONTAL) return {status: "unresolved", reasons: ["area-text-horizontal-only"]};
@@ -29,7 +49,10 @@ function FormalStep2Adapter(doc, source) {
             line = range.lines[i];
             var start = line.start - range.start, end = line.end - range.start;
             if (start < 0 || end <= start || end > total || !line.characters.length) return {status: "unresolved", reasons: ["line-map-unverified"]};
-            lines.push({start: start, end: end, geometry: {left: source.left, top: source.top - i * leading, width: source.width * (end - start) / total, baseSize: line.characters[0].characterAttributes.size}});
+            var first = line.characters[0], measured = measure(String(source.contents).substring(start, end), first);
+            if (!measured) return {status: "unresolved", reasons: ["measurement-unavailable"]};
+            mark("observe.measurement", "line=" + i + ",width=" + measured.width + ",cleanup=required");
+            lines.push({start: start, end: end, geometry: {left: source.left, top: source.top - i * leading, width: measured.width, baseSize: first.characterAttributes.size}});
         }
         mark("observe.line-map", "complete"); return {status: "complete", lines: lines};
     }

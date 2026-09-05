@@ -36,6 +36,8 @@
                 read("line[" + i + "].firstCharacter.characterAttributes.leading", function () { return firstCharacter.characterAttributes.leading; });
                 read("line[" + i + "].firstCharacter.characterAttributes.autoLeading", function () { return firstCharacter.characterAttributes.autoLeading; });
                 read("line[" + i + "].firstCharacter.paragraphAttributes.autoLeadingAmount", function () { return firstCharacter.paragraphAttributes.autoLeadingAmount; });
+                read("line[" + i + "].firstCharacter.paragraphAttributes.justification", function () { return firstCharacter.paragraphAttributes.justification; });
+                read("line[" + i + "].firstCharacter.paragraphAttributes.firstLineIndent", function () { return firstCharacter.paragraphAttributes.firstLineIndent; });
             }
         }
     } catch (e) { line("probe=ERROR: " + (e.message || e)); }
