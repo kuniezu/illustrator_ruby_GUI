@@ -9,9 +9,11 @@ function FormalStep2Adapter(doc, source) {
             item = doc.textFrames[i]; note = String(item.note);
             if (note.indexOf("formal-step2-output:v1;") !== 0) continue;
             parts = note.split(";");
-            if (parts.length !== 4 || parts[1] !== bundle.sourceFrameId || parts[2] !== bundle.annotation.annotationId) throw Error("output-id-collision");
+            if (parts.length !== 4) throw Error("output-id-collision");
+            if (parts[1] !== bundle.sourceFrameId || parts[2] !== bundle.annotation.annotationId) continue;
             out.push(item);
         }
+        if (out.length > 1) throw Error("output-id-collision");
         return out;
     }
     function store(expected, bundle) {
