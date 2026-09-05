@@ -52,7 +52,10 @@
         boundary = Number(prompt("本文の折返し境界（本文文字数）", String(observation.lines[0].end)));
         if (!(boundary > 0 && boundary < original.contents.length)) throw Error("invalid-boundary");
         bundle.annotation.reading = String(reading); bundle.annotation.readingConfirmed = true; bundle.annotation.enabled = true;
-        bundle.splitHints = [{baseBoundaryAfter: boundary, readingBoundaryAfter: Number(prompt("読みの折返し境界（読み文字数）", String(Math.floor(String(reading).length / 2)))), baseText: original.contents, reading: String(reading), baseRevision: 0, readingRevision: 0}];
+        var readingBoundaryInput = prompt("読みの折返し境界（読み文字数、意味上の境界を入力）", "");
+        var readingBoundary = Number(readingBoundaryInput);
+        if (!(readingBoundary > 0 && readingBoundary < String(reading).length)) throw Error("reading-boundary-required");
+        bundle.splitHints = [{baseBoundaryAfter: boundary, readingBoundaryAfter: readingBoundary, baseText: original.contents, reading: String(reading), baseRevision: 0, readingRevision: 0}];
         decision = FormalSegments.plan(original.contents, String(reading), observation.lines, bundle.splitHints, 0, 0);
         result("initial 2-segment plan", decision.status === "complete");
         if (decision.status !== "complete") throw Error((decision.reasons || []).join("/"));
