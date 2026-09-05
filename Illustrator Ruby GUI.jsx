@@ -168,7 +168,18 @@ function resolveRubyPairTextFrame(wrapper) {
         if (readRubyRecordFromTextFrame(candidate)) continue;
         if (readRubyFrameId(candidate) === frameId) matched.push(candidate);
     }
-    return matched.length === 1 ? matched[0] : null;
+    if (matched.length === 1) return matched[0];
+
+    // 保存・再オープンでnative uuidが変わった既存文書を移行する。
+    // rubyRecordを持たない本文候補が一意の場合だけ旧suffixを永続化する。
+    var unmarked = [];
+    for (var j = 0; j < candidates.length; j++) {
+        if (readRubyRecordFromTextFrame(candidates[j])) continue;
+        if (!readFrameNoteId(candidates[j])) unmarked.push(candidates[j]);
+    }
+    if (unmarked.length !== 1) return null;
+    if (writeRubyFrameId(unmarked[0], frameId)) return unmarked[0];
+    return null;
 }
 
 function collectRubyPairTextFrames(item, frames) {
@@ -1362,24 +1373,38 @@ function readFrameNoteId(textFrame) {
 }
 
 function readRubyFrameId(textFrame) {
-    return readFrameUuid(textFrame) || readFrameNoteId(textFrame);
+    // native uuidは保存・再オープンで変わるため、tool-ownedのnote IDを優先する。
+    return readFrameNoteId(textFrame) || readFrameUuid(textFrame);
 }
 
 function ensureRubyFrameId(textFrame) {
     if (!textFrame) return "";
 
-    var existingId = readRubyFrameId(textFrame);
-    if (existingId) return existingId;
+    var noteId = readFrameNoteId(textFrame);
+    if (noteId) return noteId;
+
+    // uuidを取得できても、その値をnoteへ永続化してから使用する。
+    var nativeId = readFrameUuid(textFrame);
+    if (nativeId) {
+        if (writeRubyFrameId(textFrame, nativeId)) return nativeId;
+        return "";
+    }
 
     var frameId = makeRubyFrameId();
+    if (writeRubyFrameId(textFrame, frameId)) return frameId;
+    return "";
+}
+
+function writeRubyFrameId(textFrame, frameId) {
+    if (!textFrame || !frameId) return false;
     var marker = rubyFrameMetadataPrefix + rubyMetadataEncode(frameId);
     var originalNote = readFrameNote(textFrame);
     var updatedNote = originalNote ? originalNote + "\n" + marker : marker;
     try {
         textFrame.note = updatedNote;
-        if (readFrameNote(textFrame) === updatedNote) return frameId;
+        return readFrameNote(textFrame) === updatedNote;
     } catch (noteWriteError) {}
-    return "";
+    return false;
 }
 
 function serializeRubyRecord(record) {
