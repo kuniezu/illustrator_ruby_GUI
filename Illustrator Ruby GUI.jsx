@@ -1042,11 +1042,13 @@ function placeRubys(textFrames, rubyData, settings) {
 
     // Rubyレイヤー取得/作成
     var rubyLayer;
+    var rubyLayerCreated = false;
     try {
         rubyLayer = doc.layers.getByName("Ruby");
     } catch (e) {
         rubyLayer = doc.layers.add();
         rubyLayer.name = "Ruby";
+        rubyLayerCreated = true;
     }
 
     var totalRubyCount = 0;
@@ -1210,6 +1212,14 @@ function placeRubys(textFrames, rubyData, settings) {
     }
 
     alert(totalRubyCount + " \u500B\u306E\u30EB\u30D3\u3092\u914D\u7F6E\u3057\u307E\u3057\u305F");
+    // 新規作成したRubyレイヤーから全生成物を本文側へ移せた場合だけ削除する。
+    // 既存文書に元からあるRubyレイヤーは、空でも変更しない。
+    if (rubyLayerCreated) {
+        try {
+            if (rubyLayer.pageItems.length === 0) rubyLayer.remove();
+        } catch (emptyRubyLayerError) {}
+    }
+
     if (rubyMetadataWriteFailureCount > 0) {
         alert(rubyMetadataWriteFailureCount + "件のルビでメタデータを書き込めませんでした。配置結果は変更していません。");
     }
