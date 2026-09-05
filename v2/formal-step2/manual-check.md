@@ -5,3 +5,5 @@
 実行前に `node tests/gate-c.cjs` を実行し、純粋処理のPASS一覧と `MANUAL_REQUIRED` を確認します。Runtime Checkは幅を一時的に広げてAreaTextを実際に2行から1行へreflowし、managed 1件を確認した後、元の幅へ戻して同じSplitHintで2行・managed 2件へ復帰します。visual確認後、診断用に生成したmanaged rubyはcleanupで削除されます。通常の `Formal Step2.jsx` を別途実行してpersistent stateを作成し、`一張羅 / いっちょうら / 本文境界2 / 読み境界5` を適用した後、rubyが残ること、save→close→reopen後にSplitHintが復元・再利用されることを確認してください。
 
 行位置はduplicateをoutline化したglyph boundsのYクラスタから測定します。クラスタ数が本文行数と一致しない場合は推測配置せず unresolved で停止します。
+
+Gate Dでは `v2/diagnostics/Formal Step2 Gate D Batch Runtime Matrix.jsx` を一度実行し、A〜Eの一覧をDebug Consoleから保存します。fixtureとmanaged outputは終了時にcleanupされます。`MANUAL_REQUIRED save/reopen via normal Formal Step2.jsx` は通常UIでpersistent stateを作成してから確認します。
