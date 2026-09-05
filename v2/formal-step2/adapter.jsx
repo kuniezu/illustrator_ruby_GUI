@@ -29,9 +29,12 @@ function FormalStep2Adapter(doc, source) {
             probe.textRange.characterAttributes.textFont = sample.characterAttributes.textFont;
             probe.textRange.characterAttributes.size = sample.characterAttributes.size;
             probe.textRange.characterAttributes.tracking = sample.characterAttributes.tracking;
-            probe.left = 0; probe.top = 0;
-            var result = {width: probe.width, height: probe.height};
-            if (typeof result.width !== "number" || !isFinite(result.width)) return null;
+            probe.position = [source.left, source.top];
+            var bounds = probe.visibleBounds;
+            if (!bounds || bounds.length < 4) bounds = probe.geometricBounds;
+            if (!bounds || bounds.length < 4) return null;
+            var result = {left: bounds[0], top: bounds[1], width: bounds[2] - bounds[0], height: bounds[1] - bounds[3]};
+            if (typeof result.width !== "number" || !isFinite(result.width) || result.width <= 0) return null;
             return result;
         } catch (e) {
             mark("observe.measurement", "failed:" + (e.message || e));
@@ -43,17 +46,17 @@ function FormalStep2Adapter(doc, source) {
     function observe() {
         mark("observe:start", "kind=" + String(source.kind) + ",orientation=" + String(source.orientation));
         if (source.kind !== TextType.AREATEXT || source.orientation !== TextOrientation.HORIZONTAL) return {status: "unresolved", reasons: ["area-text-horizontal-only"]};
-        var range = source.textRange, lines = [], i, line, total = String(source.contents).length, leading = range.characters[0].characterAttributes.leading, anchor = source.position;
+        var range = source.textRange, lines = [], i, line, total = String(source.contents).length, leading = range.characters[0].characterAttributes.leading;
         if (typeof leading !== "number" || !isFinite(leading)) return {status: "unresolved", reasons: ["leading-unavailable"]};
-        if (!anchor || anchor.length < 2 || typeof anchor[0] !== "number" || typeof anchor[1] !== "number") return {status: "unresolved", reasons: ["text-frame-anchor-unavailable"]};
         for (i = 0; i < range.lines.length; i++) {
             line = range.lines[i];
             var start = line.start - range.start, end = line.end - range.start;
             if (start < 0 || end <= start || end > total || !line.characters.length) return {status: "unresolved", reasons: ["line-map-unverified"]};
             var first = line.characters[0], measured = measure(String(source.contents).substring(start, end), first);
             if (!measured) return {status: "unresolved", reasons: ["measurement-unavailable"]};
-            mark("observe.measurement", "line=" + i + ",width=" + measured.width + ",cleanup=required");
-            lines.push({start: start, end: end, geometry: {left: anchor[0], top: anchor[1] - i * leading, width: measured.width, baseSize: first.characterAttributes.size}});
+            var gap = first.characterAttributes.size * .15;
+            mark("observe.measurement", "line=" + i + ",left=" + measured.left + ",top=" + measured.top + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
+            lines.push({start: start, end: end, geometry: {left: measured.left, top: measured.top - i * leading - gap, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: measured.top - i * leading, measuredWidth: measured.width, leading: leading, gap: gap}});
         }
         mark("observe.line-map", "complete"); return {status: "complete", lines: lines};
     }
