@@ -109,10 +109,14 @@ function FormalStep2Adapter(doc, source) {
             if (!rubyBounds || rubyBounds.length < 4) rubyBounds = item.geometricBounds;
             if (!rubyBounds || rubyBounds.length < 4 || typeof geometry.measuredTop !== "number") throw Error("ruby-bounds-unavailable");
             var desiredBottom = geometry.measuredTop + geometry.gap, deltaY = desiredBottom - rubyBounds[3];
+            mark("render.vertical-fit.before", "rubyBottom=" + rubyBounds[3] + ",desiredBottom=" + desiredBottom + ",deltaY=" + deltaY + ",itemTop=" + item.top);
             item.top += deltaY;
             rubyBounds = item.visibleBounds;
             if (!rubyBounds || rubyBounds.length < 4) rubyBounds = item.geometricBounds;
-            if (!rubyBounds || rubyBounds.length < 4 || rubyBounds[3] < desiredBottom) throw Error("ruby-bottom-gap-unverified");
+            if (!rubyBounds || rubyBounds.length < 4) throw Error("ruby-bounds-unavailable-after-fit");
+            var residual = rubyBounds[3] - desiredBottom;
+            mark("render.vertical-fit.after", "rubyBottom=" + rubyBounds[3] + ",desiredBottom=" + desiredBottom + ",residual=" + residual + ",itemTop=" + item.top);
+            if (Math.abs(residual) > .5) throw Error("ruby-bottom-gap-unverified");
             mark("render.vertical-fit", "glyphTop=" + geometry.measuredTop + ",rubyBottom=" + rubyBounds[3] + ",desiredBottom=" + desiredBottom + ",gap=" + geometry.gap);
         }
         mark("render:update", "complete");
