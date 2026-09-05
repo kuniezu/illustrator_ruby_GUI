@@ -26,7 +26,9 @@
         observation = adapter.observe();
         result("observe complete", observation.status === "complete", (observation.reasons || []).join("/"));
         if (observation.status !== "complete" || observation.lines.length < 2) throw Error("two-line Area Textが必要です");
-        result("measured geometry", observation.lines.every(function (x) { return x.geometry && x.geometry.measuredWidth > 0 && typeof x.geometry.measuredTop === "number"; }), adapter.diagnostics().join(" | "));
+        var geometryOk = true, geometryIndex;
+        for (geometryIndex = 0; geometryIndex < observation.lines.length; geometryIndex++) if (!observation.lines[geometryIndex].geometry || observation.lines[geometryIndex].geometry.measuredWidth <= 0 || typeof observation.lines[geometryIndex].geometry.measuredTop !== "number") geometryOk = false;
+        result("measured geometry", geometryOk, adapter.diagnostics().join(" | "));
         boundary = Number(prompt("本文の折返し境界（本文文字数）", String(observation.lines[0].end)));
         if (!(boundary > 0 && boundary < original.contents.length)) throw Error("invalid-boundary");
         bundle = FormalStep1.create(original.contents); bundle.annotation.reading = String(reading); bundle.annotation.readingConfirmed = true; bundle.annotation.enabled = true;
@@ -38,8 +40,18 @@
         adapter.reconcile(bundle, decision);
         var firstCount = managedCount(); result("2 segment reconcile", firstCount === 2, "count=" + firstCount);
         var j; for (j = 0; j < 2; j++) { adapter.reconcile(bundle, decision); result("same desired reconcile " + (j + 2), managedCount() === firstCount, "count=" + managedCount()); }
-        var oneDecision = {status: "complete", segments: [decision.segments[0]]}; adapter.reconcile(bundle, oneDecision); result("2 to 1 managed removal", managedCount() === 1, "count=" + managedCount());
-        adapter.reconcile(bundle, decision); result("hint wrap restored", managedCount() === 2, "count=" + managedCount());
+        source.width = original.width * 10;
+        var wideObservation = adapter.observe(), wideDecision;
+        result("AreaText width reflow to one line", wideObservation.status === "complete" && wideObservation.lines.length === 1, "lines=" + wideObservation.lines.length);
+        if (wideObservation.status !== "complete" || wideObservation.lines.length !== 1) throw Error("width-reflow-to-one-line-failed");
+        wideDecision = FormalSegments.plan(original.contents, String(reading), wideObservation.lines, bundle.splitHints, 0, 0);
+        adapter.reconcile(bundle, wideDecision); result("2 to 1 after actual reflow", managedCount() === 1, "count=" + managedCount());
+        source.width = original.width;
+        observation = adapter.observe();
+        decision = FormalSegments.plan(original.contents, String(reading), observation.lines, bundle.splitHints, 0, 0);
+        result("AreaText width restored to two lines", observation.status === "complete" && observation.lines.length === 2, "lines=" + observation.lines.length);
+        if (decision.status !== "complete") throw Error((decision.reasons || []).join("/"));
+        adapter.reconcile(bundle, decision); result("same SplitHint restored", managedCount() === 2, "count=" + managedCount());
         var stale = FormalSegments.plan(original.contents, String(reading) + "変更", observation.lines, bundle.splitHints, 0, 0); result("reading change stale", stale.status === "unresolved" && stale.reasons[0] === "split-hint-stale");
         result("unmanaged preserved", String(unmanaged.note) === "gate-c-unmanaged");
         result("temporary measurement frames cleaned", doc.textFrames.length === (baselineFrames + managedCount() + 1), "textFrames=" + doc.textFrames.length);
