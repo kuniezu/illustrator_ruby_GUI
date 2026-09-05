@@ -83,7 +83,7 @@
             if (decision.status !== "complete") throw Error((decision.reasons || []).join("/"));
             adapter.reconcile(bundle, decision); result("same SplitHint restored", managedCount() === 2, "count=" + managedCount());
             app.redraw();
-            result("visual placement", confirm("2本のルビが各本文segmentの上方に正しく配置されていますか？"));
+            result("visual placement", confirm("2本のルビが各本文segmentの上方に正しく配置されていますか？\n確認後、テスト生成ルビはcleanupで削除されます。"));
             var stale = FormalSegments.plan(original.contents, String(reading) + "変更", observation.lines, bundle.splitHints, 0, 0); result("reading change stale", stale.status === "unresolved" && stale.reasons[0] === "split-hint-stale");
         } else {
             result("geometry restore", false, "visual checkpoint skipped");
@@ -91,7 +91,7 @@
         }
         result("unmanaged preserved", String(unmanaged.note) === "gate-c-unmanaged");
         result("temporary measurement frames cleaned", doc.textFrames.length === (baselineFrames + managedCount() - originalManaged.length + 1), "textFrames=" + doc.textFrames.length);
-        manual("save/close/reopen");
+        manual("save/reopen via normal Formal Step2.jsx");
     } catch (e) { result("runtime gate", false, e.message || e); }
     cleanup();
     var output = report.join("\n"); $.writeln(output); alert("Gate C Runtime Check完了。Debug Consoleのレポート全文を確認してください。\n" + report.join("\n"));
