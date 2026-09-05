@@ -136,12 +136,175 @@ function getSelectedTextFrames() {
     var frames = [];
     if (!app.activeDocument || !app.activeDocument.selection) return frames;
     var sel = app.activeDocument.selection;
+    rubyPairDiagnostic("selection.length=" + sel.length);
     for (var i = 0; i < sel.length; i++) {
-        if (sel[i].typename === "TextFrame") {
-            frames.push(sel[i]);
+        var item = sel[i];
+        var itemName = "";
+        var parentType = "";
+        var parentName = "";
+        try { itemName = item.name || ""; } catch (itemNameError) {}
+        try {
+            parentType = item.parent ? item.parent.typename : "";
+            parentName = item.parent ? (item.parent.name || "") : "";
+        } catch (parentError) {}
+        rubyPairDiagnostic("selection[" + i + "] typename=" + item.typename +
+            " name=" + itemName + " parent.typename=" + parentType +
+            " parent.name=" + parentName);
+        if (item.typename === "TextFrame") {
+            frames.push(item);
+            continue;
         }
+        var sourceFrame = resolveRubyPairTextFrame(item);
+        if (sourceFrame) frames.push(sourceFrame);
     }
     return frames;
+}
+
+// rubyPair_<frameId> だけを安全に本文へ解決する。
+// 一般GroupItemや、ルビ側TextFrameを推測で本文扱いしない。
+function resolveRubyPairTextFrame(wrapper) {
+    if (!wrapper) return null;
+
+    var wrapperName = "";
+    try { wrapperName = wrapper.name || ""; } catch (nameError) {}
+    var prefix = "rubyPair_";
+    if (wrapperName.indexOf(prefix) !== 0) return null;
+    var frameId = wrapperName.substr(prefix.length);
+    if (!frameId) return null;
+    rubyPairDiagnostic("resolve wrapper.name=" + wrapperName + " frameId=" + frameId);
+
+    var candidates = [];
+    collectRubyPairTextFrames(wrapper, candidates);
+    rubyPairDiagnostic("candidates.length=" + candidates.length);
+    var matched = [];
+    for (var i = 0; i < candidates.length; i++) {
+        var candidate = candidates[i];
+        var rubyRecord = readRubyRecordFromTextFrame(candidate);
+        var noteId = readFrameNoteId(candidate);
+        var nativeId = readFrameUuid(candidate);
+        var resolvedId = readRubyFrameId(candidate);
+        rubyPairDiagnostic("candidate[" + i + "] rubyRecord=" + (rubyRecord ? "yes" : "no") +
+            " noteId=" + noteId + " nativeId=" + nativeId + " frameId=" + resolvedId);
+        if (rubyRecord) continue;
+        if (resolvedId === frameId) matched.push(candidate);
+    }
+    rubyPairDiagnostic("matched.length=" + matched.length);
+    if (matched.length === 1) {
+        rubyPairDiagnostic("resolve result=matched");
+        return matched[0];
+    }
+
+    var unmarked = [];
+    for (var j = 0; j < candidates.length; j++) {
+        if (readRubyRecordFromTextFrame(candidates[j])) continue;
+        if (!readFrameNoteId(candidates[j])) unmarked.push(candidates[j]);
+    }
+    rubyPairDiagnostic("unmarked.length=" + unmarked.length);
+    if (unmarked.length !== 1) {
+        rubyPairDiagnostic("resolve result=null");
+        return null;
+    }
+    var migrated = writeRubyFrameId(unmarked[0], frameId);
+    rubyPairDiagnostic("writeRubyFrameId=" + migrated);
+    if (migrated) {
+        rubyPairDiagnostic("resolve result=migrated");
+        return unmarked[0];
+    }
+    rubyPairDiagnostic("resolve result=null");
+    return null;
+}
+
+function collectRubyPairTextFrames(item, frames) {
+    if (!item || !frames) return;
+
+    if (item.typename === "TextFrame") {
+        frames.push(item);
+        return;
+    }
+
+    // Illustratorのコレクションは直下または子孫を返す実装差があるため、
+    // groupItemsの再帰結果と重複しても同じオブジェクトを一度だけ保持する。
+    try {
+        for (var ti = 0; ti < item.textFrames.length; ti++) {
+            appendUniqueTextFrame(item.textFrames[ti], frames);
+        }
+    } catch (textFramesError) {}
+    try {
+        for (var gi = 0; gi < item.groupItems.length; gi++) {
+            collectRubyPairTextFrames(item.groupItems[gi], frames);
+        }
+    } catch (groupItemsError) {}
+}
+
+function appendUniqueTextFrame(textFrame, frames) {
+    if (!textFrame || !frames) return;
+    for (var i = 0; i < frames.length; i++) {
+        if (frames[i] === textFrame) return;
+    }
+    frames.push(textFrame);
+}
+
+function readRubyRecordFromTextFrame(textFrame) {
+    if (!textFrame) return null;
+    var record = null;
+    try { record = parseRubyRecord(textFrame.note); } catch (noteError) {}
+    if (record) return record;
+
+    try {
+        if (textFrame.name && textFrame.name.indexOf(rubyMetadataNamePrefix) === 0) {
+            return parseRubyRecord(rubyMetadataDecode(textFrame.name.substr(rubyMetadataNamePrefix.length)));
+        }
+    } catch (nameError) {}
+    return null;
+}
+
+function findRubyPairWrapper(textFrame) {
+    if (!textFrame) return null;
+    var parent = null;
+    try { parent = textFrame.parent; } catch (parentError) {}
+    if (!parent || parent.typename !== "GroupItem") return null;
+
+    var name = "";
+    try { name = parent.name || ""; } catch (nameError) {}
+    if (name.indexOf("rubyPair_") !== 0) return null;
+    var frameId = name.substr("rubyPair_".length);
+    if (!frameId || readRubyFrameId(textFrame) !== frameId) return null;
+    return parent;
+}
+
+function findRubyGroupsForFrame(wrapper, frameId) {
+    var groups = [];
+    if (!wrapper || !frameId) return groups;
+    try {
+        for (var i = 0; i < wrapper.groupItems.length; i++) {
+            var group = wrapper.groupItems[i];
+            if (groupContainsRubyRecordsForFrame(group, frameId)) groups.push(group);
+        }
+    } catch (groupItemsError) {}
+    return groups;
+}
+
+function groupContainsRubyRecordsForFrame(group, frameId) {
+    if (!group || !frameId) return false;
+    try {
+        for (var i = 0; i < group.textFrames.length; i++) {
+            var record = readRubyRecordFromTextFrame(group.textFrames[i]);
+            if (record && record.frameId === frameId) return true;
+        }
+    } catch (textFramesError) {}
+    try {
+        for (var j = 0; j < group.groupItems.length; j++) {
+            if (groupContainsRubyRecordsForFrame(group.groupItems[j], frameId)) return true;
+        }
+    } catch (groupItemsError) {}
+    return false;
+}
+
+function removeRubyGroups(groups) {
+    if (!groups) return;
+    for (var i = 0; i < groups.length; i++) {
+        try { groups[i].remove(); } catch (removeError) {}
+    }
 }
 
 
@@ -1042,11 +1205,13 @@ function placeRubys(textFrames, rubyData, settings) {
 
     // Rubyレイヤー取得/作成
     var rubyLayer;
+    var rubyLayerCreated = false;
     try {
         rubyLayer = doc.layers.getByName("Ruby");
     } catch (e) {
         rubyLayer = doc.layers.add();
         rubyLayer.name = "Ruby";
+        rubyLayerCreated = true;
     }
 
     var totalRubyCount = 0;
@@ -1055,9 +1220,22 @@ function placeRubys(textFrames, rubyData, settings) {
         var frame = textFrames[f];
         var data = rubyData[f];
         var isVertical = (frame.orientation === TextOrientation.VERTICAL);
+        var existingWrapper = findRubyPairWrapper(frame);
+        var frameId = readRubyFrameId(frame);
+        var previousRubyGroups = existingWrapper ? findRubyGroupsForFrame(existingWrapper, frameId) : [];
 
-        // テキストフレーム用グループ作成
-        var frameGroup = rubyLayer.groupItems.add();
+        // テキストフレーム用グループ作成。本文と同じ親に作れば、後で
+        // 異なるLayer間のGroupItem.move()に依存せずにラッパーへ移せる。
+        var rubyGroupParent = existingWrapper || rubyLayer;
+        try {
+            var sourceParent = frame.parent;
+            // 実機のLayerではPageItem由来のプロパティ参照が例外になることが
+            // あるため、生成先の選択ではtypenameだけを確認する。
+            if (!existingWrapper && sourceParent && (sourceParent.typename === "Layer" || sourceParent.typename === "GroupItem")) {
+                rubyGroupParent = sourceParent;
+            }
+        } catch (sourceParentError) {}
+        var frameGroup = rubyGroupParent.groupItems.add();
         frameGroup.name = "ruby_" + (frame.name || ("frame" + (f + 1)));
 
         // アウトライン化を1回だけ行い、全ルビで共有（クラッシュ防止）
@@ -1192,9 +1370,26 @@ function placeRubys(textFrames, rubyData, settings) {
                 }
             }
         }
+
+        // 本文と生成ルビを元の親配下へまとめる。安全条件を満たさない場合は従来構造を維持する。
+        if (allRubies.length > 0) {
+            if (existingWrapper) {
+                removeRubyGroups(previousRubyGroups);
+            } else {
+                wrapRubyPair(frame, frameGroup);
+            }
+        }
     }
 
     alert(totalRubyCount + " \u500B\u306E\u30EB\u30D3\u3092\u914D\u7F6E\u3057\u307E\u3057\u305F");
+    // 新規作成したRubyレイヤーから全生成物を本文側へ移せた場合だけ削除する。
+    // 既存文書に元からあるRubyレイヤーは、空でも変更しない。
+    if (rubyLayerCreated) {
+        try {
+            if (rubyLayer.pageItems.length === 0) rubyLayer.remove();
+        } catch (emptyRubyLayerError) {}
+    }
+
     if (rubyMetadataWriteFailureCount > 0) {
         alert(rubyMetadataWriteFailureCount + "件のルビでメタデータを書き込めませんでした。配置結果は変更していません。");
     }
@@ -1215,6 +1410,13 @@ var rubyMetadataNamePrefix = "ruby-meta-v1:";
 var rubyFrameMetadataPrefix = "illustrator-ruby-frame-v1;frameId=";
 var rubyAnchorNeedsReviewCount = 0;
 var rubyMetadataWriteFailureCount = 0;
+var rubyPairDiagnosticsEnabled = true;
+var rubyPairBuildMarker = "phase1b-wrapper-selection-diagnostics-20260905";
+
+function rubyPairDiagnostic(message) {
+    if (!rubyPairDiagnosticsEnabled) return;
+    try { $.writeln("[" + rubyPairBuildMarker + "] " + message); } catch (diagnosticError) {}
+}
 
 function rubyMetadataEncode(value) {
     var text = value === undefined || value === null ? "" : String(value);
@@ -1266,24 +1468,37 @@ function readFrameNoteId(textFrame) {
 }
 
 function readRubyFrameId(textFrame) {
-    return readFrameUuid(textFrame) || readFrameNoteId(textFrame);
+    // native uuidは保存・再オープンで変わるため、tool-ownedのnote IDを優先する。
+    return readFrameNoteId(textFrame) || readFrameUuid(textFrame);
 }
 
 function ensureRubyFrameId(textFrame) {
     if (!textFrame) return "";
 
-    var existingId = readRubyFrameId(textFrame);
-    if (existingId) return existingId;
+    var noteId = readFrameNoteId(textFrame);
+    if (noteId) return noteId;
+
+    var nativeId = readFrameUuid(textFrame);
+    if (nativeId) {
+        if (writeRubyFrameId(textFrame, nativeId)) return nativeId;
+        return "";
+    }
 
     var frameId = makeRubyFrameId();
+    if (writeRubyFrameId(textFrame, frameId)) return frameId;
+    return "";
+}
+
+function writeRubyFrameId(textFrame, frameId) {
+    if (!textFrame || !frameId) return false;
     var marker = rubyFrameMetadataPrefix + rubyMetadataEncode(frameId);
     var originalNote = readFrameNote(textFrame);
     var updatedNote = originalNote ? originalNote + "\n" + marker : marker;
     try {
         textFrame.note = updatedNote;
-        if (readFrameNote(textFrame) === updatedNote) return frameId;
+        return readFrameNote(textFrame) === updatedNote;
     } catch (noteWriteError) {}
-    return "";
+    return false;
 }
 
 function serializeRubyRecord(record) {
@@ -1357,40 +1572,102 @@ function writeRubyRecord(pageItem, record) {
 function readRubyRecords(doc) {
     var records = [];
     if (!doc) return records;
+    var seenRecordIds = {};
 
-    var rubyLayer = null;
-    try {
-        rubyLayer = doc.layers.getByName("Ruby");
-    } catch (layerError) {
-        return records;
-    }
-
-    // 現行生成物はフレーム別グループ直下にルビTextFrameを持つ。
-    for (var gi = 0; gi < rubyLayer.groupItems.length; gi++) {
-        var frameGroup = rubyLayer.groupItems[gi];
-        for (var ti = 0; ti < frameGroup.textFrames.length; ti++) {
-            var item = frameGroup.textFrames[ti];
-            var record = null;
-            try { record = parseRubyRecord(item.note); } catch (noteError) {}
-
-            // noteが読めない場合は、nameに全体を保持したフォールバックを試す。
-            if (!record) {
-                try {
-                    if (item.name.indexOf(rubyMetadataNamePrefix) === 0) {
-                        record = parseRubyRecord(rubyMetadataDecode(item.name.substr(rubyMetadataNamePrefix.length)));
-                    }
-                } catch (nameError) {}
-            }
-
-            if (record) {
-                if (!record.groupName) {
-                    try { record.groupName = frameGroup.name || ""; } catch (groupNameError) {}
-                }
-                records.push(record);
-            }
+    // 旧構造のRubyレイヤーと、Phase 1Bのラッパー構造の両方を再帰的に読む。
+    for (var li = 0; li < doc.layers.length; li++) {
+        var layer = doc.layers[li];
+        for (var gi = 0; gi < layer.groupItems.length; gi++) {
+            collectRubyRecordsFromGroup(layer.groupItems[gi], records, seenRecordIds);
         }
     }
     return records;
+}
+
+function collectRubyRecordsFromGroup(group, records, seenRecordIds) {
+    if (!group || !records) return;
+
+    for (var ti = 0; ti < group.textFrames.length; ti++) {
+        var item = group.textFrames[ti];
+        var record = null;
+        try { record = parseRubyRecord(item.note); } catch (noteError) {}
+
+        // noteが読めない場合は、nameに全体を保持したフォールバックを試す。
+        if (!record) {
+            try {
+                if (item.name.indexOf(rubyMetadataNamePrefix) === 0) {
+                    record = parseRubyRecord(rubyMetadataDecode(item.name.substr(rubyMetadataNamePrefix.length)));
+                }
+            } catch (nameError) {}
+        }
+
+        if (record && (!seenRecordIds || !seenRecordIds[record.recordId])) {
+            if (!record.groupName) {
+                try { record.groupName = group.name || ""; } catch (groupNameError) {}
+            }
+            records.push(record);
+            if (seenRecordIds) seenRecordIds[record.recordId] = true;
+        }
+    }
+
+    for (var gi = 0; gi < group.groupItems.length; gi++) {
+        collectRubyRecordsFromGroup(group.groupItems[gi], records, seenRecordIds);
+    }
+}
+
+function wrapRubyPair(textFrame, rubyGroup) {
+    if (!textFrame || !rubyGroup) return false;
+
+    var parent = null;
+    try { parent = textFrame.parent; } catch (parentError) {}
+    if (!parent || (parent.typename !== "Layer" && parent.typename !== "GroupItem")) return false;
+
+    if (!isRubyPairParentUsable(textFrame, parent)) return false;
+
+    var wrapper = null;
+    var movedText = false;
+    var movedRuby = false;
+    try {
+        wrapper = parent.groupItems.add();
+        var frameId = readRubyFrameId(textFrame);
+        wrapper.name = "rubyPair_" + (frameId || makeRubyFrameId());
+        // 新規GroupItemを本文の元位置へ置き、兄弟との重なり順をできるだけ維持する。
+        wrapper.move(textFrame, ElementPlacement.PLACEBEFORE);
+        textFrame.move(wrapper, ElementPlacement.PLACEATEND);
+        movedText = true;
+        rubyGroup.move(wrapper, ElementPlacement.PLACEATEND);
+        movedRuby = true;
+        return true;
+    } catch (wrapError) {
+        // 片方だけ移動した場合も、可能な範囲で元の親へ戻してからラッパーを破棄する。
+        try { if (movedRuby) rubyGroup.move(parent, ElementPlacement.PLACEATEND); } catch (rollbackRubyError) {}
+        try { if (movedText) textFrame.move(parent, ElementPlacement.PLACEATEND); } catch (rollbackTextError) {}
+        try { if (wrapper) wrapper.remove(); } catch (removeWrapperError) {}
+        return false;
+    }
+}
+
+function isRubyPairParentUsable(textFrame, parent) {
+    if (!textFrame || !parent) return false;
+    if (parent.typename !== "Layer" && parent.typename !== "GroupItem") return false;
+
+    // Layerにはhiddenがなくvisibleを使う。オブジェクトごとに利用可能な
+    // プロパティが異なるため、未対応プロパティの参照で全体を失敗させない。
+    // 未対応プロパティは「false」とみなし、Layer/GroupItemの型差で
+    // 正常な対象を安全判定から落とさない。明示的にtrueなら停止する。
+    try { if (textFrame.locked === true) return false; } catch (textLockedError) {}
+    try { if (textFrame.hidden === true) return false; } catch (textHiddenError) {}
+    try { if (parent.locked === true) return false; } catch (parentLockedError) {}
+    try { if (parent.typename === "Layer" && parent.visible === false) return false; } catch (layerVisibleError) {}
+    if (parent.typename === "GroupItem") {
+        try { if (parent.hidden === true) return false; } catch (groupHiddenError) {}
+        try { if (parent.clipped === true) return false; } catch (groupClipError) {}
+    }
+
+    try {
+        if (textFrame.nextFrame || textFrame.previousFrame) return false;
+    } catch (linkedFrameError) {}
+    return true;
 }
 
 function resolveBaseAnchor(contents, record) {
