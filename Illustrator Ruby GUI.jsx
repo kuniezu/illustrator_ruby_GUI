@@ -1061,7 +1061,11 @@ function placeRubys(textFrames, rubyData, settings) {
         var rubyGroupParent = rubyLayer;
         try {
             var sourceParent = frame.parent;
-            if (isRubyPairParentUsable(frame, sourceParent)) rubyGroupParent = sourceParent;
+            // 実機のLayerではPageItem由来のプロパティ参照が例外になることが
+            // あるため、生成先の選択ではtypenameだけを確認する。
+            if (sourceParent && (sourceParent.typename === "Layer" || sourceParent.typename === "GroupItem")) {
+                rubyGroupParent = sourceParent;
+            }
         } catch (sourceParentError) {}
         var frameGroup = rubyGroupParent.groupItems.add();
         frameGroup.name = "ruby_" + (frame.name || ("frame" + (f + 1)));
@@ -1447,20 +1451,20 @@ function isRubyPairParentUsable(textFrame, parent) {
 
     // Layerにはhiddenがなくvisibleを使う。オブジェクトごとに利用可能な
     // プロパティが異なるため、未対応プロパティの参照で全体を失敗させない。
-    try { if (textFrame.locked === true) return false; } catch (textLockedError) { return false; }
-    try { if (textFrame.hidden === true) return false; } catch (textHiddenError) { return false; }
-    try { if (parent.locked === true) return false; } catch (parentLockedError) { return false; }
-    try { if (parent.typename === "Layer" && parent.visible === false) return false; } catch (layerVisibleError) { return false; }
+    // 未対応プロパティは「false」とみなし、Layer/GroupItemの型差で
+    // 正常な対象を安全判定から落とさない。明示的にtrueなら停止する。
+    try { if (textFrame.locked === true) return false; } catch (textLockedError) {}
+    try { if (textFrame.hidden === true) return false; } catch (textHiddenError) {}
+    try { if (parent.locked === true) return false; } catch (parentLockedError) {}
+    try { if (parent.typename === "Layer" && parent.visible === false) return false; } catch (layerVisibleError) {}
     if (parent.typename === "GroupItem") {
-        try { if (parent.hidden === true) return false; } catch (groupHiddenError) { return false; }
-        try { if (parent.clipped === true) return false; } catch (groupClipError) { return false; }
+        try { if (parent.hidden === true) return false; } catch (groupHiddenError) {}
+        try { if (parent.clipped === true) return false; } catch (groupClipError) {}
     }
 
     try {
         if (textFrame.nextFrame || textFrame.previousFrame) return false;
-    } catch (linkedFrameError) {
-        return false;
-    }
+    } catch (linkedFrameError) {}
     return true;
 }
 
