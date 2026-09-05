@@ -88,7 +88,7 @@ function FormalStep2Adapter(doc, source) {
             mark("observe.measurement", "line=" + i + ",left=" + visual.left + ",glyphTop=" + visual.top + ",rubyTop=" + rubyTop + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
             lines.push({start: start, end: end, geometry: {left: visual.left, top: rubyTop, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: visual.top, measuredWidth: measured.width, leading: leading, gap: gap, visualRight: visual.right}});
         }
-        mark("observe.line-map", "complete"); return {status: "complete", lines: lines};
+        mark("observe.line-map", "complete"); return {status: "complete", kind: source.kind, orientation: source.orientation, lines: lines};
     }
     function reconcile(bundle, decision) {
         var old = inspect(bundle), wanted = decision.segments || [], i, item, geometry, count, delta, tracking;
