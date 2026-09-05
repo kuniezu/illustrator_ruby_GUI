@@ -33,6 +33,9 @@
                 read("line[" + i + "].firstCharacter.characterAttributes.size", function () { return firstCharacter.characterAttributes.size; });
                 read("line[" + i + "].firstCharacter.characterAttributes.tracking", function () { return firstCharacter.characterAttributes.tracking; });
                 read("line[" + i + "].firstCharacter.characterAttributes.baselineShift", function () { return firstCharacter.characterAttributes.baselineShift; });
+                read("line[" + i + "].firstCharacter.characterAttributes.leading", function () { return firstCharacter.characterAttributes.leading; });
+                read("line[" + i + "].firstCharacter.characterAttributes.autoLeading", function () { return firstCharacter.characterAttributes.autoLeading; });
+                read("line[" + i + "].firstCharacter.paragraphAttributes.autoLeadingAmount", function () { return firstCharacter.paragraphAttributes.autoLeadingAmount; });
             }
         }
     } catch (e) { line("probe=ERROR: " + (e.message || e)); }

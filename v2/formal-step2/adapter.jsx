@@ -23,11 +23,13 @@ function FormalStep2Adapter(doc, source) {
     function observe() {
         mark("observe:start", "kind=" + String(source.kind) + ",orientation=" + String(source.orientation));
         if (source.kind !== TextType.AREATEXT || source.orientation !== TextOrientation.HORIZONTAL) return {status: "unresolved", reasons: ["area-text-horizontal-only"]};
-        var range = source.textRange, lines = [], i, line;
+        var range = source.textRange, lines = [], i, line, total = String(source.contents).length, leading = range.characters[0].characterAttributes.leading;
+        if (typeof leading !== "number" || !isFinite(leading)) return {status: "unresolved", reasons: ["leading-unavailable"]};
         for (i = 0; i < range.lines.length; i++) {
             line = range.lines[i];
-            if (typeof line.left !== "number" || typeof line.top !== "number" || typeof line.width !== "number") return {status: "unresolved", reasons: ["line-geometry-unavailable"]};
-            lines.push({start: line.start - range.start, end: line.end - range.start, geometry: {left: line.left, top: line.top, width: line.width, baseSize: line.characters[0].characterAttributes.size}});
+            var start = line.start - range.start, end = line.end - range.start;
+            if (start < 0 || end <= start || end > total || !line.characters.length) return {status: "unresolved", reasons: ["line-map-unverified"]};
+            lines.push({start: start, end: end, geometry: {left: source.left, top: source.top - i * leading, width: source.width * (end - start) / total, baseSize: line.characters[0].characterAttributes.size}});
         }
         mark("observe.line-map", "complete"); return {status: "complete", lines: lines};
     }
