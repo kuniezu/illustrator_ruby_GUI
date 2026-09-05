@@ -258,6 +258,55 @@ function readRubyRecordFromTextFrame(textFrame) {
     return null;
 }
 
+function findRubyPairWrapper(textFrame) {
+    if (!textFrame) return null;
+    var parent = null;
+    try { parent = textFrame.parent; } catch (parentError) {}
+    if (!parent || parent.typename !== "GroupItem") return null;
+
+    var name = "";
+    try { name = parent.name || ""; } catch (nameError) {}
+    if (name.indexOf("rubyPair_") !== 0) return null;
+    var frameId = name.substr("rubyPair_".length);
+    if (!frameId || readRubyFrameId(textFrame) !== frameId) return null;
+    return parent;
+}
+
+function findRubyGroupsForFrame(wrapper, frameId) {
+    var groups = [];
+    if (!wrapper || !frameId) return groups;
+    try {
+        for (var i = 0; i < wrapper.groupItems.length; i++) {
+            var group = wrapper.groupItems[i];
+            if (groupContainsRubyRecordsForFrame(group, frameId)) groups.push(group);
+        }
+    } catch (groupItemsError) {}
+    return groups;
+}
+
+function groupContainsRubyRecordsForFrame(group, frameId) {
+    if (!group || !frameId) return false;
+    try {
+        for (var i = 0; i < group.textFrames.length; i++) {
+            var record = readRubyRecordFromTextFrame(group.textFrames[i]);
+            if (record && record.frameId === frameId) return true;
+        }
+    } catch (textFramesError) {}
+    try {
+        for (var j = 0; j < group.groupItems.length; j++) {
+            if (groupContainsRubyRecordsForFrame(group.groupItems[j], frameId)) return true;
+        }
+    } catch (groupItemsError) {}
+    return false;
+}
+
+function removeRubyGroups(groups) {
+    if (!groups) return;
+    for (var i = 0; i < groups.length; i++) {
+        try { groups[i].remove(); } catch (removeError) {}
+    }
+}
+
 
 
 // ============================================================
@@ -1171,15 +1220,18 @@ function placeRubys(textFrames, rubyData, settings) {
         var frame = textFrames[f];
         var data = rubyData[f];
         var isVertical = (frame.orientation === TextOrientation.VERTICAL);
+        var existingWrapper = findRubyPairWrapper(frame);
+        var frameId = readRubyFrameId(frame);
+        var previousRubyGroups = existingWrapper ? findRubyGroupsForFrame(existingWrapper, frameId) : [];
 
         // テキストフレーム用グループ作成。本文と同じ親に作れば、後で
         // 異なるLayer間のGroupItem.move()に依存せずにラッパーへ移せる。
-        var rubyGroupParent = rubyLayer;
+        var rubyGroupParent = existingWrapper || rubyLayer;
         try {
             var sourceParent = frame.parent;
             // 実機のLayerではPageItem由来のプロパティ参照が例外になることが
             // あるため、生成先の選択ではtypenameだけを確認する。
-            if (sourceParent && (sourceParent.typename === "Layer" || sourceParent.typename === "GroupItem")) {
+            if (!existingWrapper && sourceParent && (sourceParent.typename === "Layer" || sourceParent.typename === "GroupItem")) {
                 rubyGroupParent = sourceParent;
             }
         } catch (sourceParentError) {}
@@ -1321,7 +1373,11 @@ function placeRubys(textFrames, rubyData, settings) {
 
         // 本文と生成ルビを元の親配下へまとめる。安全条件を満たさない場合は従来構造を維持する。
         if (allRubies.length > 0) {
-            wrapRubyPair(frame, frameGroup);
+            if (existingWrapper) {
+                removeRubyGroups(previousRubyGroups);
+            } else {
+                wrapRubyPair(frame, frameGroup);
+            }
         }
     }
 
