@@ -6,7 +6,7 @@
 #include "../formal-step2/adapter.jsx"
 
 (function () {
-    var report = [], source, adapter, bundle, observation, decision, reading, boundary, unmanaged, original, baselineFrames, originalManaged = [];
+    var report = [], source, adapter, bundle, observation, decision, reading, boundary, unmanaged, original, baselineFrames, originalManaged = [], textPath, originalTextPathWidth;
     function result(label, ok, detail) { report.push((ok ? "PASS " : "FAIL ") + label + (detail ? ": " + detail : "")); }
     function manual(label) { report.push("MANUAL_REQUIRED " + label); }
     function managedCount() { return adapter.inspect(bundle).length; }
@@ -23,7 +23,7 @@
     function cleanup() {
         try { if (adapter && bundle) { var items = findManaged(), i, j, known; for (i = items.length - 1; i >= 0; i--) { known = false; for (j = 0; j < originalManaged.length; j++) if (items[i] === originalManaged[j].item) known = true; if (!known) items[i].remove(); } for (j = 0; j < originalManaged.length; j++) { var saved = originalManaged[j], target = saved.item; try { target.contents = saved.contents; target.note = saved.note; target.left = saved.left; target.top = saved.top; target.width = saved.width; } catch (restoreManaged) { target = source.layer.textFrames.add(); target.contents = saved.contents; target.note = saved.note; target.left = saved.left; target.top = saved.top; target.width = saved.width; } } } } catch (e) { result("managed cleanup", false, e.message || e); }
         try { if (unmanaged) unmanaged.remove(); } catch (ignore) { result("unmanaged cleanup", false, ignore.message || ignore); }
-        try { if (source && original) { source.contents = original.contents; source.note = original.note; source.width = original.width; } } catch (restoreError) { result("source restore", false, restoreError.message || restoreError); }
+        try { if (source && original) { source.contents = original.contents; source.note = original.note; source.width = original.width; if (textPath && typeof originalTextPathWidth === "number") textPath.width = originalTextPathWidth; } } catch (restoreError) { result("source restore", false, restoreError.message || restoreError); }
     }
     try {
         if (!app.documents.length) throw Error("AIファイルを開いてください");
@@ -59,12 +59,14 @@
         adapter.reconcile(bundle, decision);
         var firstCount = managedCount(); result("2 segment reconcile", firstCount === 2, "count=" + firstCount);
         var j; for (j = 0; j < 2; j++) { adapter.reconcile(bundle, decision); result("same desired reconcile " + (j + 2), managedCount() === firstCount, "count=" + managedCount()); }
-        source.width = original.width * 10;
-        var wideObservation = adapter.observe(), wideDecision;
-        result("AreaText width reflow to one line", wideObservation.status === "complete" && wideObservation.lines.length === 1, "lines=" + wideObservation.lines.length);
-        if (wideObservation.status !== "complete" || wideObservation.lines.length !== 1) throw Error("width-reflow-to-one-line-failed");
-        wideDecision = FormalSegments.plan(original.contents, String(reading), wideObservation.lines, bundle.splitHints, 0, 0);
-        adapter.reconcile(bundle, wideDecision); result("2 to 1 after actual reflow", managedCount() === 1, "count=" + managedCount());
+        source.width = original.width * 10; app.redraw();
+        var wideObservation = adapter.observe(), wideDecision, reflowed = wideObservation.status === "complete" && wideObservation.lines.length === 1;
+        if (!reflowed) {
+            try { textPath = source.textPath; originalTextPathWidth = textPath && textPath.width; if (textPath && typeof originalTextPathWidth === "number") { textPath.width = originalTextPathWidth * 10; app.redraw(); wideObservation = adapter.observe(); reflowed = wideObservation.status === "complete" && wideObservation.lines.length === 1; } } catch (pathError) { report.push("MANUAL_REQUIRED textPath width probe: " + (pathError.message || pathError)); }
+        }
+        result("AreaText width reflow to one line", reflowed, "lines=" + (wideObservation.lines ? wideObservation.lines.length : "unknown"));
+        if (reflowed) { wideDecision = FormalSegments.plan(original.contents, String(reading), wideObservation.lines, bundle.splitHints, 0, 0); adapter.reconcile(bundle, wideDecision); result("2 to 1 after actual reflow", managedCount() === 1, "count=" + managedCount()); }
+        else { manual("actual AreaText 2->1 reflow"); var simulatedOne = {status: "complete", segments: [decision.segments[0]]}; adapter.reconcile(bundle, simulatedOne); result("renderer desired 2->1 cleanup", managedCount() === 1, "count=" + managedCount()); }
         source.width = original.width;
         observation = adapter.observe();
         decision = FormalSegments.plan(original.contents, String(reading), observation.lines, bundle.splitHints, 0, 0);
