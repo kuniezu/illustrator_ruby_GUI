@@ -8,7 +8,7 @@ test('Gate D batch has A-E cases and one-shot report', () => {
   for (const id of ['A1','A2','B1','B2','C1','C2','C3','D1','D2','D3','E1','E2','E3','E4']) assert.ok(s.includes('"' + id + '"'));
   assert.ok(s.includes('PASS')); assert.ok(s.includes('FAIL')); assert.ok(s.includes('MANUAL_REQUIRED')); assert.ok(s.includes('finally')); assert.ok(s.includes('cleanup()'));
   assert.ok(s.includes('textFrames.areaText')); assert.ok(s.includes('tracking=200')); assert.ok(s.includes('tracking-clamp')); assert.ok(s.includes('geometryClusters='));
-  assert.ok(s.includes('fitFixture')); assert.ok(s.includes('fontSize=70')); assert.ok(s.includes('ignorePath')); assert.ok(s.includes('areaText(path)')); assert.ok(s.includes('proportional-mixed-observe'));
+  assert.ok(s.includes('fitFixture')); assert.ok(s.includes('fixtures.pop()')); assert.ok(s.includes('fontSize=70')); assert.ok(s.includes('ignorePath')); assert.ok(s.includes('areaText(path)')); assert.ok(s.includes('proportional-mixed-observe'));
 });
 test('Gate D three-line hints stay monotonic and proportional split remains absent', () => {
   const hints = [{baseBoundaryAfter:1,readingBoundaryAfter:2,baseText:'一二三四',reading:'いちにさんよん'},{baseBoundaryAfter:2,readingBoundaryAfter:4,baseText:'一二三四',reading:'いちにさんよん'}];

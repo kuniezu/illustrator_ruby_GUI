@@ -4,16 +4,17 @@ function FormalStep2Adapter(doc, source) {
     function mark(stage, detail) { trace.push(stage + (detail ? ":" + detail : "")); }
     function snapshot() { if (app.activeDocument !== doc) throw Error("document-changed"); return {text: String(source.contents), note: String(source.note)}; }
     function inspect(bundle) {
-        var out = [], i, item, parts, note;
+        var out = [], seen = {}, i, item, parts, note;
         for (i = 0; i < doc.textFrames.length; i++) {
             item = doc.textFrames[i]; note = String(item.note);
             if (note.indexOf("formal-step2-output:v1;") !== 0) continue;
             parts = note.split(";");
             if (parts.length !== 4) throw Error("output-id-collision");
             if (parts[1] !== bundle.sourceFrameId || parts[2] !== bundle.annotation.annotationId) continue;
+            if (seen[parts[3]]) throw Error("output-id-collision");
+            seen[parts[3]] = true;
             out.push(item);
         }
-        if (out.length > 1) throw Error("output-id-collision");
         return out;
     }
     function store(expected, bundle) {
