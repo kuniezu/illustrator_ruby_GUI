@@ -30,6 +30,7 @@
         var doc = app.activeDocument, selection = doc.selection;
         if (!selection || selection.length !== 1 || selection[0].typename !== "TextFrame") throw Error("Area TextFrameを1個だけ選択してください");
         source = selection[0]; baselineFrames = doc.textFrames.length; original = {contents: String(source.contents), note: String(source.note), width: source.width};
+        try { textPath = source.textPath; if (textPath) originalTextPathWidth = textPath.width; } catch (pathSnapshotError) { report.push("MANUAL_REQUIRED textPath snapshot: " + (pathSnapshotError.message || pathSnapshotError)); }
         adapter = FormalStep2Adapter(doc, source);
         var existing = FormalStep2Store.read(original.note), existingItems = [], existingIndex, existingNote;
         if (existing && existing.textSnapshot === original.contents) bundle = existing;
@@ -62,7 +63,7 @@
         source.width = original.width * 10; app.redraw();
         var wideObservation = adapter.observe(), wideDecision, reflowed = wideObservation.status === "complete" && wideObservation.lines.length === 1;
         if (!reflowed) {
-            try { textPath = source.textPath; originalTextPathWidth = textPath && textPath.width; if (textPath && typeof originalTextPathWidth === "number") { textPath.width = originalTextPathWidth * 10; app.redraw(); wideObservation = adapter.observe(); reflowed = wideObservation.status === "complete" && wideObservation.lines.length === 1; } } catch (pathError) { report.push("MANUAL_REQUIRED textPath width probe: " + (pathError.message || pathError)); }
+            try { if (textPath && typeof originalTextPathWidth === "number") { textPath.width = originalTextPathWidth * 10; app.redraw(); wideObservation = adapter.observe(); reflowed = wideObservation.status === "complete" && wideObservation.lines.length === 1; } } catch (pathError) { report.push("MANUAL_REQUIRED textPath width probe: " + (pathError.message || pathError)); }
         }
         result("AreaText width reflow to one line", reflowed, "lines=" + (wideObservation.lines ? wideObservation.lines.length : "unknown"));
         if (reflowed) { wideDecision = FormalSegments.plan(original.contents, String(reading), wideObservation.lines, bundle.splitHints, 0, 0); adapter.reconcile(bundle, wideDecision); result("2 to 1 after actual reflow", managedCount() === 1, "count=" + managedCount()); }
@@ -72,12 +73,19 @@
         app.redraw();
         observation = adapter.observe();
         decision = FormalSegments.plan(original.contents, String(reading), observation.lines, bundle.splitHints, 0, 0);
-        result("AreaText width restored to two lines", observation.status === "complete" && observation.lines.length === 2, "lines=" + observation.lines.length);
-        if (decision.status !== "complete") throw Error((decision.reasons || []).join("/"));
-        adapter.reconcile(bundle, decision); result("same SplitHint restored", managedCount() === 2, "count=" + managedCount());
-        app.redraw();
-        result("visual placement", confirm("2本のルビが各本文segmentの上方に正しく配置されていますか？"));
-        var stale = FormalSegments.plan(original.contents, String(reading) + "変更", observation.lines, bundle.splitHints, 0, 0); result("reading change stale", stale.status === "unresolved" && stale.reasons[0] === "split-hint-stale");
+        var restoredTwoLines = observation.status === "complete" && observation.lines.length === 2;
+        result("AreaText width restored to two lines", restoredTwoLines, "lines=" + observation.lines.length);
+        if (restoredTwoLines) {
+            decision = FormalSegments.plan(original.contents, String(reading), observation.lines, bundle.splitHints, 0, 0);
+            if (decision.status !== "complete") throw Error((decision.reasons || []).join("/"));
+            adapter.reconcile(bundle, decision); result("same SplitHint restored", managedCount() === 2, "count=" + managedCount());
+            app.redraw();
+            result("visual placement", confirm("2本のルビが各本文segmentの上方に正しく配置されていますか？"));
+            var stale = FormalSegments.plan(original.contents, String(reading) + "変更", observation.lines, bundle.splitHints, 0, 0); result("reading change stale", stale.status === "unresolved" && stale.reasons[0] === "split-hint-stale");
+        } else {
+            result("geometry restore", false, "visual checkpoint skipped");
+            result("reading change stale", false, "geometry restore failed");
+        }
         result("unmanaged preserved", String(unmanaged.note) === "gate-c-unmanaged");
         result("temporary measurement frames cleaned", doc.textFrames.length === (baselineFrames + managedCount() - originalManaged.length + 1), "textFrames=" + doc.textFrames.length);
         manual("save/close/reopen");
