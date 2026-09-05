@@ -1056,8 +1056,14 @@ function placeRubys(textFrames, rubyData, settings) {
         var data = rubyData[f];
         var isVertical = (frame.orientation === TextOrientation.VERTICAL);
 
-        // テキストフレーム用グループ作成
-        var frameGroup = rubyLayer.groupItems.add();
+        // テキストフレーム用グループ作成。本文と同じ親に作れば、後で
+        // 異なるLayer間のGroupItem.move()に依存せずにラッパーへ移せる。
+        var rubyGroupParent = rubyLayer;
+        try {
+            var sourceParent = frame.parent;
+            if (isRubyPairParentUsable(frame, sourceParent)) rubyGroupParent = sourceParent;
+        } catch (sourceParentError) {}
+        var frameGroup = rubyGroupParent.groupItems.add();
         frameGroup.name = "ruby_" + (frame.name || ("frame" + (f + 1)));
 
         // アウトライン化を1回だけ行い、全ルビで共有（クラッシュ防止）
@@ -1410,13 +1416,7 @@ function wrapRubyPair(textFrame, rubyGroup) {
     try { parent = textFrame.parent; } catch (parentError) {}
     if (!parent || (parent.typename !== "Layer" && parent.typename !== "GroupItem")) return false;
 
-    try {
-        if (textFrame.locked || textFrame.hidden || parent.locked || parent.hidden) return false;
-        if (textFrame.nextFrame || textFrame.previousFrame) return false;
-        if (parent.typename === "GroupItem" && (parent.clipped || parent.clipping)) return false;
-    } catch (stateError) {
-        return false;
-    }
+    if (!isRubyPairParentUsable(textFrame, parent)) return false;
 
     var wrapper = null;
     var movedText = false;
@@ -1439,6 +1439,29 @@ function wrapRubyPair(textFrame, rubyGroup) {
         try { if (wrapper) wrapper.remove(); } catch (removeWrapperError) {}
         return false;
     }
+}
+
+function isRubyPairParentUsable(textFrame, parent) {
+    if (!textFrame || !parent) return false;
+    if (parent.typename !== "Layer" && parent.typename !== "GroupItem") return false;
+
+    // Layerにはhiddenがなくvisibleを使う。オブジェクトごとに利用可能な
+    // プロパティが異なるため、未対応プロパティの参照で全体を失敗させない。
+    try { if (textFrame.locked === true) return false; } catch (textLockedError) { return false; }
+    try { if (textFrame.hidden === true) return false; } catch (textHiddenError) { return false; }
+    try { if (parent.locked === true) return false; } catch (parentLockedError) { return false; }
+    try { if (parent.typename === "Layer" && parent.visible === false) return false; } catch (layerVisibleError) { return false; }
+    if (parent.typename === "GroupItem") {
+        try { if (parent.hidden === true) return false; } catch (groupHiddenError) { return false; }
+        try { if (parent.clipped === true) return false; } catch (groupClipError) { return false; }
+    }
+
+    try {
+        if (textFrame.nextFrame || textFrame.previousFrame) return false;
+    } catch (linkedFrameError) {
+        return false;
+    }
+    return true;
 }
 
 function resolveBaseAnchor(contents, record) {
