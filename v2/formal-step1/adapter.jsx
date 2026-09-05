@@ -10,3 +10,9 @@ function FormalStep1Adapter(doc, source) {
     function reconcile(bundle,decision){var output=inspect(bundle)[0],d=decision.desired[0],created=false;try{if(!d){mark("render:remove","start");if(output)output.remove();mark("render:remove","complete");return;}if(!output){mark("render:create","start");output=source.layer.textFrames.add();created=true;mark("render:create","complete");}else mark("render:update","start");output.note="formal-step1-output:v1;"+bundle.sourceFrameId+";"+bundle.annotation.annotationId;output.contents=d.reading;output.textRange.characterAttributes.size=d.metrics.baseSize*d.style.sizeRatio;var count=String(d.reading).length,delta=d.metrics.width-output.width,tracking=count>1&&d.metrics.baseSize>0?delta/(d.metrics.baseSize*d.style.sizeRatio*(count-1))*1000:0;if(tracking<-400)tracking=-400;if(tracking>400)tracking=400;if(tracking){mark("render.width-fit","tracking="+tracking);output.textRange.characterAttributes.tracking=tracking;}output.left=d.metrics.left+(d.metrics.width-output.width)/2+d.offset.inlineEm*d.metrics.baseSize;output.top=d.metrics.top+output.textRange.characterAttributes.size+d.metrics.baseSize*d.style.gapRatio;mark("render:update","complete");}catch(e){if(created)try{output.remove();}catch(ignore){}throw e;}}
     return{snapshot:snapshot,inspect:inspect,store:store,observe:observe,reconcile:reconcile,diagnostics:function(){return trace.slice();}};
 }
+
+/* Pure width helper used by tests and for future renderer extraction. */
+function FormalStep1Tracking(sourceWidth, rubyWidth, baseSize, sizeRatio, readingLength) {
+    var value=readingLength>1&&baseSize>0?(sourceWidth-rubyWidth)/(baseSize*sizeRatio*(readingLength-1))*1000:0;
+    if(value<-400)value=-400;if(value>400)value=400;return value;
+}
