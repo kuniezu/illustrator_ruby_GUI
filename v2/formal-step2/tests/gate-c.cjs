@@ -23,6 +23,19 @@ check('boundary change is rejected', () => {
   const h = [{baseBoundaryAfter: 2, readingBoundaryAfter: 4, baseText: '一張羅', reading: 'いっちょうら'}];
   assert.strictEqual(segments.plan('一張羅', 'いっちょうら', [{start:0,end:1,geometry:{}},{start:1,end:3,geometry:{}}], h, 1, 1).reasons[0], 'split-hint-boundary-mismatch');
 });
+check('duplicate, overlap, reverse and nonnumeric hints are rejected', () => {
+  const bad = [
+    [{baseBoundaryAfter: 2, readingBoundaryAfter: 2, baseText: '一張羅', reading: 'いっちょうら'}, {baseBoundaryAfter: 2, readingBoundaryAfter: 4, baseText: '一張羅', reading: 'いっちょうら'}],
+    [{baseBoundaryAfter: 3, readingBoundaryAfter: 4, baseText: '一張羅', reading: 'いっちょうら'}, {baseBoundaryAfter: 2, readingBoundaryAfter: 5, baseText: '一張羅', reading: 'いっちょうら'}],
+    [{baseBoundaryAfter: 2, readingBoundaryAfter: 5, baseText: '一張羅', reading: 'いっちょうら'}, {baseBoundaryAfter: 3, readingBoundaryAfter: 4, baseText: '一張羅', reading: 'いっちょうら'}],
+    [{baseBoundaryAfter: '2', readingBoundaryAfter: 4, baseText: '一張羅', reading: 'いっちょうら'}]
+  ];
+  bad.forEach((h) => assert.throws(() => segments.validateHints(h, 3, 6), /invalid-split-hint/));
+});
+check('no proportional auto split', () => {
+  const plan = segments.plan('一張羅', 'いっちょうら', [{start:0,end:2,geometry:{}},{start:2,end:3,geometry:{}}], [], 0, 0);
+  assert.strictEqual(plan.status, 'unresolved'); assert.strictEqual(plan.reasons[0], 'split-hint-required');
+});
 const adapter = fs.readFileSync(path.join(root, 'adapter.jsx'), 'utf8');
 check('temporary measurement cleanup is present', () => { assert.ok(adapter.includes('finally')); assert.ok(adapter.includes('probe.remove()')); });
 check('unmanaged preservation is guarded by managed notes', () => { assert.ok(adapter.includes('formal-step2-output:v1;')); });
