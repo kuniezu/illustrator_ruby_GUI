@@ -137,11 +137,71 @@ function getSelectedTextFrames() {
     if (!app.activeDocument || !app.activeDocument.selection) return frames;
     var sel = app.activeDocument.selection;
     for (var i = 0; i < sel.length; i++) {
-        if (sel[i].typename === "TextFrame") {
-            frames.push(sel[i]);
+        var item = sel[i];
+        if (item.typename === "TextFrame") {
+            frames.push(item);
+            continue;
+        }
+        if (item.typename === "GroupItem") {
+            var sourceFrame = resolveRubyPairTextFrame(item);
+            if (sourceFrame) frames.push(sourceFrame);
         }
     }
     return frames;
+}
+
+// rubyPair_<frameId> だけを安全に本文へ解決する。
+// 一般GroupItemや、ルビ側TextFrameを推測で本文扱いしない。
+function resolveRubyPairTextFrame(wrapper) {
+    if (!wrapper) return null;
+
+    var wrapperName = "";
+    try { wrapperName = wrapper.name || ""; } catch (nameError) {}
+    var prefix = "rubyPair_";
+    if (wrapperName.indexOf(prefix) !== 0) return null;
+    var frameId = wrapperName.substr(prefix.length);
+    if (!frameId) return null;
+
+    var candidates = [];
+    collectRubyPairTextFrames(wrapper, candidates);
+    var matched = [];
+    for (var i = 0; i < candidates.length; i++) {
+        var candidate = candidates[i];
+        if (readRubyRecordFromTextFrame(candidate)) continue;
+        if (readRubyFrameId(candidate) === frameId) matched.push(candidate);
+    }
+    return matched.length === 1 ? matched[0] : null;
+}
+
+function collectRubyPairTextFrames(item, frames) {
+    if (!item || !frames) return;
+
+    if (item.typename === "TextFrame") {
+        frames.push(item);
+        return;
+    }
+
+    if (item.typename !== "GroupItem") return;
+    for (var ti = 0; ti < item.textFrames.length; ti++) {
+        frames.push(item.textFrames[ti]);
+    }
+    for (var gi = 0; gi < item.groupItems.length; gi++) {
+        collectRubyPairTextFrames(item.groupItems[gi], frames);
+    }
+}
+
+function readRubyRecordFromTextFrame(textFrame) {
+    if (!textFrame) return null;
+    var record = null;
+    try { record = parseRubyRecord(textFrame.note); } catch (noteError) {}
+    if (record) return record;
+
+    try {
+        if (textFrame.name && textFrame.name.indexOf(rubyMetadataNamePrefix) === 0) {
+            return parseRubyRecord(rubyMetadataDecode(textFrame.name.substr(rubyMetadataNamePrefix.length)));
+        }
+    } catch (nameError) {}
+    return null;
 }
 
 
