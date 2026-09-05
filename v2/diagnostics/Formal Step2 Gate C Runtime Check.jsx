@@ -68,6 +68,8 @@
         if (reflowed) { wideDecision = FormalSegments.plan(original.contents, String(reading), wideObservation.lines, bundle.splitHints, 0, 0); adapter.reconcile(bundle, wideDecision); result("2 to 1 after actual reflow", managedCount() === 1, "count=" + managedCount()); }
         else { manual("actual AreaText 2->1 reflow"); var simulatedOne = {status: "complete", segments: [decision.segments[0]]}; adapter.reconcile(bundle, simulatedOne); result("renderer desired 2->1 cleanup", managedCount() === 1, "count=" + managedCount()); }
         source.width = original.width;
+        if (textPath && typeof originalTextPathWidth === "number") textPath.width = originalTextPathWidth;
+        app.redraw();
         observation = adapter.observe();
         decision = FormalSegments.plan(original.contents, String(reading), observation.lines, bundle.splitHints, 0, 0);
         result("AreaText width restored to two lines", observation.status === "complete" && observation.lines.length === 2, "lines=" + observation.lines.length);
