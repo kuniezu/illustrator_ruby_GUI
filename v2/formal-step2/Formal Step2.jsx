@@ -6,4 +6,26 @@
 #include "adapter.jsx"
 #include "core.js"
 #include "review.jsx"
-(function(){try{if(!app.documents.length)throw Error("AIファイルを開いてください");var d=app.activeDocument,s=d.selection;if(!s||s.length!==1||s[0].typename!=="TextFrame")throw Error("Area TextFrameを1個だけ選択してください");var p=FormalStep2Adapter(d,s[0]),snap=p.snapshot(),old=FormalStep2Store.read(snap.note),ctx={snapshot:snap,bundle:old||FormalStep1.create(snap.text)},observation=p.observe(),decision=FormalSegments.plan(snap.text,ctx.bundle.annotation.reading,observation.lines,ctx.bundle.splitHints||[],ctx.bundle.revision,ctx.bundle.revision),edit=FormalStep2Review(ctx,decision);if(edit){var result=FormalStep2Apply(p,ctx,edit,edit.splitHints),why=result.bundle.annotation.reviewReasons;alert("状態: "+result.bundle.renderStatus+(why.length?"\n診断: "+why.join(" / "):"")+"\n保存してください。");}}catch(e){alert("Formal Step 2を停止しました。\n"+(e.message||e));}}());
+
+(function () {
+    try {
+        if (!app.documents.length) throw Error("AIファイルを開いてください");
+        var documentRef = app.activeDocument;
+        var selection = documentRef.selection;
+        if (!selection || selection.length !== 1 || selection[0].typename !== "TextFrame") throw Error("Area TextFrameを1個だけ選択してください");
+        var adapter = FormalStep2Adapter(documentRef, selection[0]);
+        var snapshot = adapter.snapshot();
+        var stored = FormalStep2Store.read(snapshot.note);
+        var context = {snapshot: snapshot, bundle: stored || FormalStep1.create(snapshot.text)};
+        var observation = adapter.observe();
+        var decision = FormalSegments.plan(snapshot.text, context.bundle.annotation.reading, observation.lines, context.bundle.splitHints || [], context.bundle.revision, context.bundle.revision);
+        var edit = FormalStep2Review(context, decision);
+        if (edit) {
+            var result = FormalStep2Apply(adapter, context, edit, edit.splitHints);
+            var reasons = result.bundle.annotation.reviewReasons;
+            alert("状態: " + result.bundle.renderStatus + (reasons.length ? "\n診断: " + reasons.join(" / ") : "") + "\n保存してください。");
+        }
+    } catch (e) {
+        alert("Formal Step 2を停止しました。\n" + (e.message || e));
+    }
+}());
