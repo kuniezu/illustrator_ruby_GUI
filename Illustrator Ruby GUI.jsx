@@ -860,6 +860,8 @@ function showRubyGUI(textFrames, options) {
         rubyData[currentFrameIndex][leaderIdx] = {
             mode: "group",
             ruby: rubyText,
+            reading: rubyText,
+            grouping: "group",
             baseChar: leaderChar,
             baseLength: sortedIndices.length,
             isGroupMember: false
@@ -1324,6 +1326,8 @@ function serializeRubyRecord(record) {
         "before=" + rubyMetadataEncode(record.before || ""),
         "after=" + rubyMetadataEncode(record.after || ""),
         "ruby=" + rubyMetadataEncode(record.ruby || ""),
+        "reading=" + rubyMetadataEncode(record.reading || record.ruby || ""),
+        "grouping=" + rubyMetadataEncode(record.grouping || ((record.length || 1) > 1 ? "group" : "individual")),
         "state=" + rubyMetadataEncode(record.state || "auto"),
         "needsReview=" + (record.needsReview ? "true" : "false")
     ];
@@ -1538,23 +1542,28 @@ function rubyDataFromRecords(textFrame, records) {
             rubyAnchorNeedsReviewCount++;
             continue;
         }
-        if (!record.ruby) continue;
+        var recordReading = record.reading || record.ruby;
+        if (!recordReading) continue;
 
         if ((record.length || 1) > 1) {
             data[0][resolved.index] = {
                 mode: "group",
-                ruby: record.ruby,
+                ruby: recordReading,
+                reading: recordReading,
                 baseChar: record.baseText.charAt(0),
                 baseLength: record.length,
+                grouping: record.grouping || "group",
                 isGroupMember: false
             };
         } else {
             data[0][resolved.index] = {
                 mode: "individual",
-                ruby: record.ruby,
-                individualRubys: [record.ruby],
+                ruby: recordReading,
+                reading: recordReading,
+                individualRubys: [recordReading],
                 baseChar: record.baseText,
-                baseLength: 1
+                baseLength: 1,
+                grouping: record.grouping || "individual"
             };
         }
     }
@@ -1641,8 +1650,9 @@ function placeOneRuby(textFrame, group, characterIndex, baseLength, rubyText, se
         baseX = outlineCenterX - baseWidth / 2;
     }
 
-    // 文字サイズを基準にルビ幅を計算（形状ではなく）
-    var baseLen = baseSize * baseLength;
+    // 個別ルビの互換用基準幅。グループルビは実測した親文字幅を使う。
+    var isGroupRuby = baseLength > 1;
+    var baseLen = isGroupRuby ? baseWidth : baseSize * baseLength;
 
     // ルビのテキストフレーム作成
     var rubyFrame = group.textFrames.add();
@@ -1655,19 +1665,20 @@ function placeOneRuby(textFrame, group, characterIndex, baseLength, rubyText, se
     // 中央揃えを設定（縦横共通）
     rubyFrame.textRange.paragraphs[0].justification = Justification.CENTER;
 
-    // 基本トラッキングを100に設定、ルビの文字数に応じて-100まで調整
+    // グループルビは、自然幅と親文字範囲の差を文字間へ配分して両端を揃える。
+    // 個別ルビは従来のトラッキング計算を維持する。
     var baseTracking = 100;
     var rubyCharCount = finalRubyText.length;
-
-    // ルビが親文字より長い場合のみトラッキングを調整
     var rubyLength = rubySize * rubyCharCount;
     var tracking = baseTracking;
 
-    if (rubyLength > baseLen && rubyCharCount > 1) {
+    if (isGroupRuby && !isVertical && rubyCharCount > 1) {
+        var naturalRubyWidth = rubyFrame.width;
+        var trackingGap = (baseWidth - naturalRubyWidth) / (rubyCharCount - 1);
+        tracking = (trackingGap / rubySize) * 1000;
+    } else if (rubyLength > baseLen && rubyCharCount > 1) {
         var neededReduction = rubyLength - baseLen;
-        var maxReduction = baseTracking + 100; // 100から-100まで = 200の範囲
         var reductionTotal = (neededReduction / rubySize) * 1000;
-
         tracking = Math.max(baseTracking - reductionTotal, -100);
     }
 
@@ -1675,7 +1686,8 @@ function placeOneRuby(textFrame, group, characterIndex, baseLength, rubyText, se
     rubyFrame.textRange.characterAttributes.tracking = tracking;
 
     // トラッキング適用後のルビ長を再計算
-    rubyLength = rubySize * rubyCharCount + (tracking / 1000) * rubySize * rubyCharCount;
+    rubyLength = isGroupRuby && !isVertical ? rubyFrame.width :
+        rubySize * rubyCharCount + (tracking / 1000) * rubySize * rubyCharCount;
 
     // はみだし処理
     if (settings.overflow === "narrow" && rubyLength > baseLen) {
@@ -1703,14 +1715,15 @@ function placeOneRuby(textFrame, group, characterIndex, baseLength, rubyText, se
         var baseCenterY = baseY - baseHeight / 2;
         rubyFrame.top = baseCenterY + actualRubyHeight / 2;
     } else {
-        // 横書き: ルビを親文字の上に配置し、横方向の中心を合わせる
+        // 横書き: グループルビは親文字範囲の左右端、個別ルビは中央を基準にする。
         rubyFrame.left = baseX;
         rubyFrame.top = baseY + rubySize + rubyGap;
         var actualRubyWidth = rubyFrame.width;
 
-        // 親文字のアウトライン幅の中心にルビの中心を合わせる
-        var baseCenterX = baseX + baseWidth / 2;
-        rubyFrame.left = baseCenterX - actualRubyWidth / 2;
+        if (!isGroupRuby) {
+            var baseCenterX = baseX + baseWidth / 2;
+            rubyFrame.left = baseCenterX - actualRubyWidth / 2;
+        }
     }
 
     // 配置結果は変更せず、生成ルビに再編集用の最小メタデータだけ付与する。
@@ -1732,6 +1745,8 @@ function placeOneRuby(textFrame, group, characterIndex, baseLength, rubyText, se
         frameName: frameName,
         groupName: groupName,
         baseText: baseText,
+        reading: rubyText,
+        grouping: isGroupRuby ? "group" : "individual",
         start: characterIndex,
         length: baseLength,
         before: frameContents.substr(beforeStart, characterIndex - beforeStart),
