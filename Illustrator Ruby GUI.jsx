@@ -142,10 +142,8 @@ function getSelectedTextFrames() {
             frames.push(item);
             continue;
         }
-        if (item.typename === "GroupItem") {
-            var sourceFrame = resolveRubyPairTextFrame(item);
-            if (sourceFrame) frames.push(sourceFrame);
-        }
+        var sourceFrame = resolveRubyPairTextFrame(item);
+        if (sourceFrame) frames.push(sourceFrame);
     }
     return frames;
 }
@@ -181,13 +179,26 @@ function collectRubyPairTextFrames(item, frames) {
         return;
     }
 
-    if (item.typename !== "GroupItem") return;
-    for (var ti = 0; ti < item.textFrames.length; ti++) {
-        frames.push(item.textFrames[ti]);
+    // Illustratorのコレクションは直下または子孫を返す実装差があるため、
+    // groupItemsの再帰結果と重複しても同じオブジェクトを一度だけ保持する。
+    try {
+        for (var ti = 0; ti < item.textFrames.length; ti++) {
+            appendUniqueTextFrame(item.textFrames[ti], frames);
+        }
+    } catch (textFramesError) {}
+    try {
+        for (var gi = 0; gi < item.groupItems.length; gi++) {
+            collectRubyPairTextFrames(item.groupItems[gi], frames);
+        }
+    } catch (groupItemsError) {}
+}
+
+function appendUniqueTextFrame(textFrame, frames) {
+    if (!textFrame || !frames) return;
+    for (var i = 0; i < frames.length; i++) {
+        if (frames[i] === textFrame) return;
     }
-    for (var gi = 0; gi < item.groupItems.length; gi++) {
-        collectRubyPairTextFrames(item.groupItems[gi], frames);
-    }
+    frames.push(textFrame);
 }
 
 function readRubyRecordFromTextFrame(textFrame) {
@@ -1442,18 +1453,19 @@ function writeRubyRecord(pageItem, record) {
 function readRubyRecords(doc) {
     var records = [];
     if (!doc) return records;
+    var seenRecordIds = {};
 
     // 旧構造のRubyレイヤーと、Phase 1Bのラッパー構造の両方を再帰的に読む。
     for (var li = 0; li < doc.layers.length; li++) {
         var layer = doc.layers[li];
         for (var gi = 0; gi < layer.groupItems.length; gi++) {
-            collectRubyRecordsFromGroup(layer.groupItems[gi], records);
+            collectRubyRecordsFromGroup(layer.groupItems[gi], records, seenRecordIds);
         }
     }
     return records;
 }
 
-function collectRubyRecordsFromGroup(group, records) {
+function collectRubyRecordsFromGroup(group, records, seenRecordIds) {
     if (!group || !records) return;
 
     for (var ti = 0; ti < group.textFrames.length; ti++) {
@@ -1470,16 +1482,17 @@ function collectRubyRecordsFromGroup(group, records) {
             } catch (nameError) {}
         }
 
-        if (record) {
+        if (record && (!seenRecordIds || !seenRecordIds[record.recordId])) {
             if (!record.groupName) {
                 try { record.groupName = group.name || ""; } catch (groupNameError) {}
             }
             records.push(record);
+            if (seenRecordIds) seenRecordIds[record.recordId] = true;
         }
     }
 
     for (var gi = 0; gi < group.groupItems.length; gi++) {
-        collectRubyRecordsFromGroup(group.groupItems[gi], records);
+        collectRubyRecordsFromGroup(group.groupItems[gi], records, seenRecordIds);
     }
 }
 
