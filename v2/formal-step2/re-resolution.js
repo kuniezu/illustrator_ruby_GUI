@@ -19,6 +19,9 @@ var FormalLongTextReResolution = (function () {
         var c=context(candidateText,candidate.start,candidate.end);
         return (evidence.before.length>0 && c.before===evidence.before) || (evidence.after.length>0 && c.after===evidence.after);
     }
+    function preservesUncontextedPrefix(bundle,old,current,candidate) {
+        return bundle.textSnapshot.substring(0,old.end)===old.surface && candidate.start===old.start && candidate.end===old.end && current.textSnapshot.substring(0,bundle.textSnapshot.length)===bundle.textSnapshot;
+    }
     function matchesFor(bundle,old,current) {
         var candidates=[],contextMatches=[],evidence=evidenceFor(bundle,old),i,candidate;
         for(i=0;i<current.occurrences.length;i++) {
@@ -26,7 +29,7 @@ var FormalLongTextReResolution = (function () {
             if(candidate.surface===old.surface) candidates.push(candidate);
         }
         for(i=0;i<candidates.length;i++) if(candidates[i].start===old.start) {
-            if(current.textSnapshot===bundle.textSnapshot || sameContext(current.textSnapshot,candidates[i],evidence)) contextMatches.push(candidates[i]);
+            if(current.textSnapshot===bundle.textSnapshot || sameContext(current.textSnapshot,candidates[i],evidence) || (candidates.length===1 && preservesUncontextedPrefix(bundle,old,current,candidates[i]))) contextMatches.push(candidates[i]);
         }
         if(contextMatches.length===1) return contextMatches;
         contextMatches=[];
