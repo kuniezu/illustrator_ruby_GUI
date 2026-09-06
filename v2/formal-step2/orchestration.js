@@ -20,6 +20,7 @@ var FormalMultiOrchestration = (function () {
         return {annotationId:annotationId,status:decision.status,sourceStart:resolved.start,sourceEnd:resolved.start+annotation.anchor.baseText.length,decision:decision,reasons:decision.reasons||[]};
     }
     function planAll(bundle, sourceText, observation) { var results=[],i,hasFailed=false,hasUnresolved=false; FormalMulti.validate(bundle); for(i=0;i<bundle.annotations.length;i++){results.push(planOne(bundle,bundle.annotations[i].annotationId,sourceText,observation));if(results[i].status==="failed")hasFailed=true;else if(results[i].status!=="complete")hasUnresolved=true;} return {status:hasFailed?"failed":(hasUnresolved?"unresolved":"complete"),results:results}; }
-    return {planOne:planOne,planAll:planAll,localLines:localLines};
+    function projectAndPlanAll(bundle, sourceText, observation) { var projected=FormalMultiProjection.project(bundle); return {bundle:projected,plan:planAll(projected,sourceText,observation)}; }
+    return {planOne:planOne,planAll:planAll,projectAndPlanAll:projectAndPlanAll,localLines:localLines};
 }());
 if(typeof module!=="undefined")module.exports=FormalMultiOrchestration;
