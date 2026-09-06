@@ -9,6 +9,28 @@
 (function () {
     function fail(message) { throw Error(message); }
 
+    function diagnosticValue(object, key) {
+        try { return object && object[key]; } catch (error) { return "<error>"; }
+    }
+
+    function writeSelectionDiagnostic(selection) {
+        var selected, story, frames, i, frame, range;
+        $.writeln("[formal-multi-selection] selection typename=" + diagnosticValue(selection, "typename") + " length=" + diagnosticValue(selection, "length"));
+        if (selection && selection.typename === "TextRange") selected = selection;
+        else if (selection && selection.length === 1) selected = selection[0];
+        else return;
+        $.writeln("[formal-multi-selection] selected typename=" + diagnosticValue(selected, "typename") + " start=" + diagnosticValue(selected, "start") + " end=" + diagnosticValue(selected, "end"));
+        $.writeln("[formal-multi-selection] parent typename=" + diagnosticValue(diagnosticValue(selected, "parent"), "typename"));
+        story = diagnosticValue(selected, "story");
+        frames = diagnosticValue(story, "textFrames");
+        $.writeln("[formal-multi-selection] story exists=" + (!!story) + " textFrames.length=" + diagnosticValue(frames, "length"));
+        if (frames && typeof frames.length === "number") for (i = 0; i < frames.length; i++) {
+            frame = frames[i];
+            range = diagnosticValue(frame, "textRange");
+            $.writeln("[formal-multi-selection] frame[" + i + "] typename=" + diagnosticValue(frame, "typename") + " kind=" + diagnosticValue(frame, "kind") + " orientation=" + diagnosticValue(frame, "orientation") + " range=" + diagnosticValue(range, "start") + ".." + diagnosticValue(range, "end"));
+        }
+    }
+
     function unresolvedResults(bundle) {
         var results = [], annotation, status, i;
         for (i = 0; i < bundle.annotations.length; i++) {
@@ -39,6 +61,7 @@
 
         if (!app.documents.length) fail("AIファイルを開いてください");
         documentRef = app.activeDocument;
+        writeSelectionDiagnostic(documentRef.selection);
         picked = FormalMultiSelectionAdapter.resolve(documentRef.selection, TextType, TextOrientation);
         source = picked.sourceFrame;
         stored = FormalMultiStore.read(source.note);

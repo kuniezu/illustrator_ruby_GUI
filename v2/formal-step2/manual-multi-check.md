@@ -4,10 +4,9 @@ Run `Formal Multi Step2.jsx` in Illustrator with exactly one horizontal Area Tex
 range selected. The script opens a nonmodal palette so the selection can be changed
 between Add operations.
 
-For the same checkpoint, run `diagnostics/Formal Multi Selection Check.jsx` first
-and retain its compact `[formal-multi-selection]` report. It is read-only and does
-not write notes, annotations, or artwork; then continue immediately with the palette
-steps below.
+The script automatically writes a compact, read-only `[formal-multi-selection]`
+diagnostic to the ExtendScript console before opening the palette. No separate
+diagnostic script is required; retain that report with the palette results.
 
 1. Confirm the selected base text is shown and click **Add**.
 2. Select a second word in the same Area Text frame and click **Add** again.

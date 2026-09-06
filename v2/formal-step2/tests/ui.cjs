@@ -35,5 +35,7 @@ check('derives annotation-local status',
   source.indexOf('function annotationStatus(annotation)') >= 0 &&
   source.indexOf('bundle.renderStatus') < 0);
 check('guards palette event handlers', source.indexOf('function guard(action)') >= 0 && source.indexOf('guard(function ()') >= 0);
-check('runtime checkpoint has read-only selection diagnostics',
+check('main entrypoint emits read-only selection diagnostics',
+  source.indexOf('function writeSelectionDiagnostic(selection)') >= 0 &&
+  source.indexOf('writeSelectionDiagnostic(documentRef.selection)') >= 0 &&
   fs.existsSync(path.join(__dirname, '..', '..', 'diagnostics', 'Formal Multi Selection Check.jsx')));
