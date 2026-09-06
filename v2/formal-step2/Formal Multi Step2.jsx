@@ -1,4 +1,5 @@
 #target illustrator
+#targetengine "formal-multi-step2"
 #include "multi.js"
 #include "multi-store.js"
 #include "workflow.js"
@@ -44,7 +45,7 @@
         bundle = stored || FormalMulti.createFrame(String(source.contents));
         if (bundle.textSnapshot !== String(source.contents)) fail("source-snapshot-mismatch");
 
-        dialog = new Window("dialog", "Formal Step 2 Multi");
+        dialog = new Window("palette", "Formal Step 2 Multi");
         dialog.orientation = "column";
         dialog.alignChildren = ["fill", "top"];
 
@@ -75,6 +76,21 @@
             source.note = FormalMultiStore.write(source.note, bundle);
         }
 
+        function captureSelection() {
+            var candidate = FormalMultiSelectionAdapter.resolve(documentRef.selection, TextType, TextOrientation);
+            if (candidate.sourceFrame !== source) fail("source-frame-switch-not-allowed");
+            if (candidate.start !== picked.start || candidate.end !== picked.end || candidate.text !== picked.text) {
+                picked = candidate;
+                selectedText.text = "選択: " + picked.text;
+            }
+            return candidate;
+        }
+
+        function annotationStatus(annotation) {
+            if (!annotation.enabled) return "suppressed";
+            return annotation.reviewReasons.length ? "unresolved" : "complete";
+        }
+
         function refresh() {
             var annotation = findAnnotation(bundle, currentId);
             if (!annotation) {
@@ -83,7 +99,7 @@
                 return;
             }
             readingInput.text = annotation.reading;
-            statusText.text = "状態: " + (annotation.enabled ? bundle.renderStatus : "suppressed");
+            statusText.text = "状態: " + annotationStatus(annotation);
             reasonTextView.text = "理由: " + reasonText(annotation);
         }
 
@@ -94,7 +110,8 @@
         }
 
         addButton.onClick = function () {
-            bundle = FormalMultiWorkflow.addSelection(bundle, bundle.textSnapshot, picked.start, picked.end);
+            var current = captureSelection();
+            bundle = FormalMultiWorkflow.addSelection(bundle, bundle.textSnapshot, current.start, current.end);
             currentId = bundle.annotations[bundle.annotations.length - 1].annotationId;
             save();
             refresh();

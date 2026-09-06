@@ -14,6 +14,12 @@ check('includes multi namespace and workflow',
   source.indexOf('#include "multi-store.js"') >= 0 &&
   source.indexOf('#include "workflow.js"') >= 0);
 check('uses proven selection adapter', source.indexOf('FormalMultiSelectionAdapter.resolve') >= 0);
+check('uses a nonmodal palette and recaptures selection on Add',
+  source.indexOf('#targetengine "formal-multi-step2"') >= 0 &&
+  source.indexOf('new Window("palette"') >= 0 &&
+  source.indexOf('function captureSelection()') >= 0 &&
+  source.indexOf('var current = captureSelection()') >= 0);
+check('rejects switching to another source frame', source.indexOf('source-frame-switch-not-allowed') >= 0);
 check('initializes new frame without old migration', source.indexOf('FormalMulti.createFrame') >= 0 && source.indexOf('FormalMultiStore.read') >= 0);
 check('exposes compact editing and review controls',
   source.indexOf('Add') >= 0 && source.indexOf('Apply') >= 0 &&
@@ -22,3 +28,6 @@ check('exposes compact editing and review controls',
 check('persists through multi store only',
   source.indexOf('FormalMultiStore.write') >= 0 &&
   source.indexOf('FormalSegments') < 0 && source.indexOf('reconcile') < 0);
+check('derives annotation-local status',
+  source.indexOf('function annotationStatus(annotation)') >= 0 &&
+  source.indexOf('bundle.renderStatus') < 0);
