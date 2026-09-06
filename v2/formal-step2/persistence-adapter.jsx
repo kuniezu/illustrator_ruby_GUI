@@ -40,18 +40,24 @@ var FormalMultiPersistenceAdapter = (function () {
         parts=[]; for (key in value) if (value.hasOwnProperty(key)) parts.push(scriptLiteral(key)+":"+scriptLiteral(value[key])); return "{"+parts.join(",")+"}";
     }
     function renderedBridgeBody(expectedText, cachedNote, nextNote, identity, bundle, specifications, sources) {
-        var specs=scriptLiteral(specifications), step1=encoded(sources.step1), segments=encoded(sources.segments), orchestration=encoded(sources.orchestration), adapter=encoded(sources.adapter);
+        var specs=scriptLiteral(specifications), step1=encoded(sources.step1), segments=encoded(sources.segments), orchestration=encoded(sources.orchestration), adapter=encoded(sources.adapter), documentPath=encoded(identity.documentPath || ""), uuid=encoded(identity.uuid || "");
         return "(function(){"+
             "function fail(m){throw Error(m);}"+
+            "function stage(n){try{if(typeof $!==\"undefined\"&&$.writeln)$.writeln(\"formal-multi-host:\"+n);}catch(ignore){}}"+
+            "stage(\"host-entry\");"+
+            "stage(\"step1-eval-start\");"+
             "eval(decodeURIComponent(\""+step1+"\"));"+
+            "stage(\"step1-eval-end\");stage(\"segments-eval-start\");"+
             "eval(decodeURIComponent(\""+segments+"\"));"+
+            "stage(\"segments-eval-end\");stage(\"orchestration-eval-start\");"+
             "eval(decodeURIComponent(\""+orchestration+"\"));"+
+            "stage(\"orchestration-eval-end\");stage(\"adapter-eval-start\");"+
             "eval(decodeURIComponent(\""+adapter+"\"));"+
-            "var expected=decodeURIComponent(\""+encoded(expectedText)+"\"),cached=decodeURIComponent(\""+encoded(cachedNote)+"\"),next=decodeURIComponent(\""+encoded(nextNote)+"\"),documentPath=decodeURIComponent(\""+encoded(identity.documentPath || "")+"\"),uuid=decodeURIComponent(\""+encoded(identity.uuid || "")+"\"),specs="+specs+",doc,frame,renderAdapter,observation,plans=[],i,spec,one,result;"+
-            "if(!app.documents.length)fail(\"there is no document\");doc=app.activeDocument;if(!documentPath||!doc.fullName||!doc.fullName.fsName||String(doc.fullName.fsName)!==documentPath)fail(\"origin-document-mismatch\");if(!uuid||typeof doc.getPageItemFromUuid!==\"function\")fail(\"uuid-lookup-unavailable\");frame=doc.getPageItemFromUuid(uuid);if(!frame)fail(\"source-uuid-not-found\");if(String(frame.contents)!==expected)fail(\"source-snapshot-mismatch\");if(String(frame.note)!==cached)fail(\"source-note-target-mismatch\");renderAdapter=FormalStep2Adapter(doc,frame);observation=renderAdapter.observe();"+
+            "stage(\"adapter-eval-end\");"+
+            "var expected=decodeURIComponent(\""+encoded(expectedText)+"\"),cached=decodeURIComponent(\""+encoded(cachedNote)+"\"),next=decodeURIComponent(\""+encoded(nextNote)+"\"),documentPath=decodeURIComponent(\""+documentPath+"\"),uuid=decodeURIComponent(\""+uuid+"\"),specs="+specs+",doc,frame,renderAdapter,observation,plans=[],i,spec,one,result;"+
+            "stage(\"host-validation-start\");if(!app.documents.length)fail(\"there is no document\");doc=app.activeDocument;if(!documentPath||!doc.fullName||!doc.fullName.fsName||String(doc.fullName.fsName)!==documentPath)fail(\"origin-document-mismatch\");if(!uuid||typeof doc.getPageItemFromUuid!==\"function\")fail(\"uuid-lookup-unavailable\");frame=doc.getPageItemFromUuid(uuid);if(!frame)fail(\"source-uuid-not-found\");if(String(frame.contents)!==expected)fail(\"source-snapshot-mismatch\");if(String(frame.note)!==cached)fail(\"source-note-target-mismatch\");stage(\"host-validation-end\");renderAdapter=FormalStep2Adapter(doc,frame);stage(\"adapter-constructed\");stage(\"observe-start\");observation=renderAdapter.observe();stage(\"observe-end\");"+
             "if(observation.status!==\"complete\")fail(\"render-observation-unresolved:\"+(observation.reasons||[]).join(\" | \"));"+
-            "for(i=0;i<specs.length;i++){spec=specs[i];if(!spec.annotation||!spec.annotation.enabled){plans.push({annotationId:spec.annotationId,decision:{status:\"complete\",segments:[]}});continue;}one={textSnapshot:expected,revision:"+String(bundle.revision)+",annotations:[spec.annotation]};result=FormalMultiOrchestration.planOne(one,spec.annotationId,expected,observation);if(result.status!==\"complete\")fail(\"render-plan-unresolved:\"+(result.reasons||[]).join(\" | \"));plans.push({annotationId:spec.annotationId,decision:result.decision});}"+
-            "renderAdapter.renderAndStoreTransaction(\""+encoded(bundle.sourceFrameId)+"\",plans,function(){frame.note=next;if(String(frame.note)!==next)fail(\"store-readback-mismatch\");});return \"B-render-persist:success\";}());";
+            "stage(\"plan-start\");for(i=0;i<specs.length;i++){spec=specs[i];stage(\"plan-annotation-\"+i+\"-start\");if(!spec.annotation||!spec.annotation.enabled){plans.push({annotationId:spec.annotationId,decision:{status:\"complete\",segments:[]}});stage(\"plan-annotation-\"+i+\"-end:cleanup\");continue;}one={textSnapshot:expected,revision:"+String(bundle.revision)+",annotations:[spec.annotation]};result=FormalMultiOrchestration.planOne(one,spec.annotationId,expected,observation);if(result.status!==\"complete\")fail(\"render-plan-unresolved:\"+(result.reasons||[]).join(\" | \"));plans.push({annotationId:spec.annotationId,decision:result.decision});stage(\"plan-annotation-\"+i+\"-end\");}stage(\"plan-end\");stage(\"transaction-start\");renderAdapter.renderAndStoreTransaction(\""+encoded(bundle.sourceFrameId)+"\",plans,function(){stage(\"note-commit-start\");frame.note=next;if(String(frame.note)!==next)fail(\"store-readback-mismatch\");stage(\"note-commit-end\");});stage(\"transaction-end\");stage(\"return\");return \"B-render-persist:success\";}());";
     }
     function renderedBridge(expectedText, cachedNote, nextNote, identity, bundle, specifications, sources, callbacks, bridgeTalkRef) {
         var bt, sent, finished=false;
