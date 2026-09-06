@@ -20,7 +20,8 @@ check('uses TextFrame selection without partial-range dependency',
   source.indexOf('picked.text') >= 0);
 check('extracts and displays every logical occurrence',
   source.indexOf('FormalLongText.extract(picked.text)') >= 0 &&
-  source.indexOf('Logical occurrences') >= 0 &&
+  source.indexOf('listbox') >= 0 &&
+  source.indexOf('function listText(occurrence)') >= 0 &&
   source.indexOf('occurrence.occurrenceId') >= 0 &&
   source.indexOf('occurrence.start') >= 0 &&
   source.indexOf('occurrence.end') >= 0);
@@ -30,6 +31,8 @@ check('uses a nonmodal palette and saves editable occurrence state',
   source.indexOf('FormalMultiWorkflow.setOccurrenceReading') >= 0 &&
   source.indexOf('FormalMultiWorkflow.setOccurrenceEnabled') >= 0 &&
   source.indexOf('FormalMultiProjection.project') >= 0 &&
+  source.indexOf('list.onChange') >= 0 &&
+  source.indexOf('function loadEditor(index)') >= 0 &&
   source.indexOf('保存完了') >= 0);
 check('restores persisted long-text state through the multi store',
   source.indexOf('FormalMultiStore.read(source.note)') >= 0 &&

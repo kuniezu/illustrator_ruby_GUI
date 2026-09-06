@@ -7,17 +7,18 @@
 #include "workflow.js"
 #include "selection-adapter.jsx"
 
-/* Minimal long-text ScriptUI shell. Logical occurrences stay separate from render segments. */
+/* Minimal scalable long-text shell. Logical occurrences stay separate from render segments. */
 (function () {
     function fail(message) { throw Error(message); }
-    function statusText(occurrence) {
-        return FormalMultiWorkflow.occurrenceStatus(occurrence);
+    function statusText(occurrence) { return FormalMultiWorkflow.occurrenceStatus(occurrence); }
+    function listText(occurrence) {
+        return occurrence.start + ".." + occurrence.end + "  " + occurrence.surface + "  [" + statusText(occurrence) + "]";
     }
 
     function run() {
-        var documentRef, picked, source, stored, bundle, dialog, list, rows = [];
-        var info, saveButton, closeButton, stateText, i, occurrence, row;
-        var label, reading, enabled, confirmed, status;
+        var documentRef, picked, source, stored, bundle, dialog, list, info, hint;
+        var editor, readingInput, enabledCheck, confirmedCheck, selectedText;
+        var saveButton, closeButton, stateText, currentIndex = -1, i;
 
         if (!app.documents.length) fail("AIファイルを開いてください");
         documentRef = app.activeDocument;
@@ -35,34 +36,23 @@
         dialog.preferredSize = [760, 520];
         info = dialog.add("statictext", undefined, "TextFrame認識: AREA TEXT / 横書き    候補: " + bundle.occurrences.length + "件");
         info.characters = 90;
-        var hint = dialog.add("statictext", undefined, "surfaceごとに occurrence を保持。reading入力後、確認済みを選び保存してください。");
+        hint = dialog.add("statictext", undefined, "一覧からoccurrenceを選び、下のeditorでreading/enabled/確認済みを編集してください。");
         hint.characters = 90;
-        list = dialog.add("panel", undefined, "Logical occurrences");
-        list.orientation = "column";
-        list.alignChildren = ["fill", "top"];
-        list.preferredSize = [720, 390];
 
-        for (i = 0; i < bundle.occurrences.length; i++) {
-            occurrence = bundle.occurrences[i];
-            row = list.add("group");
-            row.orientation = "row";
-            row.alignment = ["fill", "top"];
-            label = row.add("statictext", undefined, occurrence.start + ".." + occurrence.end + "  " + occurrence.surface + "  [" + occurrence.occurrenceId + "]");
-            label.preferredSize = [300, 24];
-            reading = row.add("edittext", undefined, occurrence.reading);
-            reading.preferredSize = [170, 24];
-            reading.helpTip = "reading";
-            enabled = row.add("checkbox", undefined, "enabled");
-            enabled.value = occurrence.enabled;
-            confirmed = row.add("checkbox", undefined, "確認済み");
-            confirmed.value = occurrence.readingConfirmed;
-            status = row.add("statictext", undefined, statusText(occurrence));
-            status.preferredSize = [90, 24];
-            rows.push({id: occurrence.occurrenceId, reading: reading, enabled: enabled, confirmed: confirmed, status: status});
-            reading.onChanging = (function (view, check) {
-                return function () { check.value = false; view.status.text = "unresolved"; };
-            }(rows[rows.length - 1], confirmed));
-        }
+        list = dialog.add("listbox", undefined, [], {multiselect: false});
+        list.preferredSize = [720, 300];
+        for (i = 0; i < bundle.occurrences.length; i++) list.add("item", listText(bundle.occurrences[i]));
+
+        editor = dialog.add("panel", undefined, "Selected occurrence");
+        editor.orientation = "column";
+        editor.alignChildren = ["fill", "top"];
+        selectedText = editor.add("statictext", undefined, "対象: -");
+        readingInput = editor.add("edittext", undefined, "");
+        readingInput.helpTip = "reading";
+        readingInput.preferredSize = [300, 24];
+        enabledCheck = editor.add("checkbox", undefined, "enabled");
+        confirmedCheck = editor.add("checkbox", undefined, "確認済み");
+        readingInput.onChanging = function () { confirmedCheck.value = false; };
 
         var actions = dialog.add("group");
         actions.orientation = "row";
@@ -71,25 +61,46 @@
         stateText = dialog.add("statictext", undefined, "状態: 読み込み完了");
         stateText.characters = 90;
 
-        function save() {
-            var j, current;
-            for (j = 0; j < rows.length; j++) {
-                current = rows[j];
-                bundle = FormalMultiWorkflow.setOccurrenceReading(bundle, current.id, current.reading.text, current.confirmed.value);
-                bundle = FormalMultiWorkflow.setOccurrenceEnabled(bundle, current.id, current.enabled.value);
-            }
-            bundle = FormalMultiProjection.project(bundle);
-            source.note = FormalMultiStore.write(source.note, bundle);
-            for (j = 0; j < rows.length; j++) {
-                rows[j].status.text = statusText(bundle.occurrences[j]);
-            }
-            stateText.text = "状態: 保存完了 / Annotation=" + bundle.annotations.length + "件（再実行で復元）";
+        function saveEditor() {
+            var occurrence;
+            if (currentIndex < 0) return;
+            occurrence = bundle.occurrences[currentIndex];
+            bundle = FormalMultiWorkflow.setOccurrenceReading(bundle, occurrence.occurrenceId, readingInput.text, confirmedCheck.value);
+            bundle = FormalMultiWorkflow.setOccurrenceEnabled(bundle, occurrence.occurrenceId, enabledCheck.value);
         }
 
+        function loadEditor(index) {
+            var occurrence = bundle.occurrences[index];
+            currentIndex = index;
+            selectedText.text = "対象: " + occurrence.start + ".." + occurrence.end + "  " + occurrence.surface + "  [" + occurrence.occurrenceId + "]";
+            readingInput.text = occurrence.reading;
+            enabledCheck.value = occurrence.enabled;
+            confirmedCheck.value = occurrence.readingConfirmed;
+        }
+
+        function refreshList() {
+            var j;
+            for (j = 0; j < bundle.occurrences.length; j++) list.items[j].text = listText(bundle.occurrences[j]);
+        }
+
+        list.onChange = function () {
+            try {
+                saveEditor();
+                if (list.selection) loadEditor(list.selection.index);
+                refreshList();
+            } catch (error) { stateText.text = "状態: error / " + (error.message || error); }
+        };
         saveButton.onClick = function () {
-            try { save(); } catch (error) { stateText.text = "状態: error / " + (error.message || error); }
+            try {
+                saveEditor();
+                bundle = FormalMultiProjection.project(bundle);
+                source.note = FormalMultiStore.write(source.note, bundle);
+                refreshList();
+                stateText.text = "状態: 保存完了 / Annotation=" + bundle.annotations.length + "件（再実行で復元）";
+            } catch (error) { stateText.text = "状態: error / " + (error.message || error); }
         };
         closeButton.onClick = function () { dialog.close(); };
+        if (bundle.occurrences.length) { list.selection = 0; loadEditor(0); }
         dialog.show();
     }
 
