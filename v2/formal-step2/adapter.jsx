@@ -1,4 +1,5 @@
 /* Minimal area-text adapter using observed line geometry. */
+var FORMAL_STEP2_TRACKING_FLOOR = -400;
 function FormalStep2Adapter(doc, source) {
     var trace = [];
     function mark(stage, detail) { trace.push(stage + (detail ? ":" + detail : "")); }
@@ -105,7 +106,7 @@ function FormalStep2Adapter(doc, source) {
             item.textRange.characterAttributes.size = geometry.baseSize * .5;
             count = String(wanted[i].reading).length; delta = geometry.width - item.width;
             tracking = count > 1 && geometry.baseSize > 0 ? delta / (geometry.baseSize * .5 * (count - 1)) * 1000 : 0;
-            if (tracking < -400) tracking = -400; if (tracking > 400) tracking = 400;
+            if (tracking < FORMAL_STEP2_TRACKING_FLOOR) tracking = FORMAL_STEP2_TRACKING_FLOOR; if (tracking > 400) tracking = 400;
             item.textRange.characterAttributes.tracking = tracking;
             if (tracking) mark("render.width-fit", "tracking=" + tracking);
             item.left = geometry.left + (geometry.width - item.width) / 2; item.top = geometry.top;
