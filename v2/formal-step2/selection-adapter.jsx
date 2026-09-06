@@ -29,14 +29,16 @@ var FormalMultiSelectionAdapter = (function () {
         return {sourceFrame:source,start:start,end:end,text:String(source.contents).substring(start,end)};
     }
     function resolveFrame(selection, TextTypeRef, TextOrientationRef) {
-        var candidate=null;
+        var candidate=null, kind;
         if (selection && selection.typename === "TextFrame") candidate=selection;
         else if (selection && typeof selection.length === "number" && selection.length === 1) {
             candidate=selection[0];
             if (candidate && candidate.typename === "TextRange") candidate=candidate.parent;
         }
         if (!candidate || candidate.typename !== "TextFrame") fail("single-text-frame-selection-required");
-        if (candidate.kind!==TextTypeRef.AREATEXT || candidate.orientation!==TextOrientationRef.HORIZONTAL) fail("area-text-horizontal-only");
+        kind=candidate.kind;
+        if (candidate.orientation!==TextOrientationRef.HORIZONTAL) fail("text-frame-vertical-unsupported");
+        if (kind!==TextTypeRef.AREATEXT && kind!==TextTypeRef.POINTTEXT) fail("text-frame-kind-unsupported");
         return {sourceFrame:candidate,text:String(candidate.contents)};
     }
     return {resolve:resolve,resolveFrame:resolveFrame};

@@ -17,7 +17,8 @@ check('includes long-text model and multi namespace',
   source.indexOf('#include "workflow.js"') >= 0);
 check('uses TextFrame selection without partial-range dependency',
   source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0 &&
-  source.indexOf('picked.text') >= 0);
+  source.indexOf('picked.text') >= 0 &&
+  source.indexOf('sourceKindText(source)') >= 0);
 check('extracts and displays every logical occurrence',
   source.indexOf('FormalLongText.extract(picked.text)') >= 0 &&
   source.indexOf('listbox') >= 0 &&

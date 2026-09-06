@@ -11,6 +11,7 @@
 (function () {
     function fail(message) { throw Error(message); }
     function statusText(occurrence) { return FormalMultiWorkflow.occurrenceStatus(occurrence); }
+    function sourceKindText(source) { return source.kind === TextType.POINTTEXT ? "POINTTEXT" : "AREATEXT"; }
     function listText(occurrence) {
         return occurrence.start + ".." + occurrence.end + "  " + occurrence.surface + "  [" + statusText(occurrence) + "]";
     }
@@ -34,7 +35,7 @@
         dialog.orientation = "column";
         dialog.alignChildren = ["fill", "top"];
         dialog.preferredSize = [760, 520];
-        info = dialog.add("statictext", undefined, "TextFrame認識: AREA TEXT / 横書き    候補: " + bundle.occurrences.length + "件");
+        info = dialog.add("statictext", undefined, "TextFrame認識: " + sourceKindText(source) + " / 横書き    候補: " + bundle.occurrences.length + "件");
         info.characters = 90;
         hint = dialog.add("statictext", undefined, "一覧からoccurrenceを選び、下のeditorでreading/enabled/確認済みを編集してください。");
         hint.characters = 90;
