@@ -24,6 +24,9 @@ check('uses TextFrame selection without partial-range dependency',
   source.indexOf('picked.strategy') >= 0 &&
   source.indexOf('picked.text') >= 0 &&
   source.indexOf('sourceKindText(source)') >= 0);
+check('requires stable document and frame identity before palette startup',
+  source.indexOf('captureIdentity(source, documentRef)') >= 0 &&
+  source.indexOf('save-document-first-for-long-text-persistence') >= 0);
 check('extracts and displays every logical occurrence',
   source.indexOf('FormalLongText.extract(picked.text)') >= 0 &&
   source.indexOf('listbox') >= 0 &&
@@ -51,6 +54,8 @@ check('keeps persistence strategies inside one save action',
   source.indexOf('failure: function') >= 0 &&
   source.indexOf('if (savePending) return') >= 0 &&
   source.indexOf('saveButton.enabled = false') >= 0 &&
+  source.indexOf('closeButton.enabled = false') >= 0 &&
+  source.indexOf('closeButton.enabled = true') >= 0 &&
   source.indexOf('source.note =') < 0);
 check('keeps rendering separate from the minimal shell',
   source.indexOf('FormalMultiPersistenceAdapter.save') >= 0 &&

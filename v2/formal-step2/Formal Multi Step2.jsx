@@ -29,6 +29,7 @@
         picked = FormalMultiSelectionAdapter.resolveFrame(documentRef.selection, TextType, TextOrientation);
         source = picked.sourceFrame;
         sourceIdentity = FormalMultiPersistenceAdapter.captureIdentity(source, documentRef);
+        if (!sourceIdentity.uuid || !sourceIdentity.documentPath) fail("save-document-first-for-long-text-persistence");
         cachedNote = String(source.note);
         stored = FormalMultiStore.read(cachedNote);
         if (stored && stored.textSnapshot !== picked.text) fail("source-snapshot-mismatch");
@@ -101,17 +102,18 @@
             if (savePending) return;
             savePending = true;
             saveButton.enabled = false;
+            closeButton.enabled = false;
             try {
                 saveEditor();
                 bundle = FormalMultiProjection.project(bundle);
                 result = FormalMultiPersistenceAdapter.save(source, cachedNote, bundle, sourceIdentity, {
                     pending: function (diagnostics) { stateText.text = "状態: 保存経路Bを実行中 / " + diagnostics.join(" | "); },
-                    success: function (value) { savePending = false; saveButton.enabled = true; cachedNote = value.note; refreshList(); stateText.text = "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
-                    failure: function (diagnostics) { savePending = false; saveButton.enabled = true; stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
+                    success: function (value) { savePending = false; saveButton.enabled = true; closeButton.enabled = true; cachedNote = value.note; refreshList(); stateText.text = "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
+                    failure: function (diagnostics) { savePending = false; saveButton.enabled = true; closeButton.enabled = true; stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
                 });
-                if(result.status === "success") { cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / " + result.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; }
-                else if(result.status === "failed") { savePending = false; saveButton.enabled = true; stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }
-            } catch (error) { savePending = false; saveButton.enabled = true; stateText.text = "状態: error / " + (error.message || error); }
+                if(result.status === "success") { savePending = false; saveButton.enabled = true; closeButton.enabled = true; cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / " + result.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; }
+                else if(result.status === "failed") { savePending = false; saveButton.enabled = true; closeButton.enabled = true; stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }
+            } catch (error) { savePending = false; saveButton.enabled = true; closeButton.enabled = true; stateText.text = "状態: error / " + (error.message || error); }
         };
         closeButton.onClick = function () { dialog.close(); };
         if (bundle.occurrences.length) { list.selection = 0; loadEditor(0); }
