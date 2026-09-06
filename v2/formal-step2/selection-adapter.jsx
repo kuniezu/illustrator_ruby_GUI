@@ -28,6 +28,17 @@ var FormalMultiSelectionAdapter = (function () {
         if(typeof start!=="number"||typeof end!=="number"||!isFinite(start)||!isFinite(end)||Math.floor(start)!==start||Math.floor(end)!==end||start<0||end<=start||end>String(source.contents).length)fail("invalid-text-selection");
         return {sourceFrame:source,start:start,end:end,text:String(source.contents).substring(start,end)};
     }
-    return {resolve:resolve};
+    function resolveFrame(selection, TextTypeRef, TextOrientationRef) {
+        var candidate=null;
+        if (selection && selection.typename === "TextFrame") candidate=selection;
+        else if (selection && typeof selection.length === "number" && selection.length === 1) {
+            candidate=selection[0];
+            if (candidate && candidate.typename === "TextRange") candidate=candidate.parent;
+        }
+        if (!candidate || candidate.typename !== "TextFrame") fail("single-text-frame-selection-required");
+        if (candidate.kind!==TextTypeRef.AREATEXT || candidate.orientation!==TextOrientationRef.HORIZONTAL) fail("area-text-horizontal-only");
+        return {sourceFrame:candidate,text:String(candidate.contents)};
+    }
+    return {resolve:resolve,resolveFrame:resolveFrame};
 }());
 if(typeof module!=="undefined")module.exports=FormalMultiSelectionAdapter;

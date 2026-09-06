@@ -9,33 +9,36 @@ function check(name, condition) {
   console.log('PASS ' + name);
 }
 
-check('includes multi namespace and workflow',
+check('includes long-text model and multi namespace',
   source.indexOf('#include "multi.js"') >= 0 &&
+  source.indexOf('#include "occurrences.js"') >= 0 &&
+  source.indexOf('#include "projection.js"') >= 0 &&
   source.indexOf('#include "multi-store.js"') >= 0 &&
   source.indexOf('#include "workflow.js"') >= 0);
-check('uses proven selection adapter', source.indexOf('FormalMultiSelectionAdapter.resolve') >= 0);
-check('restores persisted exact selection and avoids duplicate add',
-  source.indexOf('FormalMultiWorkflow.findSelection(bundle') >= 0 &&
-  source.indexOf('if (existing) { currentId = existing; refresh(); return; }') >= 0);
-check('uses a nonmodal palette and recaptures selection on Add',
+check('uses TextFrame selection without partial-range dependency',
+  source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0 &&
+  source.indexOf('picked.text') >= 0);
+check('extracts and displays every logical occurrence',
+  source.indexOf('FormalLongText.extract(picked.text)') >= 0 &&
+  source.indexOf('Logical occurrences') >= 0 &&
+  source.indexOf('occurrence.occurrenceId') >= 0 &&
+  source.indexOf('occurrence.start') >= 0 &&
+  source.indexOf('occurrence.end') >= 0);
+check('uses a nonmodal palette and saves editable occurrence state',
   source.indexOf('#targetengine "formal-multi-step2"') >= 0 &&
   source.indexOf('new Window("palette"') >= 0 &&
-  source.indexOf('function captureSelection()') >= 0 &&
-  source.indexOf('var current = captureSelection()') >= 0);
-check('rejects switching to another source frame', source.indexOf('source-frame-switch-not-allowed') >= 0);
-check('initializes new frame without old migration', source.indexOf('FormalMulti.createFrame') >= 0 && source.indexOf('FormalMultiStore.read') >= 0);
-check('exposes compact editing and review controls',
-  source.indexOf('Add') >= 0 && source.indexOf('Apply') >= 0 &&
-  source.indexOf('Suppress') >= 0 && source.indexOf('Re-enable') >= 0 &&
-  source.indexOf('Previous unresolved') >= 0 && source.indexOf('Next unresolved') >= 0);
-check('persists through multi store only',
+  source.indexOf('FormalMultiWorkflow.setOccurrenceReading') >= 0 &&
+  source.indexOf('FormalMultiWorkflow.setOccurrenceEnabled') >= 0 &&
+  source.indexOf('FormalMultiProjection.project') >= 0 &&
+  source.indexOf('保存完了') >= 0);
+check('restores persisted long-text state through the multi store',
+  source.indexOf('FormalMultiStore.read(source.note)') >= 0 &&
+  source.indexOf('FormalMultiStore.write(source.note, bundle)') >= 0 &&
+  source.indexOf('再実行で復元') >= 0);
+check('keeps rendering separate from the minimal shell',
   source.indexOf('FormalMultiStore.write') >= 0 &&
-  source.indexOf('FormalSegments') < 0 && source.indexOf('reconcile') < 0);
-check('derives annotation-local status',
-  source.indexOf('function annotationStatus(annotation)') >= 0 &&
-  source.indexOf('bundle.renderStatus') < 0);
-check('guards palette event handlers', source.indexOf('function guard(action)') >= 0 && source.indexOf('guard(function ()') >= 0);
-check('main entrypoint emits read-only selection diagnostics',
-  source.indexOf('function writeSelectionDiagnostic(selection)') >= 0 &&
-  source.indexOf('writeSelectionDiagnostic(documentRef.selection)') >= 0 &&
-  fs.existsSync(path.join(__dirname, '..', '..', 'diagnostics', 'Formal Multi Selection Check.jsx')));
+  source.indexOf('FormalSegments') < 0 &&
+  source.indexOf('reconcile') < 0);
+check('validates the bundle before showing the palette',
+  source.indexOf('FormalMulti.validate(bundle)') >= 0 &&
+  source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0);
