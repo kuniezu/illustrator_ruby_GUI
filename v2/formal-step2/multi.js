@@ -8,6 +8,13 @@ var FormalMulti = (function () {
         var splitHints=[],i; for(i=0;i<(a.splitHints||[]).length;i++)splitHints.push(copyHint(a.splitHints[i]));
         return {annotationId:a.annotationId,sourceFrameId:a.sourceFrameId,anchor:{baseText:h.baseText,startHint:h.startHint,beforeContext:h.beforeContext,afterContext:h.afterContext},reading:a.reading,enabled:a.enabled,placementMode:a.placementMode,reviewReasons:a.reviewReasons.slice(0),readingConfirmed:a.readingConfirmed,style:{sizeRatio:a.style.sizeRatio,gapRatio:a.style.gapRatio},offset:{inlineEm:a.offset.inlineEm,blockEm:a.offset.blockEm},splitHints:splitHints};
     }
+    function copyOccurrence(o) { return {occurrenceId:o.occurrenceId,start:o.start,end:o.end,surface:o.surface,groupId:o.groupId,visible:o.visible,enabled:o.enabled,reading:o.reading,readingConfirmed:o.readingConfirmed,lineage:o.lineage.slice(0)}; }
+    function validateOccurrences(bundle) {
+        if (bundle.occurrences === undefined) return;
+        if (!(bundle.occurrences instanceof Array)) fail("invalid-multi-occurrences");
+        var seen={}, lastEnd=0, i, o;
+        for (i=0;i<bundle.occurrences.length;i++) { o=bundle.occurrences[i]; if (!o||typeof o.occurrenceId!=="string"||seen[o.occurrenceId]||typeof o.start!=="number"||!number(o.start)||Math.floor(o.start)!==o.start||typeof o.end!=="number"||!number(o.end)||Math.floor(o.end)!==o.end||o.start<lastEnd||o.end<=o.start||o.end>bundle.textSnapshot.length||o.surface!==bundle.textSnapshot.substring(o.start,o.end)||typeof o.groupId!=="string"||typeof o.visible!=="boolean"||typeof o.enabled!=="boolean"||typeof o.reading!=="string"||typeof o.readingConfirmed!=="boolean"||!(o.lineage instanceof Array)||!o.lineage.length) fail("invalid-multi-occurrence"); seen[o.occurrenceId]=true; lastEnd=o.end; }
+    }
     function validateAnnotation(bundle, annotation) {
         FormalStep1.validate({schemaVersion:1,revision:bundle.revision,sourceFrameId:bundle.sourceFrameId,textSnapshot:bundle.textSnapshot,renderStatus:bundle.renderStatus,annotation:annotation});
         if (!annotation.splitHints || !(annotation.splitHints instanceof Array)) fail("invalid-multi-split-hints");
@@ -20,7 +27,7 @@ var FormalMulti = (function () {
     }
     function validate(bundle) {
         if (!bundle||bundle.schemaVersion!==1||!number(bundle.revision)||bundle.revision<0||typeof bundle.sourceFrameId!=="string"||typeof bundle.textSnapshot!=="string"||!/^(complete|pending|unresolved|failed)$/.test(bundle.renderStatus)||!(bundle.annotations instanceof Array)) fail("invalid-multi-bundle");
-        var seen={};
+        validateOccurrences(bundle); var seen={};
         for (var i=0;i<bundle.annotations.length;i++) {
             var a=bundle.annotations[i];
             if (seen[a.annotationId]) fail("duplicate-multi-annotation-id");
@@ -32,7 +39,7 @@ var FormalMulti = (function () {
     }
     function create(text) { var one=FormalStep1.create(String(text)); var a=copyAnnotation(one.annotation); a.splitHints=[]; return validate({schemaVersion:1,revision:0,sourceFrameId:one.sourceFrameId,textSnapshot:one.textSnapshot,renderStatus:"unresolved",annotations:[a]}); }
     function createFrame(text) { var one=FormalStep1.create(String(text)); return validate({schemaVersion:1,revision:0,sourceFrameId:one.sourceFrameId,textSnapshot:one.textSnapshot,renderStatus:"complete",annotations:[]}); }
-    function clone(bundle) { validate(bundle); var annotations=[]; for(var i=0;i<bundle.annotations.length;i++) annotations.push(copyAnnotation(bundle.annotations[i])); return validate({schemaVersion:bundle.schemaVersion,revision:bundle.revision,sourceFrameId:bundle.sourceFrameId,textSnapshot:bundle.textSnapshot,renderStatus:bundle.renderStatus,annotations:annotations}); }
+    function clone(bundle) { validate(bundle); var annotations=[], occurrences=[], i; for(i=0;i<bundle.annotations.length;i++) annotations.push(copyAnnotation(bundle.annotations[i])); for(i=0;i<(bundle.occurrences||[]).length;i++) occurrences.push(copyOccurrence(bundle.occurrences[i])); var next={schemaVersion:bundle.schemaVersion,revision:bundle.revision,sourceFrameId:bundle.sourceFrameId,textSnapshot:bundle.textSnapshot,renderStatus:bundle.renderStatus,annotations:annotations}; if(bundle.occurrences!==undefined) next.occurrences=occurrences; return validate(next); }
     function add(bundle, annotation) { var next=clone(bundle); var a=copyAnnotation(annotation); next.annotations.push(a); return validate(next); }
     function update(bundle, annotationId, edit) { var next=clone(bundle), found=false, key, value, copied, i; for(i=0;i<next.annotations.length;i++) if(next.annotations[i].annotationId===annotationId){for(key in edit) if(edit.hasOwnProperty(key)&&key!=="annotationId"&&key!=="sourceFrameId"){value=edit[key];if(key==="splitHints"){copied=[];for(var j=0;j<(value||[]).length;j++)copied.push(copyHint(value[j]));next.annotations[i][key]=copied;}else if(key==="reviewReasons")next.annotations[i][key]=(value||[]).slice(0);else if(key==="anchor")next.annotations[i][key]={baseText:value.baseText,startHint:value.startHint,beforeContext:value.beforeContext,afterContext:value.afterContext};else if(key==="style")next.annotations[i][key]={sizeRatio:value.sizeRatio,gapRatio:value.gapRatio};else if(key==="offset")next.annotations[i][key]={inlineEm:value.inlineEm,blockEm:value.blockEm};else next.annotations[i][key]=value;} found=true; break;} if(!found) fail("multi-annotation-missing"); return validate(next); }
     return {create:create,createFrame:createFrame,validate:validate,clone:clone,add:add,update:update};
