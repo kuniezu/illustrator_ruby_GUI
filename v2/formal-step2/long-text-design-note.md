@@ -16,6 +16,8 @@ and persistence contracts:
   compact display, but the occurrence list is never deduplicated. `splitAt` creates
   contiguous source ranges from one occurrence and `mergeAdjacent` combines only
   contiguous ranges. These are logical source edits, not render-line SplitHints.
+  Each replacement carries a lineage list so ancestry is explicit rather than
+  inferred from matching text.
 - **Readings:** a group has a default reading propagated to all member occurrences,
   with a future per-occurrence override. Applying a reading later creates/updates
   each selected v2 Annotation using its occurrence range and source-relative anchor.
@@ -26,6 +28,10 @@ and persistence contracts:
 - **Planning/rendering:** an occurrence remains one logical Annotation. Current line
   geometry is observed at render time and may produce multiple Render Segments for a
   wrapped occurrence, preserving the existing Gate C/D ownership rules.
+
+For example, `水戸家侍衆` can be split into `水戸家 | 侍 | 衆`, and a longer
+`水戸藩士市田九衛門隆正` can retain readings only on `市田` and `隆正`. A
+non-contiguous merge is rejected; render-line SplitHints remain a separate layer.
 
 The first pure slice below intentionally stops at extraction and grouping. It is
 small enough to test without Illustrator and leaves the ScriptUI pagination layer

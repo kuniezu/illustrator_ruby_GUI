@@ -27,6 +27,17 @@ test('splitAt edits one logical range and mergeAdjacent restores it', () => {
   const ids = b.occurrences.map(x => x.occurrenceId);
   b = M.mergeAdjacent(b, ids);
   assert.deepEqual(b.occurrences.map(x => ({start:x.start,end:x.end,surface:x.surface})), [{start:0,end:4,surface:'徳川斉昭'}]);
+  assert.ok(b.occurrences[0].lineage.length >= 3);
+});
+
+test('supports multiple logical units with readings on only selected units', () => {
+  let b = M.extract('水戸藩士市田九衛門隆正');
+  b = M.splitAt(b, b.occurrences[0].occurrenceId, [4, 6, 9]);
+  assert.deepEqual(b.occurrences.map(x => x.surface), ['水戸藩士', '市田', '九衛門', '隆正']);
+  b = M.setGroupReading(b, b.occurrences[1].groupId, 'いちだ', true);
+  b = M.setGroupReading(b, b.occurrences[3].groupId, 'たかまさ', true);
+  assert.deepEqual(b.occurrences.map(x => x.reading), ['', 'いちだ', '', 'たかまさ']);
+  assert.equal(b.occurrences[0].splitHints, undefined);
 });
 
 test('group reading propagates without collapsing occurrence identity', () => {
@@ -50,4 +61,6 @@ test('invalid and empty grouping selections are rejected', () => {
   assert.throws(() => M.splitAt(b, b.occurrences[0].occurrenceId, []), /empty-split-boundaries/);
   assert.throws(() => M.mergeAdjacent(b, ['missing', 'also-missing']), /occurrence-missing/);
   assert.throws(() => M.splitAt(b, b.occurrences[0].occurrenceId, [99]), /invalid-split-boundary/);
+  let separated = M.extract('甲 乙');
+  assert.throws(() => M.mergeAdjacent(separated, separated.occurrences.map(x => x.occurrenceId)), /merge-requires-contiguous-ranges/);
 });

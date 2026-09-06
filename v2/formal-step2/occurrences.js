@@ -11,7 +11,8 @@ var FormalLongText = (function () {
     function cloneOccurrence(occurrence) {
         return {occurrenceId: occurrence.occurrenceId, start: occurrence.start, end: occurrence.end,
             surface: occurrence.surface, groupId: occurrence.groupId, visible: occurrence.visible,
-            enabled: occurrence.enabled, reading: occurrence.reading, readingConfirmed: occurrence.readingConfirmed};
+            enabled: occurrence.enabled, reading: occurrence.reading, readingConfirmed: occurrence.readingConfirmed,
+            lineage: occurrence.lineage.slice(0)};
     }
     function clone(bundle) {
         var occurrences = [], i;
@@ -27,7 +28,8 @@ var FormalLongText = (function () {
                 typeof occurrence.start !== "number" || typeof occurrence.end !== "number" ||
                 occurrence.start < lastEnd || occurrence.end <= occurrence.start || occurrence.end > bundle.textSnapshot.length ||
                 occurrence.surface !== bundle.textSnapshot.substring(occurrence.start, occurrence.end) ||
-                typeof occurrence.groupId !== "string" || typeof occurrence.visible !== "boolean" || typeof occurrence.enabled !== "boolean") fail("invalid-long-text-occurrence");
+                typeof occurrence.groupId !== "string" || typeof occurrence.visible !== "boolean" || typeof occurrence.enabled !== "boolean" ||
+                !(occurrence.lineage instanceof Array) || !occurrence.lineage.length) fail("invalid-long-text-occurrence");
             seen[occurrence.occurrenceId] = true;
             lastEnd = occurrence.end;
         }
@@ -44,7 +46,8 @@ var FormalLongText = (function () {
             groupId = groups[surface];
             if (!groupId) { groupId = "lexeme-" + occurrences.length; groups[surface] = groupId; }
             occurrences.push({occurrenceId: "occurrence-" + occurrences.length, start: start, end: end,
-                surface: surface, groupId: groupId, visible: true, enabled: true, reading: "", readingConfirmed: false});
+                surface: surface, groupId: groupId, visible: true, enabled: true, reading: "", readingConfirmed: false,
+                lineage: ["occurrence-" + occurrences.length]});
         }
         return validate({schemaVersion: 1, textSnapshot: source, occurrences: occurrences});
     }
@@ -58,7 +61,7 @@ var FormalLongText = (function () {
         points.push(source.end - source.start);
         for (i = 0; i < points.length - 1; i++) {
             start = source.start + points[i]; end = source.start + points[i + 1];
-            part = cloneOccurrence(source); part.occurrenceId = occurrenceId + "-split-" + i; part.start = start; part.end = end; part.surface = next.textSnapshot.substring(start, end); part.groupId = "occurrence-group-" + part.occurrenceId; pieces.push(part);
+            part = cloneOccurrence(source); part.occurrenceId = occurrenceId + "-split-" + i; part.start = start; part.end = end; part.surface = next.textSnapshot.substring(start, end); part.groupId = "occurrence-group-" + part.occurrenceId; part.lineage = source.lineage.concat([source.occurrenceId]); pieces.push(part);
         }
         next.occurrences.splice.apply(next.occurrences, [index, 1].concat(pieces));
         return validate(next);
@@ -70,7 +73,8 @@ var FormalLongText = (function () {
         for (i = 0; i < next.occurrences.length; i++) if (ids[next.occurrences[i].occurrenceId]) selected.push(next.occurrences[i]);
         if (selected.length !== occurrenceIds.length) fail("occurrence-missing");
         for (i = 1; i < selected.length; i++) if (selected[i - 1].end !== selected[i].start) fail("merge-requires-contiguous-ranges");
-        merged = cloneOccurrence(selected[0]); merged.end = selected[selected.length - 1].end; merged.surface = next.textSnapshot.substring(merged.start, merged.end); merged.groupId = selected[0].groupId;
+        merged = cloneOccurrence(selected[0]); merged.end = selected[selected.length - 1].end; merged.surface = next.textSnapshot.substring(merged.start, merged.end); merged.groupId = selected[0].groupId; merged.lineage = [];
+        for (i = 0; i < selected.length; i++) merged.lineage = merged.lineage.concat(selected[i].lineage);
         for (i = next.occurrences.length - 1; i >= 0; i--) if (ids[next.occurrences[i].occurrenceId]) next.occurrences.splice(i, 1);
         next.occurrences.push(merged); next.occurrences.sort(function (a, b) { return a.start - b.start; });
         return validate(next);
