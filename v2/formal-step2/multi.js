@@ -19,7 +19,7 @@ var FormalMulti = (function () {
         }
     }
     function validate(bundle) {
-        if (!bundle||bundle.schemaVersion!==1||!number(bundle.revision)||bundle.revision<0||typeof bundle.sourceFrameId!=="string"||typeof bundle.textSnapshot!=="string"||!/^(complete|pending|unresolved|failed)$/.test(bundle.renderStatus)||!(bundle.annotations instanceof Array)||!bundle.annotations.length) fail("invalid-multi-bundle");
+        if (!bundle||bundle.schemaVersion!==1||!number(bundle.revision)||bundle.revision<0||typeof bundle.sourceFrameId!=="string"||typeof bundle.textSnapshot!=="string"||!/^(complete|pending|unresolved|failed)$/.test(bundle.renderStatus)||!(bundle.annotations instanceof Array)) fail("invalid-multi-bundle");
         var seen={};
         for (var i=0;i<bundle.annotations.length;i++) {
             var a=bundle.annotations[i];
@@ -31,9 +31,10 @@ var FormalMulti = (function () {
         return bundle;
     }
     function create(text) { var one=FormalStep1.create(String(text)); var a=copyAnnotation(one.annotation); a.splitHints=[]; return validate({schemaVersion:1,revision:0,sourceFrameId:one.sourceFrameId,textSnapshot:one.textSnapshot,renderStatus:"unresolved",annotations:[a]}); }
+    function createFrame(text) { var one=FormalStep1.create(String(text)); return validate({schemaVersion:1,revision:0,sourceFrameId:one.sourceFrameId,textSnapshot:one.textSnapshot,renderStatus:"complete",annotations:[]}); }
     function clone(bundle) { validate(bundle); var annotations=[]; for(var i=0;i<bundle.annotations.length;i++) annotations.push(copyAnnotation(bundle.annotations[i])); return validate({schemaVersion:bundle.schemaVersion,revision:bundle.revision,sourceFrameId:bundle.sourceFrameId,textSnapshot:bundle.textSnapshot,renderStatus:bundle.renderStatus,annotations:annotations}); }
     function add(bundle, annotation) { var next=clone(bundle); var a=copyAnnotation(annotation); next.annotations.push(a); return validate(next); }
     function update(bundle, annotationId, edit) { var next=clone(bundle), found=false, key, value, copied, i; for(i=0;i<next.annotations.length;i++) if(next.annotations[i].annotationId===annotationId){for(key in edit) if(edit.hasOwnProperty(key)&&key!=="annotationId"&&key!=="sourceFrameId"){value=edit[key];if(key==="splitHints"){copied=[];for(var j=0;j<(value||[]).length;j++)copied.push(copyHint(value[j]));next.annotations[i][key]=copied;}else if(key==="reviewReasons")next.annotations[i][key]=(value||[]).slice(0);else if(key==="anchor")next.annotations[i][key]={baseText:value.baseText,startHint:value.startHint,beforeContext:value.beforeContext,afterContext:value.afterContext};else if(key==="style")next.annotations[i][key]={sizeRatio:value.sizeRatio,gapRatio:value.gapRatio};else if(key==="offset")next.annotations[i][key]={inlineEm:value.inlineEm,blockEm:value.blockEm};else next.annotations[i][key]=value;} found=true; break;} if(!found) fail("multi-annotation-missing"); return validate(next); }
-    return {create:create,validate:validate,clone:clone,add:add,update:update};
+    return {create:create,createFrame:createFrame,validate:validate,clone:clone,add:add,update:update};
 }());
 if(typeof module!=="undefined")module.exports=FormalMulti;
