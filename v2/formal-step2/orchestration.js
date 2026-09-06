@@ -4,12 +4,16 @@ var FormalMultiOrchestration = (function () {
     function find(bundle, annotationId) { for(var i=0;i<bundle.annotations.length;i++) if(bundle.annotations[i].annotationId===annotationId)return bundle.annotations[i]; return null; }
     function localLines(baseStart, baseLength, lines) { var out=[], expected=0, i, start, end; for(i=0;i<lines.length;i++){start=Math.max(baseStart,lines[i].start)-baseStart;end=Math.min(baseStart+baseLength,lines[i].end)-baseStart;if(end>start){if(start!==expected)return null;out.push({start:start,end:end,geometry:lines[i].geometry});expected=end;}} return expected===baseLength?out:null; }
     function planOne(bundle, annotationId, sourceText, observation) {
-        var annotation=find(bundle,annotationId), resolved, lineMap, decision;
+        var annotation=find(bundle,annotationId), resolved, lineMap, decision, reasons=[];
         if(!annotation)return {annotationId:annotationId,status:"failed",reasons:["multi-annotation-missing"]};
-        if(!observation||observation.status==="failed")return {annotationId:annotationId,status:"failed",reasons:(observation&&observation.reasons)||["observation-failed"]};
-        if(observation.status!=="complete")return unresolved(annotationId,(observation&&observation.reasons)||["observation-unavailable"]);
+        if(!annotation.enabled)return {annotationId:annotationId,status:"complete",decision:{status:"complete",segments:[]},suppressed:true,reasons:[]};
+        if(!annotation.readingConfirmed||!annotation.reading)reasons.push("reading-unconfirmed");
+        if(annotation.placementMode==="manual")reasons.push("manual-placement");
         resolved=FormalStep1.resolve(sourceText,bundle.textSnapshot,annotation);
-        if(resolved.status!=="complete")return unresolved(annotationId,resolved.reasons);
+        if(resolved.status!=="complete")reasons=reasons.concat(resolved.reasons);
+        if(!observation||observation.status==="failed")return {annotationId:annotationId,status:"failed",reasons:(observation&&observation.reasons||["observation-failed"]).concat(reasons)};
+        if(observation.status!=="complete")return unresolved(annotationId,(observation.reasons||["observation-unavailable"]).concat(reasons));
+        if(reasons.length)return unresolved(annotationId,reasons);
         lineMap=localLines(resolved.start,annotation.anchor.baseText.length,observation.lines||[]);
         if(!lineMap)return unresolved(annotationId,["annotation-line-intersection-unavailable"]);
         decision=FormalSegments.plan(annotation.anchor.baseText,annotation.reading,lineMap,annotation.splitHints||[],bundle.revision,bundle.revision);
