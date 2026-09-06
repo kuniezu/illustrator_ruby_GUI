@@ -39,11 +39,12 @@ var FormalMultiPersistenceAdapter = (function () {
         if (value instanceof Array) { parts=[]; for (var i=0;i<value.length;i++) parts.push(scriptLiteral(value[i])); return "["+parts.join(",")+"]"; }
         parts=[]; for (key in value) if (value.hasOwnProperty(key)) parts.push(scriptLiteral(key)+":"+scriptLiteral(value[key])); return "{"+parts.join(",")+"}";
     }
-    function renderedBridgeBody(expectedText, cachedNote, nextNote, identity, bundle, specifications, sources) {
-        var specs=scriptLiteral(specifications), step1=encoded(sources.step1), segments=encoded(sources.segments), orchestration=encoded(sources.orchestration), adapter=encoded(sources.adapter), documentPath=encoded(identity.documentPath || ""), uuid=encoded(identity.uuid || "");
+    function renderedBridgeBody(expectedText, cachedNote, nextNote, identity, bundle, specifications, sources, stagePath) {
+        var specs=scriptLiteral(specifications), step1=encoded(sources.step1), segments=encoded(sources.segments), orchestration=encoded(sources.orchestration), adapter=encoded(sources.adapter), documentPath=encoded(identity.documentPath || ""), uuid=encoded(identity.uuid || ""), stageFilePath=encoded(stagePath || "");
         return "(function(){"+
             "function fail(m){throw Error(m);}"+
-            "function stage(n){try{if(typeof $!==\"undefined\"&&$.writeln)$.writeln(\"formal-multi-host:\"+n);}catch(ignore){}}"+
+            "var stagePath=decodeURIComponent(\""+stageFilePath+"\"),stageFile;"+
+            "function stage(n){try{if(stagePath){stageFile=File(stagePath);if(stageFile.open(\"w\")){stageFile.write(\"formal-multi-host:\"+n);stageFile.close();}}if(typeof $!==\"undefined\"&&$.writeln)$.writeln(\"formal-multi-host:\"+n);}catch(ignore){}}"+
             "stage(\"host-entry\");"+
             "stage(\"step1-eval-start\");"+
             "eval(decodeURIComponent(\""+step1+"\"));"+
@@ -59,11 +60,11 @@ var FormalMultiPersistenceAdapter = (function () {
             "if(observation.status!==\"complete\")fail(\"render-observation-unresolved:\"+(observation.reasons||[]).join(\" | \"));"+
             "stage(\"plan-start\");for(i=0;i<specs.length;i++){spec=specs[i];stage(\"plan-annotation-\"+i+\"-start\");if(!spec.annotation||!spec.annotation.enabled){plans.push({annotationId:spec.annotationId,decision:{status:\"complete\",segments:[]}});stage(\"plan-annotation-\"+i+\"-end:cleanup\");continue;}one={textSnapshot:expected,revision:"+String(bundle.revision)+",annotations:[spec.annotation]};result=FormalMultiOrchestration.planOne(one,spec.annotationId,expected,observation);if(result.status!==\"complete\")fail(\"render-plan-unresolved:\"+(result.reasons||[]).join(\" | \"));plans.push({annotationId:spec.annotationId,decision:result.decision});stage(\"plan-annotation-\"+i+\"-end\");}stage(\"plan-end\");stage(\"transaction-start\");renderAdapter.renderAndStoreTransaction(\""+encoded(bundle.sourceFrameId)+"\",plans,function(){stage(\"note-commit-start\");frame.note=next;if(String(frame.note)!==next)fail(\"store-readback-mismatch\");stage(\"note-commit-end\");});stage(\"transaction-end\");stage(\"return\");return \"B-render-persist:success\";}());";
     }
-    function renderedBridge(expectedText, cachedNote, nextNote, identity, bundle, specifications, sources, callbacks, bridgeTalkRef) {
+    function renderedBridge(expectedText, cachedNote, nextNote, identity, bundle, specifications, sources, callbacks, bridgeTalkRef, stagePath) {
         var bt, sent, finished=false;
         if(!bridgeTalkRef) throw Error("B-bridge-talk-unavailable");
         if(typeof bridgeTalkRef.getSpecifier!=="function") throw Error("B-bridge-talk-specifier-unavailable");
-        bt=new bridgeTalkRef(); bt.target=bridgeTalkRef.getSpecifier("illustrator"); if(!bt.target) throw Error("B-bridge-talk-target-unavailable"); bt.body=renderedBridgeBody(expectedText,cachedNote,nextNote,identity,bundle,specifications,sources); bt.timeout=30;
+        bt=new bridgeTalkRef(); bt.target=bridgeTalkRef.getSpecifier("illustrator"); if(!bt.target) throw Error("B-bridge-talk-target-unavailable"); bt.body=renderedBridgeBody(expectedText,cachedNote,nextNote,identity,bundle,specifications,sources,stagePath); bt.timeout=30;
         function finish(callback,value){if(finished)return;finished=true;removeMessage(bt);callback(value);}
         bt.onResult=function(result){if(result&&result.body==="B-render-persist:success")finish(callbacks.success,{strategy:"B-render-persist",note:nextNote});else finish(callbacks.failure,"B-render-persist: invalid-result:"+(result&&result.body?result.body:"empty"));};
         bt.onError=function(result){finish(callbacks.failure,"B-render-persist: "+errorText(result&&result.body?result.body:result));};
@@ -71,7 +72,7 @@ var FormalMultiPersistenceAdapter = (function () {
         activeMessages.push(bt); try { sent=bt.send(); } catch(error) { removeMessage(bt); throw error; }
         callbacks.pending(sent===false?"B-render-persist: send=false (queued-or-not-sent)":"B-render-persist: send=true"); return bt;
     }
-    function saveRendered(expectedText, cachedNote, bundle, identity, specifications, sources, callbacks, bridgeTalkRef) {
+    function saveRendered(expectedText, cachedNote, bundle, identity, specifications, sources, callbacks, bridgeTalkRef, stagePath) {
         var nextNote=FormalMultiStore.write(cachedNote,bundle), diagnostics=[], result;
         callbacks=callbacks||{};
         try {
@@ -79,7 +80,7 @@ var FormalMultiPersistenceAdapter = (function () {
                 pending:function(message){diagnostics.push(message);if(callbacks.pending)callbacks.pending(diagnostics.slice(0));},
                 success:function(value){value.diagnostics=diagnostics.concat(["B-render-persist: success"]);if(callbacks.success)callbacks.success(value);},
                 failure:function(message){diagnostics.push(message);if(callbacks.failure)callbacks.failure(diagnostics.slice(0));}
-            },bridgeTalkRef||(typeof BridgeTalk!=="undefined"?BridgeTalk:null));
+            },bridgeTalkRef||(typeof BridgeTalk!=="undefined"?BridgeTalk:null),stagePath);
             return {status:"pending",strategy:"B-render-persist",note:nextNote,diagnostics:diagnostics,bridge:result};
         } catch(error) { diagnostics.push("B-render-persist: "+errorText(error)); return {status:"failed",diagnostics:diagnostics}; }
     }

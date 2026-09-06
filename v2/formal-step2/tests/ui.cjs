@@ -67,6 +67,13 @@ check('connects projection to the existing observed renderer contract',
   source.indexOf('FormalStep2Adapter') < 0 &&
   source.indexOf('renderAdapter') < 0 &&
   source.indexOf('source.contents') < 0);
+check('guards PointText from the visible render path and exposes a disposable stage file',
+  source.indexOf('source.kind !== TextType.AREATEXT') >= 0 &&
+  source.indexOf('persistence-only') >= 0 &&
+  source.indexOf('PointTextはrender対象外') >= 0 &&
+  source.indexOf('Folder.temp') >= 0 &&
+  source.indexOf('stageFile.fsName') >= 0 &&
+  source.indexOf('undefined, stageFile.fsName') >= 0);
 check('validates the bundle before showing the palette',
   source.indexOf('FormalMulti.validate(bundle)') >= 0 &&
   source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0);
