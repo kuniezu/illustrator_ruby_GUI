@@ -12,6 +12,14 @@ This document turns Astra's 24-item repository audit into a product-scoped follo
 Primary reference: `astra-secondary-audit-2026-09-07.md`.
 Roadmap reference: `completion-roadmap.md`.
 
+## Product decisions fixed on 2026-09-07
+
+1. Reading input is **hiragana only**. Small kana are allowed; the tool does not normalize them to larger kana or enforce editorial pronunciation style.
+2. Product target is **horizontal AreaText only** for this cycle. PointText is unsupported.
+3. Split/Merge are **required**, but their scope is deliberately local: they operate only on the currently handled contiguous Kanji run / its adjacent local child units. They do not automatically repartition unrelated words elsewhere.
+4. If a supplementary-plane Kanji / IVS occurs inside a candidate Kanji run, the **whole run is marked unsupported with a warning** rather than silently split around the character.
+5. Saving reading state and drawing ruby are separate outcomes. If persistence succeeds but rendering fails, show: **「ルビの描画に問題がありました。読みの情報は保持しています」**.
+
 ## NOW — current Multi path blockers
 
 ### #1 Entry JSX syntax error
@@ -52,6 +60,25 @@ Disposition: **NOW / Gate 3**.
 
 Reason: repeated surfaces must not inherit readings according to processing order when the mapping is globally ambiguous.
 
+### #8 Logical split preservation across source edits
+
+Disposition: **NOW, narrowed to local-run semantics / Gate 3**.
+
+Reason: Split is required for practical use because a long contiguous Kanji run may contain only some units that need ruby. The product does **not** need global automatic resegmentation.
+
+Current contract:
+
+- Split affects only the currently handled run.
+- Unrelated runs and readings are untouched.
+- If source edits occur elsewhere and the split run still resolves unambiguously, preserve that run's local segmentation.
+- If the source edit changes the contents of the split run so the old boundaries cannot be mapped safely, mark that run unresolved; do not guess and do not discard unrelated runs' state.
+
+### #9 Merge leaves retired child Annotation
+
+Disposition: **NOW, narrowed to local merge / Gate 3**.
+
+Reason: Merge is required as the local inverse of Split. It only recombines adjacent local units explicitly chosen by the user. Merging one local group must retire those child Annotations/outputs cleanly and must not alter other occurrences.
+
 ### #10 Projection invariant
 
 Disposition: **NOW / Gate 3**.
@@ -63,6 +90,10 @@ Reason: occurrence and generated Annotation cannot remain contradictory on share
 Disposition: **NOW / Gate 1**.
 
 Reason: the long-text editor must be able to preserve editing state even when a particular ruby cannot currently render. `saved`, `render unresolved`, and `render failed` are different facts.
+
+User-facing contract on persistence success + render problem:
+
+> ルビの描画に問題がありました。読みの情報は保持しています
 
 ### #19 Pending-save dirty/saved boundary
 
@@ -82,59 +113,37 @@ Disposition: **NOW before runtime / Gates 0, 4, 6**.
 
 Reason: the user checkpoint must name the actual supported entry and not rely on stale legacy instructions.
 
-## SCOPE DECISION — do not implement until the supported boundary is chosen
+## SCOPE DECISION — resolved for this cycle unless later evidence promotes work
 
 ### #6 Temporary observe-object cleanup failure
 
-Disposition: **SCOPE DECISION, default = fail closed**.
+Disposition: **resolved = fail closed**.
 
-Recommended current-cycle rule: if renderer-created measurement/outline objects cannot be removed, do not report clean render/save success. Do not spend time building generalized cleanup recovery unless real host behavior requires it.
-
-### #8 Logical split/merge preservation across source edits
-
-Disposition: **SCOPE DECISION, default = defer advanced split/merge from next checkpoint**.
-
-Reason: preserving an edited logical segmentation topology across arbitrary source edits is a real design problem, but not necessary for the first practical multi-ruby completion line.
-
-If split/merge is kept out of the runtime checkpoint, the UI/manual must not imply that it is production-ready.
-
-### #9 Merge leaves retired child Annotation
-
-Disposition: **SCOPE DECISION tied to #8**.
-
-If split/merge remains supported in the current model API, fix before claiming that feature stable. If advanced split/merge is excluded from this cycle, record the defect and do not use split/merge as a runtime gate.
+If renderer-created measurement/outline objects cannot be removed, do not report clean render/save success. Do not build generalized recovery unless real host behavior proves it necessary.
 
 ### #12 PointText partial-success persistence
 
-Disposition: **SCOPE DECISION, default = exclude PointText from next completion checkpoint**.
+Disposition: **resolved = unsupported this cycle**.
 
-Reason: PointText visible rendering is already outside the current renderer contract. Avoid spending runtime/debug budget on a secondary persistence-only path until the AreaText product path is stable.
+AreaText only. PointText persistence-only behavior is not part of the completion contract and should not consume runtime/debug budget.
 
 ### #16 Validator inconsistency
 
-Disposition: **SCOPE DECISION / tighten when exposing the corresponding input**.
+Disposition: **narrow current requirement**.
 
-Current requirement: reject malformed values at public/current entry boundaries. A complete shared validation framework can wait until split/hint editing is promoted.
+Reject malformed values at current public boundaries. Split/Merge boundaries used by the supported local UI must be validated as finite integer UTF-16 positions inside the selected run. A general shared validation framework can follow later.
 
 ### #17 Supplementary-plane Kanji / IVS
 
-Disposition: **SCOPE DECISION, current result = explicitly unsupported**.
+Disposition: **resolved = whole-run unsupported warning**.
 
-Reason: the current extractor is BMP-oriented. This is a valid limitation, not a mandate to build full Unicode/IVS support now.
-
-Current product action:
-
-- reading input should be constrained to the intended kana-oriented character set;
-- source extraction limitations should be documented;
-- unsupported sequences should not be silently advertised as fully supported Kanji handling.
-
-Promote only when actual user material shows a practical need.
+The extractor remains BMP-oriented for this cycle. If a candidate contiguous Kanji run contains an unsupported supplementary-plane/IVS sequence, do not silently split the run and treat fragments as normal candidates. Mark the whole run unsupported and warn the user.
 
 ### #23 Custom style / mixed typography propagation
 
-Disposition: **SCOPE DECISION, current result = narrow supported style contract**.
+Disposition: **resolved = narrow supported style contract**.
 
-Reason: full mixed-font/layout support is outside the current completion line. The current path should either honor the renderer-owned basic style contract or explicitly reject/ignore unsupported custom styling without pretending complete support.
+Full mixed-font/layout support is outside the completion line. The current path should honor the renderer-owned basic style contract; unsupported custom styling must not be advertised as fully supported.
 
 ## DEFER — valid issues outside the current primary entry
 
@@ -156,7 +165,7 @@ Disposition: **DEFER with #13**.
 
 Disposition: **DEFER**.
 
-Current completion checkpoint should require an explicitly selected TextFrame/AreaText. Fix before TextRange selection is advertised as supported.
+Current completion checkpoint requires an explicitly selected horizontal AreaText TextFrame. Fix before TextRange selection is advertised as supported.
 
 ## REVIEW / RETIRE — gate and cleanup debt
 
@@ -172,24 +181,26 @@ Disposition: **REVIEW / RETIRE before reuse**.
 
 PASS labels must be narrowed to the facts actually asserted. Production-path gate tests should replace proxy diagnostics where possible.
 
-## Cross-cutting product decisions already made
+## Cross-cutting product contract
 
-For the next completion checkpoint, use these assumptions unless explicitly changed:
+For the next completion checkpoint:
 
-1. Primary product path is **`Formal Multi Step2.jsx`**.
-2. Visible ruby target is **horizontal AreaText**.
-3. PointText is not part of the next visible-render checkpoint.
-4. Direct TextRange selection is not a supported checkpoint requirement.
-5. Supplementary-plane Kanji / IVS are not full-support requirements for this cycle.
-6. Full mixed typography/custom styling is not a completion requirement.
-7. Advanced logical split/merge across source edits is not required for the first practical completion checkpoint.
-8. Reading input should be kana-oriented rather than arbitrary text; exact allowed characters should be specified when the UI validation is implemented.
-9. Ordinary source edits and repeated-surface no-guess behavior remain in scope.
-10. Save-state integrity, ownership safety, idempotent rendering, and basic correct placement are non-negotiable.
+1. Primary product path is `Formal Multi Step2.jsx`.
+2. Visible ruby target is horizontal AreaText only.
+3. Reading input is hiragana only; small kana remain user-entered as-is.
+4. Split/Merge are first-class local operations on the currently handled Kanji run.
+5. Split/Merge never imply automatic editing of unrelated occurrences elsewhere.
+6. A locally split run should survive unrelated source edits when its own identity remains unambiguous; changes inside that run may make only that run unresolved.
+7. Merge of adjacent local children must remove/retire only those children and their managed outputs.
+8. Supplementary-plane Kanji / IVS make the whole candidate run unsupported with a warning for this cycle.
+9. Save-state integrity is independent from visible-render success; persistence success must survive a rendering problem.
+10. PointText, direct TextRange, full mixed typography, and legacy single-annotation Step2 are outside the completion contract.
+11. Ordinary source edits and repeated-surface no-guess behavior remain in scope.
+12. Ownership safety, idempotent rendering, and basic correct placement are non-negotiable.
 
 ## When a deferred item should be promoted
 
-Promote a deferred/scope item to NOW only when at least one of the following is true:
+Promote a deferred item to NOW only when at least one of the following is true:
 
 - the supported user workflow actually reaches it;
 - a real document demonstrates it is common enough to block practical use;
@@ -201,6 +212,8 @@ Do not promote an item merely because the implementation could theoretically sup
 ## Next handoff to Codex/Luna
 
 Codex/Luna should not receive all 24 findings as one repair prompt. Work should follow `completion-roadmap.md` gate by gate. The first implementation cycle should be **Gate 0 only** unless a very small adjacent fix is necessary to make its tests meaningful.
+
+When Gate 3 is reached, implement Split/Merge according to the local-run contract above; do not solve arbitrary whole-document segmentation.
 
 After each gate:
 
