@@ -10,9 +10,17 @@ Current primary entry:
 
 Current working completion line:
 
-> For horizontal AreaText, the user can assign kana readings to multiple Kanji occurrences, save and reopen the state, repeat save/render without drift or duplication, make ordinary source-text edits without silent reading transfer, and avoid damaging unrelated text or managed ruby outputs.
+> For horizontal AreaText, the user can split or merge the currently handled Kanji run into the desired reading units, assign hiragana readings only to the units that need ruby, save and reopen the state, repeat save/render without drift or duplication, make ordinary source-text edits without silent reading transfer, and avoid damaging unrelated text or ruby outputs.
 
 The next runtime checkpoint must not include features explicitly marked unsupported or deferred below.
+
+## Product decisions fixed on 2026-09-07
+
+- Reading input accepts **hiragana only**. Small kana such as `っ` / `ゃ` / `ゅ` / `ょ` are allowed; the tool does not enforce editorial pronunciation rules beyond the script restriction.
+- Visible ruby rendering is **horizontal AreaText only**. PointText is outside this cycle's supported product path.
+- Split/Merge are **required local editing operations**. They act only on the currently handled contiguous Kanji run or its local child units. They must not automatically repartition unrelated occurrences elsewhere in the document.
+- If an unsupported supplementary-plane Kanji / IVS occurs inside a candidate Kanji run, the **whole run is treated as unsupported and warned about** rather than silently splitting around the character.
+- Persisted reading state and visible rendering are separate outcomes. When persistence succeeds but rendering does not, the user-facing message is: **「ルビの描画に問題がありました。読みの情報は保持しています」**.
 
 ## Gate 0 — Repair the executable and test gate
 
@@ -52,6 +60,7 @@ Completion criteria:
 - A failed transaction leaves no unmanaged residue and does not delete unrelated managed output.
 - UI distinguishes saved state, unsaved later edits, render-unresolved, render-failed, and rollback-failed.
 - Pending operations cannot silently report later edits as already saved.
+- Persistence success + rendering failure surfaces the agreed message while retaining the reading information.
 
 Astra findings primarily covered: #4, #5, #6, #11, #19, #20.
 
@@ -74,23 +83,29 @@ Completion criteria:
 
 Astra findings primarily covered: #2, #3, #4.
 
-## Gate 3 — Stable logical state and ordinary source edits
+## Gate 3 — Stable logical state, local Split/Merge, and ordinary source edits
 
-Purpose: preserve the user's reading decisions when the source text changes, without guessing.
+Purpose: preserve the user's reading-unit decisions when the source text changes, without guessing or rewriting unrelated units.
 
 Work:
 
 - Make repeated-surface re-resolution a global ambiguity decision rather than old-occurrence processing order.
 - Define the authoritative occurrence/Annotation fields and make projection normalize or reject inconsistent state.
-- Support ordinary source edits needed for the checkpoint: additions/deletions that leave an unambiguous existing occurrence match.
+- Keep Split/Merge local to the currently handled Kanji run. Split divides that run into local reading units; Merge recombines only adjacent local units selected by the user.
+- Preserve unrelated occurrences and their readings exactly; Split/Merge on one run must not trigger automatic repartitioning elsewhere.
+- When ordinary source edits occur outside a locally split run, preserve that run's segmentation if the run itself still resolves unambiguously.
+- When the edited source changes inside a previously split run so that its old local segmentation can no longer be mapped safely, mark only that affected run unresolved rather than guessing or discarding other runs' state.
 
 Completion criteria:
 
 - Repeated surfaces never inherit reading when more than one globally plausible mapping remains.
 - Projection is idempotent and has one explicit source of truth for shared fields.
-- Ordinary prefix/suffix/nearby edits preserve unambiguous readings and report ambiguous/missing cases without guessing.
+- Split/Merge changes only the selected/local run and does not modify unrelated occurrences.
+- A split run survives unrelated prefix/suffix/nearby edits when its own source mapping remains unambiguous.
+- If a source edit invalidates a local split, that run alone becomes unresolved; unrelated readings remain intact.
+- Merge retires the merged child units cleanly without leaving stale child Annotations or ruby outputs.
 
-Astra findings primarily covered: #7, #10.
+Astra findings primarily covered: #7, #8, #9, #10.
 
 ## Gate 4 — Freeze the supported product boundary
 
@@ -101,17 +116,18 @@ Supported for the next completion checkpoint:
 - horizontal AreaText
 - the current Multi entry only
 - multiple logical occurrences
-- kana-oriented reading input under an explicitly defined allowed-character policy
+- local Split/Merge of the currently handled Kanji run
+- hiragana-only reading input
 - ordinary source editing with safe/no-guess re-resolution
 - basic renderer-owned ruby appearance used by the current adapter
 
 Explicitly unsupported or deferred unless separately promoted:
 
-- PointText visible ruby rendering
+- PointText
 - direct TextRange selection fallback
-- supplementary-plane Kanji / IVS as fully supported extraction targets
+- supplementary-plane Kanji / IVS as supported extraction targets; a run containing them is warned and treated as unsupported
 - arbitrary mixed-font / mixed-size / custom style propagation
-- advanced logical split/merge editing across source edits
+- automatic/global resegmentation of other words when one run is split or merged
 - legacy single-annotation `Formal Step2.jsx` as a production gate
 - legacy hint editor/store as evidence for the Multi path
 
@@ -120,7 +136,7 @@ Completion criteria:
 - Unsupported input/entry paths are rejected, disabled, or clearly labeled instead of being accepted and returning a misleading `complete`.
 - The runtime manual names only the supported path and limitations.
 
-Astra findings primarily covered: #8, #9, #12–#18, #23, #24.
+Astra findings primarily covered: #12–#18, #23, #24.
 
 ## Gate 5 — One batched Illustrator runtime checkpoint
 
@@ -130,12 +146,15 @@ Required runtime scope:
 
 - saved horizontal AreaText
 - several Kanji occurrences, including at least two on one line
+- split one longer Kanji run into local reading units; assign hiragana only to selected units
+- merge adjacent local units and verify unrelated units/readings remain untouched
 - set readings, confirm, save
 - rerun and verify persistence
 - save again and verify no duplication or position/tracking drift
 - add and delete ordinary source text and verify safe re-resolution
 - disable/clear one reading and verify only its ruby is removed
 - preserve foreign/unmanaged text and unrelated managed output
+- if a render-only problem occurs, verify reading information remains and the agreed user-facing message is shown
 - if a hang occurs, recover the request-specific heartbeat stage
 
 Runtime is a verification gate, not a debugging loop. New pure/static defects found during review return the work to the appropriate earlier gate.
@@ -161,4 +180,6 @@ Completion criteria:
 
 ## What “done” means for this cycle
 
-This cycle is done when the current Multi workflow is a dependable practical Illustrator ruby tool for its explicitly supported horizontal-AreaText use case. It is **not** contingent on complete Unicode Kanji coverage, a general Japanese layout engine, full mixed typography support, or preservation of every legacy/prototype entry.
+This cycle is done when the current Multi workflow is a dependable practical Illustrator ruby tool for its explicitly supported horizontal-AreaText use case: local Split/Merge, hiragana readings on only the units that need ruby, stable save/reopen/re-render behavior, safe ordinary source edits, and no collateral damage to unrelated text or ruby outputs.
+
+It is **not** contingent on complete Unicode Kanji coverage, a general Japanese layout engine, full mixed typography support, PointText, automatic global resegmentation, or preservation of every legacy/prototype entry.
