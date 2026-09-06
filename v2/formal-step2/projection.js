@@ -2,7 +2,7 @@
 var FormalMultiProjection = (function () {
     var prefix = "v2-occurrence-";
     function context(text, start, end) { var limit=16; return {beforeContext:text.substring(Math.max(0,start-limit),start),afterContext:text.substring(end,Math.min(text.length,end+limit))}; }
-    function idForKey(sourceFrameId, occurrenceId) { var text=sourceFrameId+":"+occurrenceId, hash=0, i; for(i=0;i<text.length;i++) hash=(hash*31+text.charCodeAt(i))%1000000000; return prefix+hash+"-0"; }
+    function idForKey(sourceFrameId, occurrenceId) { var text=String(occurrenceId), encoded="", i, code; for(i=0;i<text.length;i++){code=text.charCodeAt(i);encoded+=("00000"+code).slice(-5);} return prefix+text.length+encoded+"-0"; }
     function id(bundle, occurrence) { return idForKey(bundle.sourceFrameId, occurrence.occurrenceId); }
     function eligible(occurrence) { return occurrence.enabled && occurrence.readingConfirmed && occurrence.reading.length > 0; }
     function find(annotations, annotationId) { var i; for(i=0;i<annotations.length;i++) if(annotations[i].annotationId===annotationId) return annotations[i]; return null; }
