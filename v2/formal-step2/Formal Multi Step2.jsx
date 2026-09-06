@@ -5,6 +5,7 @@
 #include "multi.js"
 #include "occurrences.js"
 #include "projection.js"
+#include "re-resolution.js"
 #include "multi-store.js"
 #include "workflow.js"
 #include "selection-adapter.jsx"
@@ -20,7 +21,7 @@
     }
 
     function run() {
-        var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, dialog, list, info, hint;
+        var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint;
         var editor, readingInput, enabledCheck, confirmedCheck, selectedText;
         var saveButton, closeButton, stateText, savePending = false, currentIndex = -1, i;
 
@@ -32,8 +33,8 @@
         if (!sourceIdentity.uuid || !sourceIdentity.documentPath) fail("save-document-first-for-long-text-persistence");
         cachedNote = String(source.note);
         stored = FormalMultiStore.read(cachedNote);
-        if (stored && stored.textSnapshot !== picked.text) fail("source-snapshot-mismatch");
-        bundle = stored || FormalMulti.createFrame(picked.text);
+        if (stored && stored.textSnapshot !== picked.text) { reResolution=FormalLongTextReResolution.reconcile(stored,picked.text); bundle=reResolution.bundle; }
+        else bundle = stored || FormalMulti.createFrame(picked.text);
         if (!bundle.occurrences) bundle.occurrences = FormalLongText.extract(picked.text).occurrences;
         bundle = FormalMulti.validate(bundle);
 
@@ -65,7 +66,7 @@
         actions.orientation = "row";
         saveButton = actions.add("button", undefined, "保存");
         closeButton = actions.add("button", undefined, "閉じる");
-        stateText = dialog.add("statictext", undefined, "状態: 読み込み完了");
+        stateText = dialog.add("statictext", undefined, reResolution ? "状態: source変更を再解決済み / unresolved=" + reResolution.unresolved.length + "件（保存で新snapshotを確定）" : "状態: 読み込み完了");
         stateText.characters = 90;
 
         function saveEditor() {

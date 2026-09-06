@@ -14,6 +14,7 @@ check('includes long-text model and multi namespace',
   source.indexOf('#include "../formal-step1/store.js"') >= 0 &&
   source.indexOf('#include "../formal-step1/core.js"') < source.indexOf('#include "multi.js"') &&
   source.indexOf('#include "../formal-step1/store.js"') < source.indexOf('#include "multi.js"') &&
+  source.indexOf('#include "re-resolution.js"') >= 0 &&
   source.indexOf('#include "multi.js"') >= 0 &&
   source.indexOf('#include "occurrences.js"') >= 0 &&
   source.indexOf('#include "projection.js"') >= 0 &&
@@ -59,8 +60,9 @@ check('keeps persistence strategies inside one save action',
   source.indexOf('source.note =') < 0);
 check('keeps rendering separate from the minimal shell',
   source.indexOf('FormalMultiPersistenceAdapter.save') >= 0 &&
+  source.indexOf('FormalLongTextReResolution.reconcile') >= 0 &&
   source.indexOf('FormalSegments') < 0 &&
-  source.indexOf('reconcile') < 0);
+  source.indexOf('renderer') < 0);
 check('validates the bundle before showing the palette',
   source.indexOf('FormalMulti.validate(bundle)') >= 0 &&
   source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0);
