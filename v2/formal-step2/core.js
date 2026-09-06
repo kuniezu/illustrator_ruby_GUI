@@ -19,6 +19,10 @@ function FormalStep2Apply(port, context, edit, hints) {
         observation = {status: "failed", reasons: ["observation-failed:" + (e.message || e)]};
     }
     trace("formal-step2 observe:status=" + observation.status);
+    if (observation.status !== "complete" && port.diagnostics) {
+        var observationDiagnostics = port.diagnostics(), diagnosticIndex;
+        for (diagnosticIndex = 0; diagnosticIndex < observationDiagnostics.length; diagnosticIndex++) trace("formal-step2 observe:diagnostic=" + observationDiagnostics[diagnosticIndex]);
+    }
     if (observation.status === "failed") {
         bundle.renderStatus = "failed";
         bundle.annotation.reviewReasons = observation.reasons;
