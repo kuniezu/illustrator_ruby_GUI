@@ -49,6 +49,8 @@ check('restores persisted long-text state through the multi store',
 check('keeps persistence strategies inside one save action',
   source.indexOf('pending: function') >= 0 &&
   source.indexOf('failure: function') >= 0 &&
+  source.indexOf('if (savePending) return') >= 0 &&
+  source.indexOf('saveButton.enabled = false') >= 0 &&
   source.indexOf('source.note =') < 0);
 check('keeps rendering separate from the minimal shell',
   source.indexOf('FormalMultiPersistenceAdapter.save') >= 0 &&
