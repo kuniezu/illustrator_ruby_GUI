@@ -66,6 +66,7 @@ function FormalStep2Adapter(doc, source) {
                 }
                 if (!placed) clusters.push({left: glyph.left, top: glyph.top, right: glyph.right, bottom: glyph.bottom, center: glyph.center, count: 1});
             }
+            mark("observe.outline", "items=" + items.length + ",clusters=" + clusters.length + ",sourceLines=" + source.textRange.lines.length);
             return clusters.length === source.textRange.lines.length ? clusters : null;
         } catch (e) { mark("observe.outline", "failed:" + (e.message || e)); return null; }
         finally {

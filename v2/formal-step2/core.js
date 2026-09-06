@@ -23,7 +23,14 @@ function FormalStep2Apply(port, context, edit, hints) {
         bundle.renderStatus = "failed";
         bundle.annotation.reviewReasons = observation.reasons;
         port.store(before.note, bundle);
-        return {bundle: bundle, decision: {status: "failed", reasons: observation.reasons}};
+        return {bundle: bundle, decision: {status: "failed", reasons: observation.reasons}, observation: observation};
+    }
+    if (observation.status !== "complete") {
+        bundle.revision++;
+        bundle.renderStatus = "unresolved";
+        bundle.annotation.reviewReasons = observation.reasons || ["observation-unavailable"];
+        port.store(before.note, bundle);
+        return {bundle: bundle, decision: {status: "unresolved", reasons: bundle.annotation.reviewReasons}, observation: observation};
     }
     decision = FormalSegments.plan(before.text, annotation.reading, observation.lines, bundle.splitHints, bundle.revision, bundle.revision);
     trace("formal-step2 plan:status=" + decision.status);
@@ -52,3 +59,4 @@ function FormalStep2Apply(port, context, edit, hints) {
     trace("formal-step2 store:final-written");
     return {bundle: bundle, decision: decision};
 }
+if (typeof module !== "undefined") module.exports = FormalStep2Apply;
