@@ -3,6 +3,7 @@ const path = require('path');
 
 const file = path.join(__dirname, '..', 'Formal Multi Step2.jsx');
 const source = fs.readFileSync(file, 'utf8');
+const saveClickBody = source.slice(source.indexOf('saveButton.onClick'), source.indexOf('closeButton.onClick'));
 
 function check(name, condition) {
   if (!condition) throw new Error(name);
@@ -68,7 +69,13 @@ check('connects projection to the existing observed renderer contract',
   source.indexOf('renderAdapter') < 0 &&
   source.indexOf('source.contents') < 0);
 check('guards PointText from the visible render path and exposes a disposable stage file',
-  source.indexOf('source.kind !== TextType.AREATEXT') >= 0 &&
+  source.indexOf('renderSupported = source.kind === TextType.AREATEXT') >= 0 &&
+  saveClickBody.indexOf('source.kind') < 0 &&
+  saveClickBody.indexOf('source.contents') < 0 &&
+  saveClickBody.indexOf('source.note') < 0 &&
+  saveClickBody.indexOf('FormalMultiPersistenceAdapter.save(source') < 0 &&
+  source.indexOf('FormalMultiPersistenceAdapter.saveBridgeOnly') >= 0 &&
+  source.indexOf('source.note=') < 0 &&
   source.indexOf('persistence-only') >= 0 &&
   source.indexOf('PointTextはrender対象外') >= 0 &&
   source.indexOf('Folder.temp') >= 0 &&

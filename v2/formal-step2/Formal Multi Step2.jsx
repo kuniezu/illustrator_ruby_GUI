@@ -39,7 +39,7 @@
     }
 
     function run() {
-        var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint, renderSources, stageFile;
+        var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint, renderSources, stageFile, renderSupported;
         var editor, readingInput, enabledCheck, confirmedCheck, selectedText;
         var saveButton, closeButton, stateText, savePending = false, currentIndex = -1, i;
 
@@ -47,6 +47,7 @@
         documentRef = app.activeDocument;
         picked = FormalMultiSelectionAdapter.resolveFrame(documentRef.selection, TextType, TextOrientation);
         source = picked.sourceFrame;
+        renderSupported = source.kind === TextType.AREATEXT;
         renderSources = runtimeSources();
         stageFile = File(Folder.temp.fsName + "/formal-multi-host-" + new Date().getTime() + ".log");
         sourceIdentity = FormalMultiPersistenceAdapter.captureIdentity(source, documentRef);
@@ -126,13 +127,13 @@
             closeButton.enabled = false;
             try {
                 saveEditor();
-                if (source.kind !== TextType.AREATEXT) {
+                if (!renderSupported) {
                     bundle = FormalMultiProjection.project(bundle);
-                    result = FormalMultiPersistenceAdapter.save(source, cachedNote, bundle, sourceIdentity, {
+                    result = FormalMultiPersistenceAdapter.saveBridgeOnly(bundle.textSnapshot, cachedNote, bundle, sourceIdentity, {
+                        pending: function (diagnostics) { stateText.text = "状態: persistence-onlyを実行中 / " + diagnostics.join(" | "); },
                         success: function (value) { savePending = false; saveButton.enabled = true; closeButton.enabled = true; cachedNote = value.note; refreshList(); stateText.text = "状態: 保存完了 / persistence-only / PointTextはrender対象外"; },
                         failure: function (diagnostics) { savePending = false; saveButton.enabled = true; closeButton.enabled = true; stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
                     });
-                    if (result.status === "success") { savePending = false; saveButton.enabled = true; closeButton.enabled = true; cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / persistence-only / PointTextはrender対象外"; }
                     else if (result.status === "failed") { savePending = false; saveButton.enabled = true; closeButton.enabled = true; stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }
                     return;
                 }
