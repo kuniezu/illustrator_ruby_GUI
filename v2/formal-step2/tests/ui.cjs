@@ -10,6 +10,10 @@ function check(name, condition) {
 }
 
 check('includes long-text model and multi namespace',
+  source.indexOf('#include "../formal-step1/core.js"') >= 0 &&
+  source.indexOf('#include "../formal-step1/store.js"') >= 0 &&
+  source.indexOf('#include "../formal-step1/core.js"') < source.indexOf('#include "multi.js"') &&
+  source.indexOf('#include "../formal-step1/store.js"') < source.indexOf('#include "multi.js"') &&
   source.indexOf('#include "multi.js"') >= 0 &&
   source.indexOf('#include "occurrences.js"') >= 0 &&
   source.indexOf('#include "projection.js"') >= 0 &&
@@ -17,6 +21,7 @@ check('includes long-text model and multi namespace',
   source.indexOf('#include "workflow.js"') >= 0);
 check('uses TextFrame selection without partial-range dependency',
   source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0 &&
+  source.indexOf('picked.strategy') >= 0 &&
   source.indexOf('picked.text') >= 0 &&
   source.indexOf('sourceKindText(source)') >= 0);
 check('extracts and displays every logical occurrence',

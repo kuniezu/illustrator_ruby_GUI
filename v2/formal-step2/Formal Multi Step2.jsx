@@ -1,5 +1,7 @@
 #target illustrator
 #targetengine "formal-multi-step2"
+#include "../formal-step1/core.js"
+#include "../formal-step1/store.js"
 #include "multi.js"
 #include "occurrences.js"
 #include "projection.js"
@@ -35,7 +37,7 @@
         dialog.orientation = "column";
         dialog.alignChildren = ["fill", "top"];
         dialog.preferredSize = [760, 520];
-        info = dialog.add("statictext", undefined, "TextFrame認識: " + sourceKindText(source) + " / 横書き    候補: " + bundle.occurrences.length + "件");
+        info = dialog.add("statictext", undefined, "TextFrame認識: " + sourceKindText(source) + " / 横書き / " + picked.strategy + "    候補: " + bundle.occurrences.length + "件");
         info.characters = 90;
         hint = dialog.add("statictext", undefined, "一覧からoccurrenceを選び、下のeditorでreading/enabled/確認済みを編集してください。");
         hint.characters = 90;

@@ -28,18 +28,60 @@ var FormalMultiSelectionAdapter = (function () {
         if(typeof start!=="number"||typeof end!=="number"||!isFinite(start)||!isFinite(end)||Math.floor(start)!==start||Math.floor(end)!==end||start<0||end<=start||end>String(source.contents).length)fail("invalid-text-selection");
         return {sourceFrame:source,start:start,end:end,text:String(source.contents).substring(start,end)};
     }
-    function resolveFrame(selection, TextTypeRef, TextOrientationRef) {
-        var candidate=null, kind;
-        if (selection && selection.typename === "TextFrame") candidate=selection;
-        else if (selection && typeof selection.length === "number" && selection.length === 1) {
-            candidate=selection[0];
-            if (candidate && candidate.typename === "TextRange") candidate=candidate.parent;
-        }
+    function validateSourceFrame(candidate, TextTypeRef, TextOrientationRef) {
+        var kind, text;
         if (!candidate || candidate.typename !== "TextFrame") fail("single-text-frame-selection-required");
-        kind=candidate.kind;
         if (candidate.orientation!==TextOrientationRef.HORIZONTAL) fail("text-frame-vertical-unsupported");
+        kind=candidate.kind;
         if (kind!==TextTypeRef.AREATEXT && kind!==TextTypeRef.POINTTEXT) fail("text-frame-kind-unsupported");
-        return {sourceFrame:candidate,text:String(candidate.contents)};
+        text=String(candidate.contents);
+        return {sourceFrame:candidate,text:text};
+    }
+    function trySourceFrameStrategy(name, getter, TextTypeRef, TextOrientationRef, diagnostics) {
+        try {
+            var result=validateSourceFrame(getter(), TextTypeRef, TextOrientationRef);
+            result.strategy=name;
+            diagnostics.push(name + ": success");
+            return result;
+        } catch(error) {
+            diagnostics.push(name + ": " + (error.message || error));
+            return null;
+        }
+    }
+    function resolveFrame(selection, TextTypeRef, TextOrientationRef) {
+        var diagnostics=[], result;
+        result=trySourceFrameStrategy("A-direct-selection", function () {
+            if (selection && selection.typename === "TextFrame") return selection;
+            fail("selection-is-not-text-frame");
+        }, TextTypeRef, TextOrientationRef, diagnostics);
+        if(result)return result;
+        result=trySourceFrameStrategy("B-selection-array-first", function () {
+            if (!selection || typeof selection.length !== "number" || selection.length !== 1) fail("single-text-frame-selection-required");
+            if (!selection[0] || selection[0].typename !== "TextFrame") fail("selection-item-is-not-text-frame");
+            return selection[0];
+        }, TextTypeRef, TextOrientationRef, diagnostics);
+        if(result)return result;
+        result=trySourceFrameStrategy("C-text-range-parent", function () {
+            var selected=selection;
+            if (selection && typeof selection.length === "number") {
+                if(selection.length!==1) fail("single-text-frame-selection-required");
+                selected=selection[0];
+            }
+            if(!selected || selected.typename!=="TextRange" || !selected.parent) fail("text-range-parent-unavailable");
+            return selected.parent;
+        }, TextTypeRef, TextOrientationRef, diagnostics);
+        if(result)return result;
+        result=trySourceFrameStrategy("D-text-range-story-frame", function () {
+            var selected=selection;
+            if (selection && typeof selection.length === "number") {
+                if(selection.length!==1) fail("single-text-frame-selection-required");
+                selected=selection[0];
+            }
+            if(!selected || selected.typename!=="TextRange") fail("text-range-selection-required");
+            return storyFrame(selected);
+        }, TextTypeRef, TextOrientationRef, diagnostics);
+        if(result)return result;
+        fail("source-frame-resolution-failed: " + diagnostics.join(" | "));
     }
     return {resolve:resolve,resolveFrame:resolveFrame};
 }());
