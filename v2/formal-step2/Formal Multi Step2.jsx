@@ -127,7 +127,7 @@
                 saveEditor();
                 bundle = FormalMultiProjection.project(bundle);
                 bundle.renderStatus = "complete";
-                result = FormalMultiPersistenceAdapter.saveRendered(source, cachedNote, bundle, sourceIdentity, FormalMultiRenderer.specifications(bundle), renderSources, {
+                result = FormalMultiPersistenceAdapter.saveRendered(bundle.textSnapshot, cachedNote, bundle, sourceIdentity, FormalMultiRenderer.specifications(bundle), renderSources, {
                     pending: function (diagnostics) { stateText.text = "状態: 保存経路Bを実行中 / " + diagnostics.join(" | "); },
                     success: function (value) { savePending = false; saveButton.enabled = true; closeButton.enabled = true; cachedNote = value.note; refreshList(); stateText.text = "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
                     failure: function (diagnostics) { savePending = false; saveButton.enabled = true; closeButton.enabled = true; stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }

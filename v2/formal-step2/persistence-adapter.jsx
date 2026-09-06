@@ -65,11 +65,11 @@ var FormalMultiPersistenceAdapter = (function () {
         activeMessages.push(bt); try { sent=bt.send(); } catch(error) { removeMessage(bt); throw error; }
         callbacks.pending(sent===false?"B-render-persist: send=false (queued-or-not-sent)":"B-render-persist: send=true"); return bt;
     }
-    function saveRendered(source, cachedNote, bundle, identity, specifications, sources, callbacks, bridgeTalkRef) {
+    function saveRendered(expectedText, cachedNote, bundle, identity, specifications, sources, callbacks, bridgeTalkRef) {
         var nextNote=FormalMultiStore.write(cachedNote,bundle), diagnostics=[], result;
         callbacks=callbacks||{};
         try {
-            result=renderedBridge(source.contents,cachedNote,nextNote,identity||{},bundle,specifications,sources,{
+            result=renderedBridge(expectedText,cachedNote,nextNote,identity||{},bundle,specifications,sources,{
                 pending:function(message){diagnostics.push(message);if(callbacks.pending)callbacks.pending(diagnostics.slice(0));},
                 success:function(value){value.diagnostics=diagnostics.concat(["B-render-persist: success"]);if(callbacks.success)callbacks.success(value);},
                 failure:function(message){diagnostics.push(message);if(callbacks.failure)callbacks.failure(diagnostics.slice(0));}

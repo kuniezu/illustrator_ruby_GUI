@@ -146,7 +146,7 @@ function FormalStep2Adapter(doc, source) {
     }
     function restoreManaged(sourceFrameId, saved) {
         var items = managedItems(sourceFrameId), i, item, restored;
-        for (i = items.length - 1; i >= 0; i--) try { items[i].remove(); } catch (ignore) {}
+        for (i = items.length - 1; i >= 0; i--) items[i].remove();
         for (i = 0; i < saved.length; i++) {
             restored = source.layer.textFrames.add();
             restored.note = saved[i].note;
@@ -158,7 +158,7 @@ function FormalStep2Adapter(doc, source) {
         }
     }
     function transaction(sourceFrameId, plans, commit) {
-        var saved = snapshotManaged(sourceFrameId), i, plan, proxy;
+        var saved = snapshotManaged(sourceFrameId), savedNote = String(source.note), i, plan, proxy, rollbackErrors = [];
         try {
             for (i = 0; i < plans.length; i++) {
                 plan = plans[i];
@@ -167,8 +167,10 @@ function FormalStep2Adapter(doc, source) {
             }
             if (commit) commit();
         } catch (error) {
-            restoreManaged(sourceFrameId, saved);
-            mark("render:rollback", "complete");
+            try { restoreManaged(sourceFrameId, saved); } catch (rollbackError) { rollbackErrors.push("outputs=" + (rollbackError.message || rollbackError)); }
+            try { source.note = savedNote; if (String(source.note) !== savedNote) throw Error("source-note-readback-mismatch"); } catch (rollbackNoteError) { rollbackErrors.push("note=" + (rollbackNoteError.message || rollbackNoteError)); }
+            if (rollbackErrors.length) mark("render:rollback-failed", rollbackErrors.join(" | ")); else mark("render:rollback", "complete");
+            if (rollbackErrors.length) throw Error((error.message || error) + " / rollback-failed: " + rollbackErrors.join(" | "));
             throw error;
         }
     }
