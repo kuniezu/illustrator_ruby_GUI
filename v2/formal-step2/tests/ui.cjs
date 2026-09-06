@@ -37,15 +37,21 @@ check('uses a nonmodal palette and saves editable occurrence state',
   source.indexOf('FormalMultiWorkflow.setOccurrenceReading') >= 0 &&
   source.indexOf('FormalMultiWorkflow.setOccurrenceEnabled') >= 0 &&
   source.indexOf('FormalMultiProjection.project') >= 0 &&
+  source.indexOf('FormalMultiPersistenceAdapter.save') >= 0 &&
+  source.indexOf('cachedNote') >= 0 &&
   source.indexOf('list.onChange') >= 0 &&
   source.indexOf('function loadEditor(index)') >= 0 &&
   source.indexOf('保存完了') >= 0);
 check('restores persisted long-text state through the multi store',
-  source.indexOf('FormalMultiStore.read(source.note)') >= 0 &&
-  source.indexOf('FormalMultiStore.write(source.note, bundle)') >= 0 &&
+  source.indexOf('FormalMultiStore.read(cachedNote)') >= 0 &&
+  source.indexOf('FormalMultiPersistenceAdapter.save(source, cachedNote, bundle') >= 0 &&
   source.indexOf('再実行で復元') >= 0);
+check('keeps persistence strategies inside one save action',
+  source.indexOf('pending: function') >= 0 &&
+  source.indexOf('failure: function') >= 0 &&
+  source.indexOf('source.note =') < 0);
 check('keeps rendering separate from the minimal shell',
-  source.indexOf('FormalMultiStore.write') >= 0 &&
+  source.indexOf('FormalMultiPersistenceAdapter.save') >= 0 &&
   source.indexOf('FormalSegments') < 0 &&
   source.indexOf('reconcile') < 0);
 check('validates the bundle before showing the palette',

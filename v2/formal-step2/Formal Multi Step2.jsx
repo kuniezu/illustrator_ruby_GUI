@@ -8,6 +8,7 @@
 #include "multi-store.js"
 #include "workflow.js"
 #include "selection-adapter.jsx"
+#include "persistence-adapter.jsx"
 
 /* Minimal scalable long-text shell. Logical occurrences stay separate from render segments. */
 (function () {
@@ -19,7 +20,7 @@
     }
 
     function run() {
-        var documentRef, picked, source, stored, bundle, dialog, list, info, hint;
+        var documentRef, picked, source, cachedNote, stored, bundle, dialog, list, info, hint;
         var editor, readingInput, enabledCheck, confirmedCheck, selectedText;
         var saveButton, closeButton, stateText, currentIndex = -1, i;
 
@@ -27,7 +28,8 @@
         documentRef = app.activeDocument;
         picked = FormalMultiSelectionAdapter.resolveFrame(documentRef.selection, TextType, TextOrientation);
         source = picked.sourceFrame;
-        stored = FormalMultiStore.read(source.note);
+        cachedNote = String(source.note);
+        stored = FormalMultiStore.read(cachedNote);
         if (stored && stored.textSnapshot !== picked.text) fail("source-snapshot-mismatch");
         bundle = stored || FormalMulti.createFrame(picked.text);
         if (!bundle.occurrences) bundle.occurrences = FormalLongText.extract(picked.text).occurrences;
@@ -94,12 +96,17 @@
             } catch (error) { stateText.text = "状態: error / " + (error.message || error); }
         };
         saveButton.onClick = function () {
+            var result;
             try {
                 saveEditor();
                 bundle = FormalMultiProjection.project(bundle);
-                source.note = FormalMultiStore.write(source.note, bundle);
-                refreshList();
-                stateText.text = "状態: 保存完了 / Annotation=" + bundle.annotations.length + "件（再実行で復元）";
+                result = FormalMultiPersistenceAdapter.save(source, cachedNote, bundle, {
+                    pending: function (diagnostics) { stateText.text = "状態: 保存経路Bを実行中 / " + diagnostics.join(" | "); },
+                    success: function (value) { cachedNote = value.note; refreshList(); stateText.text = "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
+                    failure: function (diagnostics) { stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
+                });
+                if(result.status === "success") { cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / " + result.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; }
+                else if(result.status === "failed") { stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }
             } catch (error) { stateText.text = "状態: error / " + (error.message || error); }
         };
         closeButton.onClick = function () { dialog.close(); };
