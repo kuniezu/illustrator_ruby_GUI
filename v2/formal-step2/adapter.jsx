@@ -144,6 +144,21 @@ function FormalStep2Adapter(doc, source) {
         }
         return result;
     }
+    function removeStaleManaged(sourceFrameId, plans) {
+        var desired = {}, items = managedItems(sourceFrameId), i, j, plan, segment, key, parts;
+        for (i = 0; i < plans.length; i++) {
+            plan = plans[i];
+            for (j = 0; j < (plan.decision.segments || []).length; j++) {
+                segment = plan.decision.segments[j];
+                desired[plan.annotationId + ";" + segment.renderSegmentId] = true;
+            }
+        }
+        for (i = items.length - 1; i >= 0; i--) {
+            parts = String(items[i].note).split(";");
+            key = parts.length === 4 ? parts[2] + ";" + parts[3] : "";
+            if (!desired[key]) items[i].remove();
+        }
+    }
     function restoreManaged(sourceFrameId, saved) {
         var items = managedItems(sourceFrameId), i, item, restored;
         for (i = items.length - 1; i >= 0; i--) items[i].remove();
@@ -165,6 +180,7 @@ function FormalStep2Adapter(doc, source) {
                 proxy = {sourceFrameId: sourceFrameId, annotation: {annotationId: plan.annotationId}};
                 reconcile(proxy, plan.decision);
             }
+            removeStaleManaged(sourceFrameId, plans);
             if (commit) commit();
         } catch (error) {
             try { restoreManaged(sourceFrameId, saved); } catch (rollbackError) { rollbackErrors.push("outputs=" + (rollbackError.message || rollbackError)); }
@@ -174,7 +190,6 @@ function FormalStep2Adapter(doc, source) {
             throw error;
         }
     }
-    function renderTransaction(sourceFrameId, plans) { transaction(sourceFrameId, plans, null); }
     function renderAndStoreTransaction(sourceFrameId, plans, commit) { transaction(sourceFrameId, plans, commit); }
-    return {snapshot: snapshot, inspect: inspect, store: store, observe: observe, reconcile: reconcile, renderTransaction: renderTransaction, renderAndStoreTransaction: renderAndStoreTransaction, diagnostics: function() { return trace.slice(); }};
+    return {snapshot: snapshot, inspect: inspect, store: store, observe: observe, reconcile: reconcile, renderAndStoreTransaction: renderAndStoreTransaction, diagnostics: function() { return trace.slice(); }};
 }
