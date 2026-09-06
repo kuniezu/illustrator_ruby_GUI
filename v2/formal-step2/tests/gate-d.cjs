@@ -10,6 +10,7 @@ test('Gate D batch has A-E cases and one-shot report', () => {
   assert.ok(s.includes('textFrames.areaText')); assert.ok(s.includes('tracking=200')); assert.ok(s.includes('tracking-clamp')); assert.ok(s.includes('geometryClusters='));
   assert.ok(s.includes('fitFixture')); assert.ok(s.includes('fixtures.pop()')); assert.ok(s.includes('fontSize=70')); assert.ok(s.includes('ignorePath')); assert.ok(s.includes('areaText(path)')); assert.ok(s.includes('proportional-mixed-observe'));
   assert.ok(s.includes('actual-reflow')); assert.ok(s.includes('renderer-lifecycle'));
+  assert.ok(s.includes('fitFixture(fixture("C", "一張羅", 120), 2)'));
   assert.ok(s.includes('fixture=6glyphs')); assert.ok(s.includes('一二三四五六'));
   assert.ok(s.includes('desired=2->1->2'));
 });
