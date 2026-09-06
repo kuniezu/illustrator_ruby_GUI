@@ -41,7 +41,30 @@ var FormalMultiRenderer = (function () {
         return planned;
     }
 
-    return { plan: plan, render: render };
+    function specifications(bundle) {
+        var result = [], i, occurrence, annotation, annotationId;
+        for (i = 0; i < bundle.occurrences.length; i++) {
+            occurrence = bundle.occurrences[i];
+            annotationId = FormalMultiProjection.id(bundle, occurrence);
+            annotation = findAnnotation(bundle, annotationId);
+            result.push({
+                annotationId: annotationId,
+                annotation: annotation ? {
+                    annotationId: annotation.annotationId,
+                    sourceFrameId: annotation.sourceFrameId,
+                    anchor: annotation.anchor,
+                    reading: annotation.reading,
+                    readingConfirmed: annotation.readingConfirmed,
+                    enabled: annotation.enabled,
+                    placementMode: annotation.placementMode,
+                    splitHints: annotation.splitHints || []
+                } : null
+            });
+        }
+        return result;
+    }
+
+    return { plan: plan, render: render, specifications: specifications };
 }());
 
 if (typeof module !== "undefined") module.exports = FormalMultiRenderer;

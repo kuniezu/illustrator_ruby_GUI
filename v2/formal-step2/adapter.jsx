@@ -126,5 +126,53 @@ function FormalStep2Adapter(doc, source) {
         }
         mark("render:update", "complete");
     }
-    return {snapshot: snapshot, inspect: inspect, store: store, observe: observe, reconcile: reconcile, diagnostics: function() { return trace.slice(); }};
+    function managedItems(sourceFrameId) {
+        var result = [], i, item, note, parts;
+        for (i = 0; i < doc.textFrames.length; i++) {
+            item = doc.textFrames[i]; note = String(item.note);
+            if (note.indexOf("formal-step2-output:v1;") !== 0) continue;
+            parts = note.split(";");
+            if (parts.length === 4 && parts[1] === sourceFrameId) result.push(item);
+        }
+        return result;
+    }
+    function snapshotManaged(sourceFrameId) {
+        var result = [], items = managedItems(sourceFrameId), i, item;
+        for (i = 0; i < items.length; i++) {
+            item = items[i];
+            result.push({note: String(item.note), contents: String(item.contents), size: item.textRange.characterAttributes.size, tracking: item.textRange.characterAttributes.tracking, left: item.left, top: item.top});
+        }
+        return result;
+    }
+    function restoreManaged(sourceFrameId, saved) {
+        var items = managedItems(sourceFrameId), i, item, restored;
+        for (i = items.length - 1; i >= 0; i--) try { items[i].remove(); } catch (ignore) {}
+        for (i = 0; i < saved.length; i++) {
+            restored = source.layer.textFrames.add();
+            restored.note = saved[i].note;
+            restored.contents = saved[i].contents;
+            restored.textRange.characterAttributes.size = saved[i].size;
+            restored.textRange.characterAttributes.tracking = saved[i].tracking;
+            restored.left = saved[i].left;
+            restored.top = saved[i].top;
+        }
+    }
+    function transaction(sourceFrameId, plans, commit) {
+        var saved = snapshotManaged(sourceFrameId), i, plan, proxy;
+        try {
+            for (i = 0; i < plans.length; i++) {
+                plan = plans[i];
+                proxy = {sourceFrameId: sourceFrameId, annotation: {annotationId: plan.annotationId}};
+                reconcile(proxy, plan.decision);
+            }
+            if (commit) commit();
+        } catch (error) {
+            restoreManaged(sourceFrameId, saved);
+            mark("render:rollback", "complete");
+            throw error;
+        }
+    }
+    function renderTransaction(sourceFrameId, plans) { transaction(sourceFrameId, plans, null); }
+    function renderAndStoreTransaction(sourceFrameId, plans, commit) { transaction(sourceFrameId, plans, commit); }
+    return {snapshot: snapshot, inspect: inspect, store: store, observe: observe, reconcile: reconcile, renderTransaction: renderTransaction, renderAndStoreTransaction: renderAndStoreTransaction, diagnostics: function() { return trace.slice(); }};
 }

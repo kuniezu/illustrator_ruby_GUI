@@ -48,7 +48,7 @@ check('uses a nonmodal palette and saves editable occurrence state',
   source.indexOf('保存完了') >= 0);
 check('restores persisted long-text state through the multi store',
   source.indexOf('FormalMultiStore.read(cachedNote)') >= 0 &&
-  source.indexOf('FormalMultiPersistenceAdapter.save(source, cachedNote, bundle') >= 0 &&
+  source.indexOf('FormalMultiPersistenceAdapter.saveRendered(source, cachedNote, bundle') >= 0 &&
   source.indexOf('再実行で復元') >= 0);
 check('keeps persistence strategies inside one save action',
   source.indexOf('pending: function') >= 0 &&
@@ -61,10 +61,11 @@ check('keeps persistence strategies inside one save action',
 check('connects projection to the existing observed renderer contract',
   source.indexOf('FormalMultiPersistenceAdapter.save') >= 0 &&
   source.indexOf('FormalLongTextReResolution.reconcile') >= 0 &&
-  source.indexOf('FormalStep2Adapter') >= 0 &&
-  source.indexOf('FormalMultiRenderer.render') >= 0 &&
-  source.indexOf('FormalMultiProjection.project') < source.indexOf('FormalMultiRenderer.render') &&
-  source.indexOf('FormalMultiRenderer.render') < source.indexOf('FormalMultiPersistenceAdapter.save'));
+  source.indexOf('FormalMultiRenderer.specifications') >= 0 &&
+  source.indexOf('FormalMultiPersistenceAdapter.saveRendered') >= 0 &&
+  source.indexOf('FormalMultiProjection.project') < source.indexOf('FormalMultiPersistenceAdapter.saveRendered') &&
+  source.indexOf('FormalStep2Adapter') < 0 &&
+  source.indexOf('renderAdapter') < 0);
 check('validates the bundle before showing the palette',
   source.indexOf('FormalMulti.validate(bundle)') >= 0 &&
   source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0);
