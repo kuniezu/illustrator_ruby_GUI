@@ -21,6 +21,8 @@ and persistence contracts:
 - **Readings:** a group has a default reading propagated to all member occurrences,
   with a future per-occurrence override. Applying a reading later creates/updates
   each selected v2 Annotation using its occurrence range and source-relative anchor.
+  A logical split clears an existing reading on all children, and a merge clears it
+  when any selected part has a reading; the UI must request a new explicit reading.
 - **Visibility and enablement:** UI visibility is independent from render
   `enabled`; hiding a row must not suppress its annotation.
 - **Persistence:** the multi store will persist occurrence ranges, group membership,

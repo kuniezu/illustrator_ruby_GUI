@@ -30,6 +30,24 @@ test('splitAt edits one logical range and mergeAdjacent restores it', () => {
   assert.ok(b.occurrences[0].lineage.length >= 3);
 });
 
+test('split clears a confirmed reading instead of duplicating it', () => {
+  let b = M.extract('徳川家康');
+  b = M.setGroupReading(b, b.occurrences[0].groupId, 'とくがわいえやす', true);
+  b = M.splitAt(b, b.occurrences[0].occurrenceId, [2]);
+  assert.deepEqual(b.occurrences.map(x => ({reading:x.reading,confirmed:x.readingConfirmed})), [
+    {reading:'',confirmed:false}, {reading:'',confirmed:false}
+  ]);
+});
+
+test('merge clears conflicting child readings instead of inheriting one', () => {
+  let b = M.extract('徳川家康');
+  b = M.splitAt(b, b.occurrences[0].occurrenceId, [2]);
+  b = M.setGroupReading(b, b.occurrences[0].groupId, 'とくがわ', true);
+  b = M.mergeAdjacent(b, b.occurrences.map(x => x.occurrenceId));
+  assert.equal(b.occurrences[0].reading, '');
+  assert.equal(b.occurrences[0].readingConfirmed, false);
+});
+
 test('supports multiple logical units with readings on only selected units', () => {
   let b = M.extract('水戸藩士市田九衛門隆正');
   b = M.splitAt(b, b.occurrences[0].occurrenceId, [4, 6, 9]);

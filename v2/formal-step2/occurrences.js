@@ -61,7 +61,7 @@ var FormalLongText = (function () {
         points.push(source.end - source.start);
         for (i = 0; i < points.length - 1; i++) {
             start = source.start + points[i]; end = source.start + points[i + 1];
-            part = cloneOccurrence(source); part.occurrenceId = occurrenceId + "-split-" + i; part.start = start; part.end = end; part.surface = next.textSnapshot.substring(start, end); part.groupId = "occurrence-group-" + part.occurrenceId; part.lineage = source.lineage.concat([source.occurrenceId]); pieces.push(part);
+            part = cloneOccurrence(source); part.occurrenceId = occurrenceId + "-split-" + i; part.start = start; part.end = end; part.surface = next.textSnapshot.substring(start, end); part.groupId = "occurrence-group-" + part.occurrenceId; part.lineage = source.lineage.concat([source.occurrenceId]); if (source.reading || source.readingConfirmed) { part.reading = ""; part.readingConfirmed = false; } pieces.push(part);
         }
         next.occurrences.splice.apply(next.occurrences, [index, 1].concat(pieces));
         return validate(next);
@@ -75,6 +75,7 @@ var FormalLongText = (function () {
         for (i = 1; i < selected.length; i++) if (selected[i - 1].end !== selected[i].start) fail("merge-requires-contiguous-ranges");
         merged = cloneOccurrence(selected[0]); merged.end = selected[selected.length - 1].end; merged.surface = next.textSnapshot.substring(merged.start, merged.end); merged.groupId = selected[0].groupId; merged.lineage = [];
         for (i = 0; i < selected.length; i++) merged.lineage = merged.lineage.concat(selected[i].lineage);
+        for (i = 0; i < selected.length; i++) if (selected[i].reading || selected[i].readingConfirmed) { merged.reading = ""; merged.readingConfirmed = false; break; }
         for (i = next.occurrences.length - 1; i >= 0; i--) if (ids[next.occurrences[i].occurrenceId]) next.occurrences.splice(i, 1);
         next.occurrences.push(merged); next.occurrences.sort(function (a, b) { return a.start - b.start; });
         return validate(next);
