@@ -12,12 +12,13 @@ and persistence contracts:
 - **Extractor / occurrences:** read the Area Text contents once and create one
   occurrence for every contiguous kanji run. Each occurrence retains `start`, `end`,
   and `surface`; repeated surface forms remain separate occurrences.
-- **Grouping:** identical surfaces may share a UI lexeme group for compact display,
-  but the occurrence list is never deduplicated. Merge and split change only group
-  membership and source ranges; they are not render-line SplitHints.
-- **Readings:** a group has a default reading, with a future per-occurrence override.
-  Applying a reading later creates/updates each selected v2 Annotation using its
-  occurrence range and source-relative anchor.
+- **Grouping and segmentation:** identical surfaces may share a UI lexeme group for
+  compact display, but the occurrence list is never deduplicated. `splitAt` creates
+  contiguous source ranges from one occurrence and `mergeAdjacent` combines only
+  contiguous ranges. These are logical source edits, not render-line SplitHints.
+- **Readings:** a group has a default reading propagated to all member occurrences,
+  with a future per-occurrence override. Applying a reading later creates/updates
+  each selected v2 Annotation using its occurrence range and source-relative anchor.
 - **Visibility and enablement:** UI visibility is independent from render
   `enabled`; hiding a row must not suppress its annotation.
 - **Persistence:** the multi store will persist occurrence ranges, group membership,

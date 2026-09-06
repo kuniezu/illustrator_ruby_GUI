@@ -17,16 +17,24 @@ test('groups repeated surfaces while preserving distinct occurrences', () => {
   assert.notEqual(b.occurrences[0].groupId, b.occurrences[2].groupId);
 });
 
-test('merge and split change group membership only', () => {
-  let b = M.extract('甲乙 丙');
-  const first = b.occurrences[0].occurrenceId;
-  const second = b.occurrences[1].occurrenceId;
-  b = M.merge(b, [first, second], 'lexeme-custom');
-  assert.equal(b.occurrences[0].groupId, 'lexeme-custom');
-  assert.equal(b.occurrences[1].groupId, 'lexeme-custom');
-  b = M.split(b, [second]);
-  assert.equal(b.occurrences[0].groupId, 'lexeme-custom');
-  assert.equal(b.occurrences[1].groupId, 'occurrence-group-' + second);
+test('splitAt edits one logical range and mergeAdjacent restores it', () => {
+  let b = M.extract('徳川斉昭');
+  const original = b.occurrences[0].occurrenceId;
+  b = M.splitAt(b, original, [2]);
+  assert.deepEqual(b.occurrences.map(x => ({start:x.start,end:x.end,surface:x.surface})), [
+    {start:0,end:2,surface:'徳川'}, {start:2,end:4,surface:'斉昭'}
+  ]);
+  const ids = b.occurrences.map(x => x.occurrenceId);
+  b = M.mergeAdjacent(b, ids);
+  assert.deepEqual(b.occurrences.map(x => ({start:x.start,end:x.end,surface:x.surface})), [{start:0,end:4,surface:'徳川斉昭'}]);
+});
+
+test('group reading propagates without collapsing occurrence identity', () => {
+  let b = M.extract('甲 甲');
+  b = M.setGroupReading(b, b.occurrences[0].groupId, 'こう', true);
+  assert.equal(b.occurrences[0].reading, 'こう');
+  assert.equal(b.occurrences[1].reading, 'こう');
+  assert.notEqual(b.occurrences[0].occurrenceId, b.occurrences[1].occurrenceId);
 });
 
 test('occurrence visibility and render enablement remain independent', () => {
@@ -38,7 +46,8 @@ test('occurrence visibility and render enablement remain independent', () => {
 
 test('invalid and empty grouping selections are rejected', () => {
   const b = M.extract('甲');
-  assert.throws(() => M.merge(b, []), /empty-merge-selection/);
-  assert.throws(() => M.split(b, []), /empty-split-selection/);
-  assert.throws(() => M.merge(b, ['missing']), /occurrence-missing/);
+  assert.throws(() => M.mergeAdjacent(b, ['occurrence-0']), /merge-requires-adjacent-occurrences/);
+  assert.throws(() => M.splitAt(b, b.occurrences[0].occurrenceId, []), /empty-split-boundaries/);
+  assert.throws(() => M.mergeAdjacent(b, ['missing', 'also-missing']), /occurrence-missing/);
+  assert.throws(() => M.splitAt(b, b.occurrences[0].occurrenceId, [99]), /invalid-split-boundary/);
 });

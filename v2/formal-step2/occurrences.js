@@ -48,25 +48,40 @@ var FormalLongText = (function () {
         }
         return validate({schemaVersion: 1, textSnapshot: source, occurrences: occurrences});
     }
-    function merge(bundle, occurrenceIds, groupId) {
-        var next = clone(bundle), ids = {}, chosen = groupId || null, i, j, occurrence;
-        if (!occurrenceIds || !occurrenceIds.length) fail("empty-merge-selection");
-        for (i = 0; i < occurrenceIds.length; i++) ids[occurrenceIds[i]] = true;
-        for (i = 0; i < next.occurrences.length; i++) if (ids[next.occurrences[i].occurrenceId]) { chosen = chosen || next.occurrences[i].groupId; break; }
-        if (!chosen) fail("occurrence-missing");
-        for (i = 0; i < next.occurrences.length; i++) if (ids[next.occurrences[i].occurrenceId]) next.occurrences[i].groupId = chosen;
+    function splitAt(bundle, occurrenceId, boundaries) {
+        var next = clone(bundle), index = -1, source, points = [0], pieces = [], i, start, end, part;
+        if (!boundaries || !boundaries.length) fail("empty-split-boundaries");
+        for (i = 0; i < next.occurrences.length; i++) if (next.occurrences[i].occurrenceId === occurrenceId) index = i;
+        if (index < 0) fail("occurrence-missing");
+        source = next.occurrences[index];
+        for (i = 0; i < boundaries.length; i++) { if (typeof boundaries[i] !== "number" || boundaries[i] <= points[points.length - 1] || boundaries[i] >= source.end - source.start) fail("invalid-split-boundary"); points.push(boundaries[i]); }
+        points.push(source.end - source.start);
+        for (i = 0; i < points.length - 1; i++) {
+            start = source.start + points[i]; end = source.start + points[i + 1];
+            part = cloneOccurrence(source); part.occurrenceId = occurrenceId + "-split-" + i; part.start = start; part.end = end; part.surface = next.textSnapshot.substring(start, end); part.groupId = "occurrence-group-" + part.occurrenceId; pieces.push(part);
+        }
+        next.occurrences.splice.apply(next.occurrences, [index, 1].concat(pieces));
         return validate(next);
     }
-    function split(bundle, occurrenceIds) {
-        var next = clone(bundle), ids = {}, i, occurrence;
-        if (!occurrenceIds || !occurrenceIds.length) fail("empty-split-selection");
+    function mergeAdjacent(bundle, occurrenceIds) {
+        var next = clone(bundle), ids = {}, selected = [], i, j, merged;
+        if (!occurrenceIds || occurrenceIds.length < 2) fail("merge-requires-adjacent-occurrences");
         for (i = 0; i < occurrenceIds.length; i++) ids[occurrenceIds[i]] = true;
-        for (i = 0; i < next.occurrences.length; i++) if (ids[next.occurrences[i].occurrenceId]) {
-            occurrence = next.occurrences[i];
-            occurrence.groupId = "occurrence-group-" + occurrence.occurrenceId;
+        for (i = 0; i < next.occurrences.length; i++) if (ids[next.occurrences[i].occurrenceId]) selected.push(next.occurrences[i]);
+        if (selected.length !== occurrenceIds.length) fail("occurrence-missing");
+        for (i = 1; i < selected.length; i++) if (selected[i - 1].end !== selected[i].start) fail("merge-requires-contiguous-ranges");
+        merged = cloneOccurrence(selected[0]); merged.end = selected[selected.length - 1].end; merged.surface = next.textSnapshot.substring(merged.start, merged.end); merged.groupId = selected[0].groupId;
+        for (i = next.occurrences.length - 1; i >= 0; i--) if (ids[next.occurrences[i].occurrenceId]) next.occurrences.splice(i, 1);
+        next.occurrences.push(merged); next.occurrences.sort(function (a, b) { return a.start - b.start; });
+        return validate(next);
+    }
+    function setGroupReading(bundle, groupId, reading, confirmed) {
+        var next = clone(bundle), i, occurrence;
+        for (i = 0; i < next.occurrences.length; i++) if (next.occurrences[i].groupId === groupId) {
+            occurrence = next.occurrences[i]; occurrence.reading = String(reading); occurrence.readingConfirmed = confirmed !== false && occurrence.reading.length > 0;
         }
         return validate(next);
     }
-    return {extract: extract, validate: validate, clone: clone, merge: merge, split: split};
+    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, setGroupReading: setGroupReading};
 }());
 if (typeof module !== "undefined") module.exports = FormalLongText;
