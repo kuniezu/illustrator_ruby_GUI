@@ -58,11 +58,13 @@ check('keeps persistence strategies inside one save action',
   source.indexOf('closeButton.enabled = false') >= 0 &&
   source.indexOf('closeButton.enabled = true') >= 0 &&
   source.indexOf('source.note =') < 0);
-check('keeps rendering separate from the minimal shell',
+check('connects projection to the existing observed renderer contract',
   source.indexOf('FormalMultiPersistenceAdapter.save') >= 0 &&
   source.indexOf('FormalLongTextReResolution.reconcile') >= 0 &&
-  source.indexOf('FormalSegments') < 0 &&
-  source.indexOf('renderer') < 0);
+  source.indexOf('FormalStep2Adapter') >= 0 &&
+  source.indexOf('FormalMultiRenderer.render') >= 0 &&
+  source.indexOf('FormalMultiProjection.project') < source.indexOf('FormalMultiRenderer.render') &&
+  source.indexOf('FormalMultiRenderer.render') < source.indexOf('FormalMultiPersistenceAdapter.save'));
 check('validates the bundle before showing the palette',
   source.indexOf('FormalMulti.validate(bundle)') >= 0 &&
   source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0);

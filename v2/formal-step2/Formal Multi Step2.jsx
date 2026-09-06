@@ -5,6 +5,10 @@
 #include "multi.js"
 #include "occurrences.js"
 #include "projection.js"
+#include "segments.js"
+#include "orchestration.js"
+#include "adapter.jsx"
+#include "multi-renderer.js"
 #include "re-resolution.js"
 #include "multi-store.js"
 #include "workflow.js"
@@ -21,7 +25,7 @@
     }
 
     function run() {
-        var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint;
+        var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint, renderAdapter;
         var editor, readingInput, enabledCheck, confirmedCheck, selectedText;
         var saveButton, closeButton, stateText, savePending = false, currentIndex = -1, i;
 
@@ -29,6 +33,7 @@
         documentRef = app.activeDocument;
         picked = FormalMultiSelectionAdapter.resolveFrame(documentRef.selection, TextType, TextOrientation);
         source = picked.sourceFrame;
+        renderAdapter = FormalStep2Adapter(documentRef, source);
         sourceIdentity = FormalMultiPersistenceAdapter.captureIdentity(source, documentRef);
         if (!sourceIdentity.uuid || !sourceIdentity.documentPath) fail("save-document-first-for-long-text-persistence");
         cachedNote = String(source.note);
@@ -99,7 +104,7 @@
             } catch (error) { stateText.text = "状態: error / " + (error.message || error); }
         };
         saveButton.onClick = function () {
-            var result;
+            var result, observation, renderResult;
             if (savePending) return;
             savePending = true;
             saveButton.enabled = false;
@@ -107,6 +112,10 @@
             try {
                 saveEditor();
                 bundle = FormalMultiProjection.project(bundle);
+                observation = renderAdapter.observe();
+                renderResult = FormalMultiRenderer.render(bundle, picked.text, observation, renderAdapter);
+                if (renderResult.status !== "complete") throw Error("render-unresolved: " + (renderResult.plans[renderResult.plans.length - 1].reasons || []).join(" | "));
+                bundle.renderStatus = "complete";
                 result = FormalMultiPersistenceAdapter.save(source, cachedNote, bundle, sourceIdentity, {
                     pending: function (diagnostics) { stateText.text = "状態: 保存経路Bを実行中 / " + diagnostics.join(" | "); },
                     success: function (value) { savePending = false; saveButton.enabled = true; closeButton.enabled = true; cachedNote = value.note; refreshList(); stateText.text = "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
