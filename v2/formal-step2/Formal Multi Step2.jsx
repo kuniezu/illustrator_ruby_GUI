@@ -44,6 +44,7 @@
         stored = FormalMultiStore.read(source.note);
         bundle = stored || FormalMulti.createFrame(String(source.contents));
         if (bundle.textSnapshot !== String(source.contents)) fail("source-snapshot-mismatch");
+        currentId = FormalMultiWorkflow.findSelection(bundle, bundle.sourceFrameId, bundle.textSnapshot, picked.start, picked.end);
 
         dialog = new Window("palette", "Formal Step 2 Multi");
         dialog.orientation = "column";
@@ -103,6 +104,13 @@
             reasonTextView.text = "理由: " + reasonText(annotation);
         }
 
+        function guard(action) {
+            try { action(); } catch (error) {
+                statusText.text = "状態: error";
+                reasonTextView.text = "理由: " + (error.message || error);
+            }
+        }
+
         function selectNext(direction) {
             var queue = FormalMultiWorkflow.reviewQueue(bundle, unresolvedResults(bundle));
             currentId = FormalMultiWorkflow.navigate(queue, currentId, direction);
@@ -110,32 +118,42 @@
         }
 
         addButton.onClick = function () {
-            var current = captureSelection();
-            bundle = FormalMultiWorkflow.addSelection(bundle, bundle.textSnapshot, current.start, current.end);
-            currentId = bundle.annotations[bundle.annotations.length - 1].annotationId;
-            save();
-            refresh();
+            guard(function () {
+                var current = captureSelection();
+                var existing = FormalMultiWorkflow.findSelection(bundle, bundle.sourceFrameId, bundle.textSnapshot, current.start, current.end);
+                if (existing) { currentId = existing; refresh(); return; }
+                bundle = FormalMultiWorkflow.addSelection(bundle, bundle.textSnapshot, current.start, current.end);
+                currentId = bundle.annotations[bundle.annotations.length - 1].annotationId;
+                save();
+                refresh();
+            });
         };
         applyButton.onClick = function () {
-            if (!currentId) fail("multi-annotation-missing");
-            bundle = FormalMultiWorkflow.setReading(bundle, currentId, readingInput.text, true);
-            save();
-            refresh();
+            guard(function () {
+                if (!currentId) fail("multi-annotation-missing");
+                bundle = FormalMultiWorkflow.setReading(bundle, currentId, readingInput.text, true);
+                save();
+                refresh();
+            });
         };
         suppressButton.onClick = function () {
-            if (!currentId) fail("multi-annotation-missing");
-            bundle = FormalMultiWorkflow.setEnabled(bundle, currentId, false);
-            save();
-            refresh();
+            guard(function () {
+                if (!currentId) fail("multi-annotation-missing");
+                bundle = FormalMultiWorkflow.setEnabled(bundle, currentId, false);
+                save();
+                refresh();
+            });
         };
         restoreButton.onClick = function () {
-            if (!currentId) fail("multi-annotation-missing");
-            bundle = FormalMultiWorkflow.setEnabled(bundle, currentId, true);
-            save();
-            refresh();
+            guard(function () {
+                if (!currentId) fail("multi-annotation-missing");
+                bundle = FormalMultiWorkflow.setEnabled(bundle, currentId, true);
+                save();
+                refresh();
+            });
         };
-        previousButton.onClick = function () { selectNext(-1); };
-        nextButton.onClick = function () { selectNext(1); };
+        previousButton.onClick = function () { guard(function () { selectNext(-1); }); };
+        nextButton.onClick = function () { guard(function () { selectNext(1); }); };
 
         refresh();
         dialog.show();

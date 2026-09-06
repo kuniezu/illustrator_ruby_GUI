@@ -14,6 +14,9 @@ check('includes multi namespace and workflow',
   source.indexOf('#include "multi-store.js"') >= 0 &&
   source.indexOf('#include "workflow.js"') >= 0);
 check('uses proven selection adapter', source.indexOf('FormalMultiSelectionAdapter.resolve') >= 0);
+check('restores persisted exact selection and avoids duplicate add',
+  source.indexOf('FormalMultiWorkflow.findSelection(bundle') >= 0 &&
+  source.indexOf('if (existing) { currentId = existing; refresh(); return; }') >= 0);
 check('uses a nonmodal palette and recaptures selection on Add',
   source.indexOf('#targetengine "formal-multi-step2"') >= 0 &&
   source.indexOf('new Window("palette"') >= 0 &&
@@ -31,3 +34,4 @@ check('persists through multi store only',
 check('derives annotation-local status',
   source.indexOf('function annotationStatus(annotation)') >= 0 &&
   source.indexOf('bundle.renderStatus') < 0);
+check('guards palette event handlers', source.indexOf('function guard(action)') >= 0 && source.indexOf('guard(function ()') >= 0);

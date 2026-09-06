@@ -15,6 +15,8 @@ between Add operations.
    same source frame.
 7. Close the palette, save the document, reopen it, and run the script again.
    Confirm the multi annotation state is restored from the v2 multi note block.
+8. With a saved word selected, run the script again and confirm its saved reading
+   is displayed; changing it and clicking **Apply** must persist after reopening.
 
 This shell intentionally does not run rendering or reconciliation. Gate D geometry
 and runtime lifecycle checks remain separate manual procedures.
