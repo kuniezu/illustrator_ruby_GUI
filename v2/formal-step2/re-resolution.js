@@ -1,26 +1,89 @@
 /* Deterministic source-edit re-resolution. Ambiguous or missing matches never inherit state. */
 var FormalLongTextReResolution = (function () {
-    var limit=16;
-    function context(text,start,end) { return {before:text.substring(Math.max(0,start-limit),start),after:text.substring(end,Math.min(text.length,end+limit))}; }
-    function occurrenceAnnotation(bundle,occurrence) { var id=FormalMultiProjection.id(bundle,occurrence),i; for(i=0;i<bundle.annotations.length;i++) if(bundle.annotations[i].annotationId===id) return bundle.annotations[i]; return null; }
-    function candidateMatches(previousBundle,old,current) {
-        var oldContext=context(previousBundle.textSnapshot,old.start,old.end), annotation, matches=[],i,candidate,c;
-        annotation=occurrenceAnnotation(previousBundle,old);
-        if(annotation && annotation.anchor) oldContext={before:annotation.anchor.beforeContext,after:annotation.anchor.afterContext};
-        for(i=0;i<current.occurrences.length;i++) { candidate=current.occurrences[i]; if(candidate.surface!==old.surface) continue; if(candidate.start===old.start) matches.push(candidate); }
-        if(matches.length===1) return matches;
-        matches=[];
-        for(i=0;i<current.occurrences.length;i++) { candidate=current.occurrences[i]; c=context(current.textSnapshot,candidate.start,candidate.end); if(candidate.surface===old.surface && (c.before===oldContext.before||c.after===oldContext.after)) matches.push(candidate); }
-        return matches;
+    var contextLimit=16;
+
+    function context(text,start,end) {
+        return {before:text.substring(Math.max(0,start-contextLimit),start),after:text.substring(end,Math.min(text.length,end+contextLimit))};
     }
-    function cloneOccurrenceState(old,current) { current.occurrenceId=old.occurrenceId; current.groupId=old.groupId; current.visible=old.visible; current.enabled=old.enabled; current.reading=old.reading; current.readingConfirmed=old.readingConfirmed; current.lineage=old.lineage.slice(0); return current; }
+    function annotationFor(bundle,occurrence) {
+        var id=FormalMultiProjection.id(bundle,occurrence),i;
+        for(i=0;i<bundle.annotations.length;i++) if(bundle.annotations[i].annotationId===id) return bundle.annotations[i];
+        return null;
+    }
+    function evidenceFor(bundle,old) {
+        var annotation=annotationFor(bundle,old),c=context(bundle.textSnapshot,old.start,old.end);
+        if(annotation && annotation.anchor) { c.before=annotation.anchor.beforeContext; c.after=annotation.anchor.afterContext; }
+        return c;
+    }
+    function sameContext(candidateText,candidate,evidence) {
+        var c=context(candidateText,candidate.start,candidate.end);
+        return c.before===evidence.before || c.after===evidence.after;
+    }
+    function matchesFor(bundle,old,current) {
+        var candidates=[],contextMatches=[],evidence=evidenceFor(bundle,old),i,candidate;
+        for(i=0;i<current.occurrences.length;i++) {
+            candidate=current.occurrences[i];
+            if(candidate.surface===old.surface) candidates.push(candidate);
+        }
+        for(i=0;i<candidates.length;i++) if(candidates[i].start===old.start) {
+            if(candidates.length===1 || sameContext(current.textSnapshot,candidates[i],evidence)) contextMatches.push(candidates[i]);
+        }
+        if(contextMatches.length===1) return contextMatches;
+        contextMatches=[];
+        for(i=0;i<candidates.length;i++) if(sameContext(current.textSnapshot,candidates[i],evidence)) contextMatches.push(candidates[i]);
+        return contextMatches;
+    }
+    function copyOccurrence(occurrence) {
+        return {occurrenceId:occurrence.occurrenceId,start:occurrence.start,end:occurrence.end,surface:occurrence.surface,groupId:occurrence.groupId,visible:occurrence.visible,enabled:occurrence.enabled,reading:occurrence.reading,readingConfirmed:occurrence.readingConfirmed,lineage:occurrence.lineage.slice(0)};
+    }
+    function inheritedOccurrence(old,current) {
+        var result=copyOccurrence(current);
+        result.occurrenceId=old.occurrenceId; result.groupId=old.groupId; result.visible=old.visible; result.enabled=old.enabled; result.reading=old.reading; result.readingConfirmed=old.readingConfirmed; result.lineage=old.lineage.slice(0);
+        return result;
+    }
+    function allocateNewIdentity(current,usedIds,usedGroups,groupIds,index) {
+        var id=current.occurrenceId,group=current.groupId;
+        if(usedIds[id]) { id="reconciled-occurrence-"+index; while(usedIds[id]) id+="-next"; }
+        if(!groupIds[group]) { groupIds[group]="reconciled-group-"+index; while(usedGroups[groupIds[group]]) groupIds[group]+="-next"; }
+        group=groupIds[group]; usedIds[id]=true; usedGroups[group]=true;
+        return {occurrenceId:id,groupId:group};
+    }
+    function buildOccurrences(current,mapping,usedIds) {
+        var finalOccurrences=[],groupIds={},usedGroups={},i,currentOccurrence,oldId,identity,copy;
+        for(i=0;i<current.occurrences.length;i++) {
+            currentOccurrence=current.occurrences[i]; oldId=mapping.currentToOld[currentOccurrence.occurrenceId];
+            if(oldId) finalOccurrences.push(mapping.oldToNew[oldId]);
+            else { copy=copyOccurrence(currentOccurrence); identity=allocateNewIdentity(currentOccurrence,usedIds,usedGroups,groupIds,i); copy.occurrenceId=identity.occurrenceId; copy.groupId=identity.groupId; finalOccurrences.push(copy); }
+        }
+        return finalOccurrences;
+    }
+    function updateAnnotations(next,previousBundle,previousOccurrences,mapping,currentText,unresolved) {
+        var annotations=[],i,j,annotation,old,updated,cc,keep;
+        for(i=0;i<next.annotations.length;i++) {
+            annotation=next.annotations[i]; keep=true;
+            for(j=0;j<previousOccurrences.length;j++) {
+                old=previousOccurrences[j];
+                if(annotation.annotationId!==FormalMultiProjection.id(previousBundle,old)) continue;
+                updated=mapping.oldToNew[old.occurrenceId]; keep=!!updated;
+                if(keep) { annotation.anchor.baseText=updated.surface; annotation.anchor.startHint=updated.start; cc=context(currentText,updated.start,updated.end); annotation.anchor.beforeContext=cc.before; annotation.anchor.afterContext=cc.after; }
+                else unresolved.push({occurrenceId:old.occurrenceId,surface:old.surface,reason:mapping.oldReason[old.occurrenceId]});
+                break;
+            }
+            if(keep && annotation.anchor && currentText.substring(annotation.anchor.startHint,annotation.anchor.startHint+annotation.anchor.baseText.length)!==annotation.anchor.baseText) { keep=false; unresolved.push({annotationId:annotation.annotationId,surface:annotation.anchor.baseText,reason:"annotation-not-found"}); }
+            if(keep) annotations.push(annotation);
+        }
+        next.annotations=annotations;
+    }
     function reconcile(previousBundle,currentText) {
-        var previousOccurrences=previousBundle.occurrences||[], current=FormalLongText.extract(currentText), next=FormalMulti.clone(previousBundle), mapping={},unresolved=[],used={},i,j,old,matches,chosen,a,c,available;
-        for(i=0;i<previousOccurrences.length;i++) { old=previousOccurrences[i]; matches=candidateMatches(previousBundle,old,current); available=[]; for(j=0;j<matches.length;j++) if(!used[matches[j].occurrenceId]) available.push(matches[j]); matches=available; if(matches.length===1) { chosen=matches[0]; used[chosen.occurrenceId]=true; mapping[old.occurrenceId]=cloneOccurrenceState(old,chosen); } else { mapping[old.occurrenceId]=null; unresolved.push({occurrenceId:old.occurrenceId,surface:old.surface,reason:matches.length?"ambiguous":"not-found"}); } }
-        for(i=0;i<current.occurrences.length;i++) { if(!used[current.occurrences[i].occurrenceId]) continue; for(j=0;j<previousOccurrences.length;j++) if(mapping[previousOccurrences[j].occurrenceId]===current.occurrences[i]) current.occurrences[i]=mapping[previousOccurrences[j].occurrenceId]; }
-        next.textSnapshot=current.textSnapshot; next.occurrences=current.occurrences; next.renderStatus="unresolved"; a=[];
-        for(i=0;i<previousBundle.annotations.length;i++) { var keep=true,annotation=previousBundle.annotations[i]; for(j=0;j<previousOccurrences.length;j++) if(annotation.annotationId===FormalMultiProjection.id(previousBundle,previousOccurrences[j])) { keep=!!mapping[previousOccurrences[j].occurrenceId]; if(keep) { c=mapping[previousOccurrences[j].occurrenceId]; annotation.anchor.baseText=c.surface; annotation.anchor.startHint=c.start; var cc=context(current.textSnapshot,c.start,c.end); annotation.anchor.beforeContext=cc.before; annotation.anchor.afterContext=cc.after; } break; } if(keep && annotation.anchor && current.textSnapshot.substring(annotation.anchor.startHint,annotation.anchor.startHint+annotation.anchor.baseText.length)!==annotation.anchor.baseText) { keep=false; unresolved.push({annotationId:annotation.annotationId,surface:annotation.anchor.baseText,reason:"annotation-not-found"}); } if(keep) a.push(annotation); }
-        next.annotations=a; FormalMulti.validate(next); return {bundle:next,unresolved:unresolved};
+        var previousOccurrences=previousBundle.occurrences||[], current=FormalLongText.extract(currentText), next=FormalMulti.clone(previousBundle), mapping={oldToNew:{},currentToOld:{},oldReason:{}},unresolved=[],usedCurrent={},reservedIds={},i,j,old,matches,available,chosen,inherited;
+        for(i=0;i<previousOccurrences.length;i++) {
+            old=previousOccurrences[i]; matches=matchesFor(previousBundle,old,current); available=[];
+            for(j=0;j<matches.length;j++) if(!usedCurrent[matches[j].occurrenceId]) available.push(matches[j]);
+            if(available.length===1) { chosen=available[0]; usedCurrent[chosen.occurrenceId]=true; inherited=inheritedOccurrence(old,chosen); mapping.oldToNew[old.occurrenceId]=inherited; mapping.currentToOld[chosen.occurrenceId]=old.occurrenceId; reservedIds[old.occurrenceId]=true; }
+            else { mapping.oldToNew[old.occurrenceId]=null; mapping.oldReason[old.occurrenceId]=available.length?"ambiguous":"not-found"; unresolved.push({occurrenceId:old.occurrenceId,surface:old.surface,reason:mapping.oldReason[old.occurrenceId]}); }
+        }
+        next.textSnapshot=current.textSnapshot; next.occurrences=buildOccurrences(current,mapping,reservedIds); next.renderStatus="unresolved";
+        updateAnnotations(next,previousBundle,previousOccurrences,mapping,current.textSnapshot,unresolved); FormalMulti.validate(next); return {bundle:next,unresolved:unresolved};
     }
     return {reconcile:reconcile};
 }());
