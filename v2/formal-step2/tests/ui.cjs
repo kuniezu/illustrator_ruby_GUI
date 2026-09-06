@@ -1,0 +1,24 @@
+const fs = require('fs');
+const path = require('path');
+
+const file = path.join(__dirname, '..', 'Formal Multi Step2.jsx');
+const source = fs.readFileSync(file, 'utf8');
+
+function check(name, condition) {
+  if (!condition) throw new Error(name);
+  console.log('PASS ' + name);
+}
+
+check('includes multi namespace and workflow',
+  source.indexOf('#include "multi.js"') >= 0 &&
+  source.indexOf('#include "multi-store.js"') >= 0 &&
+  source.indexOf('#include "workflow.js"') >= 0);
+check('uses proven selection adapter', source.indexOf('FormalMultiSelectionAdapter.resolve') >= 0);
+check('initializes new frame without old migration', source.indexOf('FormalMulti.createFrame') >= 0 && source.indexOf('FormalMultiStore.read') >= 0);
+check('exposes compact editing and review controls',
+  source.indexOf('Add') >= 0 && source.indexOf('Apply') >= 0 &&
+  source.indexOf('Suppress') >= 0 && source.indexOf('Re-enable') >= 0 &&
+  source.indexOf('Previous unresolved') >= 0 && source.indexOf('Next unresolved') >= 0);
+check('persists through multi store only',
+  source.indexOf('FormalMultiStore.write') >= 0 &&
+  source.indexOf('FormalSegments') < 0 && source.indexOf('reconcile') < 0);
