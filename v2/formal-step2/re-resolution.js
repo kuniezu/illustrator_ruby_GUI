@@ -17,7 +17,7 @@ var FormalLongTextReResolution = (function () {
     }
     function sameContext(candidateText,candidate,evidence) {
         var c=context(candidateText,candidate.start,candidate.end);
-        return c.before===evidence.before || c.after===evidence.after;
+        return (evidence.before.length>0 && c.before===evidence.before) || (evidence.after.length>0 && c.after===evidence.after);
     }
     function matchesFor(bundle,old,current) {
         var candidates=[],contextMatches=[],evidence=evidenceFor(bundle,old),i,candidate;
@@ -26,7 +26,7 @@ var FormalLongTextReResolution = (function () {
             if(candidate.surface===old.surface) candidates.push(candidate);
         }
         for(i=0;i<candidates.length;i++) if(candidates[i].start===old.start) {
-            if(candidates.length===1 || sameContext(current.textSnapshot,candidates[i],evidence)) contextMatches.push(candidates[i]);
+            if(current.textSnapshot===bundle.textSnapshot || sameContext(current.textSnapshot,candidates[i],evidence)) contextMatches.push(candidates[i]);
         }
         if(contextMatches.length===1) return contextMatches;
         contextMatches=[];
@@ -49,7 +49,8 @@ var FormalLongTextReResolution = (function () {
         return {occurrenceId:id,groupId:group};
     }
     function buildOccurrences(current,mapping,usedIds) {
-        var finalOccurrences=[],groupIds={},usedGroups={},i,currentOccurrence,oldId,identity,copy;
+        var finalOccurrences=[],groupIds={},usedGroups={},i,currentOccurrence,oldId,identity,copy,mappedId;
+        for(mappedId in mapping.oldToNew) if(mapping.oldToNew[mappedId]) usedGroups[mapping.oldToNew[mappedId].groupId]=true;
         for(i=0;i<current.occurrences.length;i++) {
             currentOccurrence=current.occurrences[i]; oldId=mapping.currentToOld[currentOccurrence.occurrenceId];
             if(oldId) finalOccurrences.push(mapping.oldToNew[oldId]);
@@ -66,7 +67,6 @@ var FormalLongTextReResolution = (function () {
                 if(annotation.annotationId!==FormalMultiProjection.id(previousBundle,old)) continue;
                 updated=mapping.oldToNew[old.occurrenceId]; keep=!!updated;
                 if(keep) { annotation.anchor.baseText=updated.surface; annotation.anchor.startHint=updated.start; cc=context(currentText,updated.start,updated.end); annotation.anchor.beforeContext=cc.before; annotation.anchor.afterContext=cc.after; }
-                else unresolved.push({occurrenceId:old.occurrenceId,surface:old.surface,reason:mapping.oldReason[old.occurrenceId]});
                 break;
             }
             if(keep && annotation.anchor && currentText.substring(annotation.anchor.startHint,annotation.anchor.startHint+annotation.anchor.baseText.length)!==annotation.anchor.baseText) { keep=false; unresolved.push({annotationId:annotation.annotationId,surface:annotation.anchor.baseText,reason:"annotation-not-found"}); }
