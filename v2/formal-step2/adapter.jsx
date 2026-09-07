@@ -80,7 +80,11 @@ function FormalStep2Adapter(doc, source) {
     function observe() {
         mark("observe:start", "kind=" + String(source.kind) + ",orientation=" + String(source.orientation));
         if (source.kind !== TextType.AREATEXT || source.orientation !== TextOrientation.HORIZONTAL) return {status: "unresolved", reasons: ["area-text-horizontal-only"]};
-        var range = source.textRange, lines = [], i, line, total = String(source.contents).length, leading = range.characters[0].characterAttributes.leading;
+        var range = source.textRange, lines = [], i, line, sourceContents = String(source.contents), rangeContents, sourceRangeLength, total, leading;
+        try { rangeContents = String(range.contents); } catch (rangeContentsError) { return {status: "unresolved", reasons: ["source-range-contents-unavailable"]}; }
+        if (!FormalMultiOrchestration.sourceCoordinateContract(range.start, range.end, rangeContents, sourceContents)) return {status: "unresolved", reasons: ["source-range-contents-mismatch"]};
+        sourceRangeLength = range.end - range.start;
+        total = sourceRangeLength; leading = range.characters[0].characterAttributes.leading;
         if (typeof leading !== "number" || !isFinite(leading)) return {status: "unresolved", reasons: ["leading-unavailable"]};
         var visualLines = outlineLines(leading), visibleLineCount;
         if (!visualLines) return {status: "unresolved", reasons: ["outline-line-geometry-unavailable"]};
@@ -100,7 +104,7 @@ function FormalStep2Adapter(doc, source) {
             lines.push({start: start, end: end, geometry: {left: visual.left, top: rubyTop, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: visual.top, measuredWidth: measured.width, leading: leading, gap: gap, visualRight: visual.right, charWidths: charWidths}});
         }
         var visibleEnd = FormalMultiOrchestration.textualVisibleEnd(range.lines, range.start), sourceEnd = total, suffixHasText;
-        suffixHasText = visibleEnd < sourceEnd && FormalMultiOrchestration.hasRenderableSuffix(String(source.contents), visibleEnd, sourceEnd);
+        suffixHasText = visibleEnd < sourceEnd && FormalMultiOrchestration.hasRenderableSuffix(sourceContents, visibleEnd, sourceEnd);
         mark("observe.line-map", visualLines.length < range.lines.length ? (suffixHasText ? "complete-overflow-suffix" : "complete-line-count-mismatch") : "complete"); return {status: "complete", kind: source.kind, orientation: source.orientation, overflow: suffixHasText, overflowEvidence: suffixHasText ? {visibleEnd:visibleEnd, sourceEnd:sourceEnd, suffixHasText:true} : null, overflowReason: suffixHasText ? "visible-end-before-renderable-suffix" : "no-confirmed-hidden-text-suffix", lines: lines};
     }
     function reconcile(bundle, decision, created) {
