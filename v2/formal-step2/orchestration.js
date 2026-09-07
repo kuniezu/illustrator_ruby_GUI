@@ -2,7 +2,15 @@
 var FormalMultiOrchestration = (function () {
     function unresolved(id, reasons) { return {annotationId:id,status:"unresolved",reasons:reasons}; }
     function find(bundle, annotationId) { for(var i=0;i<bundle.annotations.length;i++) if(bundle.annotations[i].annotationId===annotationId)return bundle.annotations[i]; return null; }
-    function localLines(baseStart, baseLength, lines) { var out=[], expected=0, i, start, end; for(i=0;i<lines.length;i++){start=Math.max(baseStart,lines[i].start)-baseStart;end=Math.min(baseStart+baseLength,lines[i].end)-baseStart;if(end>start){if(start!==expected)return null;out.push({start:start,end:end,geometry:lines[i].geometry});expected=end;}} return expected===baseLength?out:null; }
+    function slicedGeometry(geometry, offset, length) {
+        var widths=geometry&&geometry.charWidths, prefix=0, width=0, i, result;
+        if (!widths || widths.length < offset + length) return geometry;
+        for (i=0;i<offset;i++) prefix += widths[i];
+        for (i=offset;i<offset+length;i++) width += widths[i];
+        result={left:geometry.left+prefix,top:geometry.top,width:width,baseSize:geometry.baseSize,measuredTop:geometry.measuredTop,leading:geometry.leading,gap:geometry.gap,visualRight:geometry.visualRight};
+        result.measuredLeft=result.left; result.measuredWidth=width; return result;
+    }
+    function localLines(baseStart, baseLength, lines) { var out=[], expected=0, i, start, end, overlapStart, overlapEnd; for(i=0;i<lines.length;i++){overlapStart=Math.max(baseStart,lines[i].start);overlapEnd=Math.min(baseStart+baseLength,lines[i].end);if(overlapEnd>overlapStart){start=overlapStart-baseStart;end=overlapEnd-baseStart;if(start!==expected)return null;out.push({start:start,end:end,geometry:slicedGeometry(lines[i].geometry,overlapStart-lines[i].start,overlapEnd-overlapStart)});expected=end;}} return expected===baseLength?out:null; }
     function planOne(bundle, annotationId, sourceText, observation) {
         var annotation=find(bundle,annotationId), resolved, lineMap, decision, reasons=[];
         if(!annotation)return {annotationId:annotationId,status:"failed",reasons:["multi-annotation-missing"]};

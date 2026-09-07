@@ -88,13 +88,14 @@ function FormalStep2Adapter(doc, source) {
             line = range.lines[i];
             var start = line.start - range.start, end = line.end - range.start;
             if (start < 0 || end <= start || end > total || !line.characters.length) return {status: "unresolved", reasons: ["line-map-unverified"]};
-            var first = line.characters[0], measured = measure(String(source.contents).substring(start, end), first);
+            var first = line.characters[0], measured = measure(String(source.contents).substring(start, end), first), charWidths = [], c, charMeasured;
             if (!measured) return {status: "unresolved", reasons: ["measurement-unavailable"]};
             if (cleanupFailed) return {status: "unresolved", reasons: ["temporary-object-cleanup-failed"]};
+            for (c = start; c < end; c++) { charMeasured = measure(String(source.contents).charAt(c), first); if (!charMeasured) return {status: "unresolved", reasons: ["character-measurement-unavailable"]}; charWidths.push(charMeasured.width); }
             var gap = first.characterAttributes.size * .15, visual = visualLines[i];
             var rubyTop = visual.top + gap; /* Illustrator document Y increases upward for this horizontal AreaText. */
             mark("observe.measurement", "line=" + i + ",left=" + visual.left + ",glyphTop=" + visual.top + ",rubyTop=" + rubyTop + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
-            lines.push({start: start, end: end, geometry: {left: visual.left, top: rubyTop, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: visual.top, measuredWidth: measured.width, leading: leading, gap: gap, visualRight: visual.right}});
+            lines.push({start: start, end: end, geometry: {left: visual.left, top: rubyTop, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: visual.top, measuredWidth: measured.width, leading: leading, gap: gap, visualRight: visual.right, charWidths: charWidths}});
         }
         mark("observe.line-map", "complete"); return {status: "complete", kind: source.kind, orientation: source.orientation, lines: lines};
     }
@@ -107,6 +108,7 @@ function FormalStep2Adapter(doc, source) {
             item.note = "formal-step2-output:v1;" + bundle.sourceFrameId + ";" + bundle.annotation.annotationId + ";" + wanted[i].renderSegmentId;
             item.contents = wanted[i].reading;
             item.textRange.characterAttributes.size = geometry.baseSize * .5;
+            item.textRange.characterAttributes.tracking = 0;
             count = String(wanted[i].reading).length; delta = geometry.width - item.width;
             tracking = count > 1 && geometry.baseSize > 0 ? delta / (geometry.baseSize * .5 * (count - 1)) * 1000 : 0;
             if (tracking < FORMAL_STEP2_TRACKING_FLOOR) tracking = FORMAL_STEP2_TRACKING_FLOOR; if (tracking > 400) tracking = 400;
@@ -139,10 +141,12 @@ function FormalStep2Adapter(doc, source) {
         }
         return result;
     }
-    function snapshotManaged(sourceFrameId) {
-        var result = [], items = managedItems(sourceFrameId), i, item;
+    function snapshotManaged(sourceFrameId, owned) {
+        var result = [], items = managedItems(sourceFrameId), i, item, parts;
         for (i = 0; i < items.length; i++) {
             item = items[i];
+            parts = String(item.note).split(";");
+            if (owned && !owned[parts[2]]) continue;
             result.push({note: String(item.note), contents: String(item.contents), size: item.textRange.characterAttributes.size, tracking: item.textRange.characterAttributes.tracking, left: item.left, top: item.top});
         }
         return result;
@@ -163,9 +167,9 @@ function FormalStep2Adapter(doc, source) {
             if (owned[parts[2]] && !desired[key]) items[i].remove();
         }
     }
-    function restoreManaged(sourceFrameId, saved) {
-        var items = managedItems(sourceFrameId), i, item, restored;
-        for (i = items.length - 1; i >= 0; i--) items[i].remove();
+    function restoreManaged(sourceFrameId, saved, owned) {
+        var items = managedItems(sourceFrameId), i, item, parts, restored;
+        for (i = items.length - 1; i >= 0; i--) { parts = String(items[i].note).split(";"); if (!owned || owned[parts[2]]) items[i].remove(); }
         for (i = 0; i < saved.length; i++) {
             restored = source.layer.textFrames.add();
             restored.note = saved[i].note;
@@ -177,7 +181,9 @@ function FormalStep2Adapter(doc, source) {
         }
     }
     function transaction(sourceFrameId, plans, commit) {
-        var saved = snapshotManaged(sourceFrameId), savedNote = String(source.note), created = [], i, plan, proxy, rollbackErrors = [];
+        var owned = {}, saved, savedNote = String(source.note), created = [], i, plan, proxy, rollbackErrors = [];
+        for (i = 0; i < plans.length; i++) owned[plans[i].annotationId] = true;
+        saved = snapshotManaged(sourceFrameId, owned);
         try {
             for (i = 0; i < plans.length; i++) {
                 plan = plans[i];
@@ -188,7 +194,7 @@ function FormalStep2Adapter(doc, source) {
             if (commit) commit();
         } catch (error) {
             for (i = created.length - 1; i >= 0; i--) try { if (created[i].parent) created[i].remove(); } catch (createdError) { rollbackErrors.push("created=" + (createdError.message || createdError)); }
-            try { restoreManaged(sourceFrameId, saved); } catch (rollbackError) { rollbackErrors.push("outputs=" + (rollbackError.message || rollbackError)); }
+            try { restoreManaged(sourceFrameId, saved, owned); } catch (rollbackError) { rollbackErrors.push("outputs=" + (rollbackError.message || rollbackError)); }
             try { source.note = savedNote; if (String(source.note) !== savedNote) throw Error("source-note-readback-mismatch"); } catch (rollbackNoteError) { rollbackErrors.push("note=" + (rollbackNoteError.message || rollbackNoteError)); }
             if (rollbackErrors.length) mark("render:rollback-failed", rollbackErrors.join(" | ")); else mark("render:rollback", "complete");
             if (rollbackErrors.length) throw Error((error.message || error) + " / rollback-failed: " + rollbackErrors.join(" | "));
