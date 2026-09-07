@@ -332,3 +332,28 @@ Executed at the unchanged review HEAD:
 Result: **6/6 PASS**. The generated BridgeTalk body parse case, named
 `production generated BridgeTalk body parses as a script`, passed. This was a
 validation-only run; no production code or runtime wiring changed.
+
+## H receiver hardening at 80cd705 follow-up
+
+H now selects the first readable non-empty font name from `app.textFonts` at
+diagnostic runtime. If no font is available, the diagnostic completes with
+`CAPABILITY_UNAVAILABLE reason=no-font-available`; the selected font name is
+included in the H detail. The receiver returns a `PASS:` body containing the
+received schema, renderer/version identities, request and segment identities,
+reading, final geometry, verification result, and readback font name. The
+sender parses that body and compares the expected values before reporting H
+PASS; capability and unexpected bodies do not become PASS. The obsolete pipe
+protocol H functions were removed. The generated receiver parse test remains
+in place.
+
+Exact validation commands and results for this follow-up:
+
+- `node --test v2/formal-step2/tests/*.cjs`: **235/235 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **10/10 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files)**
+- `node --test v2/formal-step2/tests/gate-0.cjs`: **6/6 PASS**
+- `node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **6/6 PASS**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
+operation was performed.
