@@ -79,6 +79,12 @@ check('passes runtime files to the host by absolute path',
   source.indexOf('orchestration: File(here + "/orchestration.js").fsName') >= 0 &&
   source.indexOf('adapter: File(here + "/adapter.jsx").fsName') >= 0 &&
   source.indexOf('readRuntimeSource') < 0);
+check('guards ScriptUI refresh re-entry and pending changes',
+  source.indexOf('#include "ui-refresh.js"') >= 0 &&
+  source.indexOf('listRefreshGuard') >= 0 &&
+  source.indexOf('FormalMultiUiRefresh.ignoreChange(listRefreshGuard, savePending)') >= 0 &&
+  source.indexOf('FormalMultiUiRefresh.refresh(list, bundle.occurrences') >= 0 &&
+  source.indexOf('refreshList(); stateText.text = "状態: 保存完了') >= 0);
 check('guards unsupported entry paths and exposes a disposable stage file',
   source.indexOf('resolveMultiFrame') >= 0 &&
   saveClickBody.indexOf('source.kind') < 0 &&

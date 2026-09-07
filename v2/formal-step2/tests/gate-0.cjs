@@ -76,3 +76,8 @@ test('production generated BridgeTalk body parses as a script', () => {
   assert.ok(body.indexOf('segments.js') < body.indexOf('orchestration.js'));
   assert.ok(body.indexOf('orchestration.js') < body.indexOf('adapter.jsx'));
 });
+
+test('ScriptUI refresh helper parses after include expansion', () => {
+  const helper = fs.readFileSync(path.join(repoRoot, 'v2', 'formal-step2', 'ui-refresh.js'), 'utf8');
+  assert.doesNotThrow(() => new vm.Script(helper, { filename: 'ui-refresh.js' }));
+});

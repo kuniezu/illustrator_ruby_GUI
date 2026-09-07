@@ -11,6 +11,7 @@
 #include "re-resolution.js"
 #include "multi-store.js"
 #include "workflow.js"
+#include "ui-refresh.js"
 #include "selection-adapter.jsx"
 #include "persistence-adapter.jsx"
 
@@ -105,11 +106,9 @@
             confirmedCheck.value = occurrence.readingConfirmed;
         }
 
+        var listRefreshGuard = { suppress: false };
         function refreshList() {
-            var j;
-            list.removeAll();
-            for (j = 0; j < bundle.occurrences.length; j++) list.add("item", listText(bundle.occurrences[j]));
-            if (bundle.occurrences.length) { if (currentIndex < 0 || currentIndex >= bundle.occurrences.length) currentIndex = 0; list.selection = currentIndex; loadEditor(currentIndex); }
+            currentIndex = FormalMultiUiRefresh.refresh(list, bundle.occurrences, currentIndex, listRefreshGuard, loadEditor, listText);
         }
         function parseBoundaries(text) {
             var parts=String(text).split(","), result=[], j, value;
@@ -145,9 +144,9 @@
 
         list.onChange = function () {
             try {
+                if (FormalMultiUiRefresh.ignoreChange(listRefreshGuard, savePending)) return;
                 saveEditor();
                 if (list.selection) loadEditor(list.selection.index);
-                refreshList();
             } catch (error) { stateText.text = "状態: error / " + (error.message || error); }
         };
         function setSavePending(value) {

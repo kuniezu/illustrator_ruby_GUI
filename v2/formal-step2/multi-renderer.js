@@ -42,7 +42,7 @@ var FormalMultiRenderer = (function () {
     }
 
     function specifications(bundle) {
-        var result = [], i, occurrence, annotation, annotationId;
+        var result = [], i, occurrence, annotation, annotationId, retired = bundle.retiredAnnotationIds || [];
         for (i = 0; i < bundle.occurrences.length; i++) {
             occurrence = bundle.occurrences[i];
             annotationId = FormalMultiProjection.id(bundle, occurrence);
@@ -61,6 +61,7 @@ var FormalMultiRenderer = (function () {
                 } : null
             });
         }
+        for (i = 0; i < retired.length; i++) result.push({ annotationId: retired[i], annotation: null, cleanup: true });
         return result;
     }
 
