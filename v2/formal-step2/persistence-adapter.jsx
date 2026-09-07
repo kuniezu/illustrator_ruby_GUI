@@ -55,8 +55,8 @@ var FormalMultiPersistenceAdapter = (function () {
         var specs=scriptLiteral(specifications), step1=encoded(sources.step1), segments=encoded(sources.segments), orchestration=encoded(sources.orchestration), adapter=encoded(sources.adapter), documentPath=encoded(identity.documentPath || ""), uuid=encoded(identity.uuid || ""), stageFilePath=encoded(stagePath || ""), stageRequestId=encoded(requestId || "unknown");
         return "(function(){"+
             "function fail(m){throw Error(m);}"+
-            "var stagePath=decodeURIComponent(\""+stageFilePath+"\"),requestId=decodeURIComponent(\""+stageRequestId+"\"),stageFile;"+
-            "function stage(n){try{if(stagePath){stageFile=File(stagePath);if(stageFile.open(\"w\")){stageFile.write(\"formal-multi-host:request-\"+requestId+\":\"+n);stageFile.close();}}if(typeof $!==\"undefined\"&&$.writeln)$.writeln(\"formal-multi-host:request-\"+requestId+\":\"+n);}catch(ignore){}}"+
+            "var requestId=decodeURIComponent(\""+stageRequestId+"\");"+
+            "function stage(n){try{if(typeof $!==\"undefined\"&&$.writeln)$.writeln(\"formal-multi-host:request-\"+requestId+\":\"+n);}catch(ignore){}}"+
             "stage(\"host-entry\");"+
             "stage(\"step1-eval-start\");"+
             "eval(decodeURIComponent(\""+step1+"\"));"+
