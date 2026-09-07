@@ -23,7 +23,8 @@ function FormalAreaTextNativeBackend(doc, layer) {
             path = layer.pathItems.rectangle(spec.top, spec.left, spec.width, spec.height);
             path.filled = false;
             path.stroked = false;
-            frame = layer.textFrames.areaText(path);
+            frame = doc.textFrames.areaText(path);
+            if (!frame || frame.kind !== TextType.AREATEXT) throw Error("candidate-kind-unverified");
             return { frame: frame, path: path, spec: spec, physicalId: spec.physicalId || "" };
         } catch (e) {
             if (frame) try { frame.remove(); } catch (ignoreFrame) {}
@@ -71,7 +72,7 @@ function FormalAreaTextNativeBackend(doc, layer) {
         }
         return {
             horizontal: frame.orientation === TextOrientation.HORIZONTAL,
-            rectangular: true,
+            rectangular: frame.kind === TextType.AREATEXT,
             nonThreaded: !frame.previousFrame && !frame.nextFrame,
             frameContents: text(frame.contents),
             rangeContents: text(range.contents),
@@ -161,7 +162,7 @@ function FormalAreaTextNativeBackend(doc, layer) {
         var values, i, result, range = candidate.frame.textRange;
         if (typeof FormalAreaTextNative === "undefined") throw Error("area-text-native-core-unavailable");
         if (spec.singleCharacter) return verifyCandidate(candidate, spec);
-        values = FormalAreaTextNative.trackingCandidates();
+        values = spec.trackingCandidates || FormalAreaTextNative.trackingCandidates();
         for (i = 0; i < values.length; i++) {
             range = candidate.frame.textRange;
             range.characterAttributes.tracking = values[i];

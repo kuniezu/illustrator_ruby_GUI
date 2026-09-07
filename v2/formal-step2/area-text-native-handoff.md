@@ -58,7 +58,11 @@ This branch intentionally keeps the main Luna/Codex branch untouched. It contain
 - `tests/area-text-render-spec.cjs`
 - `tests/area-text-native-static.cjs`
 
-These are authored but were not executed in this ChatGPT-side branch because the environment cannot reach GitHub to materialize the repository and the connector does not execute repository tests. Luna/Codex should run the normal test/compatibility suite immediately after taking over.
+These tests are intended to be run by the implementation reviewer before any branch integration or runtime checkpoint.
+
+## Luna/Codex review pass
+
+The branch was fetched and reviewed at `87dce54`, then the scaffold was corrected without wiring it into the production renderer. The review pass ran the full pure suite (212/212), the native tests (18/18), Gate 0 (6/6), and the ExtendScript compatibility lint (29 production files). Corrections were limited to candidate kind readback, official `doc.textFrames.areaText(path)` construction, RenderSpec tracking-policy transport, manifest retirement guards, and matching static tests. Illustrator runtime was not executed.
 
 ## Important non-decisions
 

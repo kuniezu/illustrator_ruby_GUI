@@ -31,6 +31,7 @@ test('backend spec uses final rectangle geometry rather than mutable frame resiz
   const s=S.create(input()),b=S.backendSpec(s);
   assert.equal(b.left,43);assert.ok(Math.abs(b.width-55)<0.000001);assert.equal(b.height,12);
   assert.equal(b.appearance.fontName,'RubyFont');assert.equal(b.appearance.fontSize,8);
+  assert.deepEqual(b.composerPolicy.trackingCandidates,[0,-25,-50,-75,-100]);
 });
 
 test('render spec refuses missing identity and invalid dimensions',()=>{

@@ -119,7 +119,11 @@ var FormalAreaTextRenderSpec = (function () {
                 maximumLetterSpacing: spec.composerPolicy.letterSpacing.maximum,
                 minimumWordSpacing: spec.composerPolicy.wordSpacing.minimum,
                 desiredWordSpacing: spec.composerPolicy.wordSpacing.desired,
-                maximumWordSpacing: spec.composerPolicy.wordSpacing.maximum
+                maximumWordSpacing: spec.composerPolicy.wordSpacing.maximum,
+                trackingCandidates: copyArray(spec.composerPolicy.trackingCandidates),
+                oneCharacterPolicy: spec.composerPolicy.oneCharacterPolicy,
+                justification: spec.composerPolicy.justification,
+                singleWordJustification: spec.composerPolicy.singleWordJustification
             }
         };
     }

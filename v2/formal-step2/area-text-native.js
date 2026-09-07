@@ -78,14 +78,17 @@ var FormalAreaTextNative = (function () {
     }
 
     function activate(state, requestId, bindings, records, retireIds) {
-        var out = cloneManifest(state), id = String(requestId || ""), key;
+        var out = cloneManifest(state), id = String(requestId || ""), key, i, retire = unique(retireIds || []);
         if (!out.operation || out.operation.requestId !== id) throw Error("operation-request-mismatch");
         if (out.operation.phase !== "prepare" && out.operation.phase !== "verified") throw Error("operation-not-activatable");
         bindings = bindings || {};
         records = records || {};
         for (key in bindings) if (own(bindings, key)) out.activeBindings[key] = bindings[key];
         for (key in records) if (own(records, key)) out.renderRecords[key] = records[key];
-        out.retirementQueue = unique(out.retirementQueue.concat(retireIds || []));
+        for (i = 0; i < retire.length; i++) {
+            for (key in out.activeBindings) if (own(out.activeBindings, key) && out.activeBindings[key] === retire[i]) throw Error("cannot-activate-retired-physical");
+        }
+        out.retirementQueue = unique(out.retirementQueue.concat(retire));
         out.manifestRevision++;
         out.operation.phase = "activated";
         return out;
@@ -101,6 +104,9 @@ var FormalAreaTextNative = (function () {
 
     function markRetired(state, removedIds) {
         var out = cloneManifest(state), removed = unique(removedIds || []), next = [], i, key;
+        for (i = 0; i < removed.length; i++) {
+            for (key in out.activeBindings) if (own(out.activeBindings, key) && out.activeBindings[key] === removed[i]) throw Error("cannot-retire-active-physical");
+        }
         for (i = 0; i < out.retirementQueue.length; i++) {
             if (!contains(removed, out.retirementQueue[i])) next.push(out.retirementQueue[i]);
         }

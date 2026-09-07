@@ -1,7 +1,7 @@
 /*
  * AreaText-native host batch scaffold.
  * Requires FormalAreaTextRenderSpec, FormalAreaTextNative and FormalAreaTextNativeBackend.
- * Does not mutate source.note, activate generations, or retire old output.
+ * Does not mutate source persistence, activate generations, or retire old output.
  */
 function FormalAreaTextNativeHost(doc, layer) {
     var backend = FormalAreaTextNativeBackend(doc, layer);

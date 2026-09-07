@@ -23,6 +23,19 @@ test('activation does not require retiring old identity first',()=>{
   assert.equal(s.renderRecords['p-old'],undefined);
 });
 
+test('retirement cannot leave an active physical binding',()=>{
+  let s=N.createManifest();s.activeBindings.seg1='p-old';s.renderRecords['p-old']={generationId:'g1'};
+  assert.throws(()=>N.markRetired(s,['p-old']),/cannot-retire-active-physical/);
+  s=N.beginOperation(s,'req-2',['p-new']);s=N.markVerified(s,'req-2');s=N.activate(s,'req-2',{seg1:'p-new'},{'p-new':{generationId:'g2'}},['p-old']);
+  s=N.markRetired(s,['p-old']);assert.equal(s.activeBindings.seg1,'p-new');assert.equal(N.physicalStatus(s,'p-old'),'unreferenced');
+});
+
+test('activation rejects a physical id that remains active while queued for retirement',()=>{
+  let s=N.createManifest();s.activeBindings.seg1='p-old';s.renderRecords['p-old']={generationId:'g1'};
+  s=N.beginOperation(s,'req-1',['p-old']);s=N.markVerified(s,'req-1');
+  assert.throws(()=>N.activate(s,'req-1',{}, {}, ['p-old']),/cannot-activate-retired-physical/);
+});
+
 test('different request cannot overwrite an active prepare operation',()=>{
   let s=N.beginOperation(N.createManifest(),'req-a',['p-a']);
   assert.throws(()=>N.beginOperation(s,'req-b',['p-b']),/operation-already-active/);

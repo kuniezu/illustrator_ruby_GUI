@@ -15,7 +15,7 @@ test('native pure helpers parse in ordinary JavaScript',()=>{
 test('native backend scaffold parses and only creates fresh area text candidates',()=>{
   const source=parse(path.join('v2','formal-step2','area-text-native-backend.jsx'));
   assert.ok(source.includes('layer.pathItems.rectangle'));
-  assert.ok(source.includes('layer.textFrames.areaText(path)'));
+  assert.ok(source.includes('doc.textFrames.areaText(path)'));
   assert.ok(source.includes('FormalAreaTextNative.verifyOneLineFit'));
   assert.ok(source.includes('FormalAreaTextNative.trackingCandidates'));
   assert.ok(source.includes('candidate.frame.remove()'));
@@ -44,7 +44,7 @@ test('native capability probe is isolated in a disposable document',()=>{
   assert.ok(source.includes('app.documents.add()'));
   assert.ok(source.includes('SaveOptions.DONOTSAVECHANGES'));
   assert.ok(source.includes('layer.pathItems.rectangle'));
-  assert.ok(source.includes('layer.textFrames.areaText(path)'));
+  assert.ok(source.includes('probeDoc.textFrames.areaText(path)'));
   assert.ok(source.includes('Justification.FULLJUSTIFY'));
   assert.ok(source.includes('[0, -25, -50, -75, -100]'));
   assert.ok(source.includes('frame.remove()'));

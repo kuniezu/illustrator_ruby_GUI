@@ -20,7 +20,7 @@
             path = layer.pathItems.rectangle(top, left, width, height);
             path.filled = false;
             path.stroked = false;
-            frame = layer.textFrames.areaText(path);
+            frame = probeDoc.textFrames.areaText(path);
             frame.contents = contents;
             frame.textRange.characterAttributes.size = size;
             frame.textRange.characterAttributes.tracking = 0;
