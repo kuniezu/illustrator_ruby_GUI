@@ -69,7 +69,8 @@ function FormalStep2Adapter(doc, source) {
                 if (!placed) clusters.push({left: glyph.left, top: glyph.top, right: glyph.right, bottom: glyph.bottom, center: glyph.center, count: 1});
             }
             mark("observe.outline", "items=" + items.length + ",clusters=" + clusters.length + ",sourceLines=" + source.textRange.lines.length);
-            return clusters.length === source.textRange.lines.length ? clusters : null;
+            if (clusters.length > source.textRange.lines.length) return null;
+            return clusters;
         } catch (e) { mark("observe.outline", "failed:" + (e.message || e)); return null; }
         finally {
             if (outline && outline.parent) try { outline.remove(); } catch (ignore) { markCleanupFailure("observe.outline", ignore); }
@@ -81,10 +82,11 @@ function FormalStep2Adapter(doc, source) {
         if (source.kind !== TextType.AREATEXT || source.orientation !== TextOrientation.HORIZONTAL) return {status: "unresolved", reasons: ["area-text-horizontal-only"]};
         var range = source.textRange, lines = [], i, line, total = String(source.contents).length, leading = range.characters[0].characterAttributes.leading;
         if (typeof leading !== "number" || !isFinite(leading)) return {status: "unresolved", reasons: ["leading-unavailable"]};
-        var visualLines = outlineLines(leading);
+        var visualLines = outlineLines(leading), visibleLineCount;
         if (!visualLines) return {status: "unresolved", reasons: ["outline-line-geometry-unavailable"]};
         if (cleanupFailed) return {status: "unresolved", reasons: ["temporary-object-cleanup-failed"]};
-        for (i = 0; i < range.lines.length; i++) {
+        visibleLineCount = Math.min(range.lines.length, visualLines.length);
+        for (i = 0; i < visibleLineCount; i++) {
             line = range.lines[i];
             var start = line.start - range.start, end = line.end - range.start;
             if (start < 0 || end <= start || end > total || !line.characters.length) return {status: "unresolved", reasons: ["line-map-unverified"]};
@@ -97,7 +99,7 @@ function FormalStep2Adapter(doc, source) {
             mark("observe.measurement", "line=" + i + ",left=" + visual.left + ",glyphTop=" + visual.top + ",rubyTop=" + rubyTop + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
             lines.push({start: start, end: end, geometry: {left: visual.left, top: rubyTop, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: visual.top, measuredWidth: measured.width, leading: leading, gap: gap, visualRight: visual.right, charWidths: charWidths}});
         }
-        mark("observe.line-map", "complete"); return {status: "complete", kind: source.kind, orientation: source.orientation, lines: lines};
+        mark("observe.line-map", visualLines.length < range.lines.length ? "complete-overflow" : "complete"); return {status: "complete", kind: source.kind, orientation: source.orientation, overflow: visualLines.length < range.lines.length, lines: lines};
     }
     function reconcile(bundle, decision, created) {
         var old = inspect(bundle), wanted = decision.segments || [], i, item, geometry, count, delta, tracking;

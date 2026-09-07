@@ -110,6 +110,10 @@ check('exposes local split and merge without creating UI-owned model state',
   source.indexOf('FormalLongText.splitAt(bundle') >= 0 &&
   source.indexOf('FormalLongText.mergeAdjacent(bundle') >= 0 &&
   source.indexOf('FormalMulti.replaceOccurrences') >= 0);
+check('uses click-selected UTF-16 boundaries for short and long split runs',
+  source.indexOf('#include "split-boundaries.js"') >= 0 &&
+  source.indexOf('FormalSplitBoundaryUi.choose(occurrence.surface)') >= 0 &&
+  source.indexOf('prompt("分割境界') < 0);
 check('recovers from a save-preparation exception',
   source.indexOf('requestRevision = null') >= 0 &&
   source.indexOf('if (requestId === activeSaveRequestId) { setSavePending(false)') >= 0);

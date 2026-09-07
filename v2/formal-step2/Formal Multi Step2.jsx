@@ -4,6 +4,7 @@
 #include "../formal-step1/store.js"
 #include "multi.js"
 #include "occurrences.js"
+#include "split-boundaries.js"
 #include "projection.js"
 #include "segments.js"
 #include "orchestration.js"
@@ -110,11 +111,6 @@
         function refreshList() {
             currentIndex = FormalMultiUiRefresh.refresh(list, bundle.occurrences, currentIndex, listRefreshGuard, loadEditor, listText);
         }
-        function parseBoundaries(text) {
-            var parts=String(text).split(","), result=[], j, value;
-            for(j=0;j<parts.length;j++) { value=Number(parts[j]); if(!isFinite(value) || Math.floor(value)!==value) fail("分割境界はUTF-16整数で指定してください"); result.push(value); }
-            return result;
-        }
         function sameLocalRoot(first, second) {
             var j;
             if(!first||!second||first.end!==second.start) return false;
@@ -123,13 +119,14 @@
             return first.lineage[0]===second.lineage[0];
         }
         splitButton.onClick = function () {
-            var occurrence, raw, boundaries;
+            var occurrence, boundaries;
             try {
                 if(savePending || currentIndex<0) return;
                 saveEditor(); occurrence=bundle.occurrences[currentIndex];
-                raw=prompt("分割境界（occurrence先頭からのUTF-16位置、カンマ区切り）", "");
-                if(raw===null) return;
-                boundaries=parseBoundaries(raw); bundle=FormalMulti.replaceOccurrences(bundle, FormalLongText.splitAt(bundle, occurrence.occurrenceId, boundaries).occurrences); editRevision++; bundle.revision=editRevision; currentIndex=Math.min(currentIndex,bundle.occurrences.length-1); refreshList(); stateText.text="状態: occurrenceを局所分割しました。各readingを確認して保存してください";
+                boundaries=FormalSplitBoundaryUi.choose(occurrence.surface);
+                if(boundaries===null) return;
+                if(!boundaries.length) fail("分割境界を1つ以上選択してください");
+                bundle=FormalMulti.replaceOccurrences(bundle, FormalLongText.splitAt(bundle, occurrence.occurrenceId, boundaries).occurrences); editRevision++; bundle.revision=editRevision; currentIndex=Math.min(currentIndex,bundle.occurrences.length-1); refreshList(); stateText.text="状態: occurrenceを局所分割しました。各readingを確認して保存してください";
             } catch(error) { stateText.text="状態: 分割失敗 / "+(error.message||error); }
         };
         mergeButton.onClick = function () {
