@@ -129,6 +129,7 @@ test('A-H one-shot diagnostic is disposable, aggregated, and not production wiri
   assert.ok(source.includes('Window("dialog"'));assert.ok(source.includes('report.join("\\n")'));
   assert.ok(source.includes('app.documents.add()'));assert.ok(source.includes('DONOTSAVECHANGES'));
   assert.ok(source.includes('var TRACKING = [0, -25, -50, -75, -100]'));
+  assert.ok(source.includes('pendingH'));assert.ok(source.includes('completeH'));assert.ok(source.includes('finalizeReport'));assert.ok(source.includes('function summary()'));
   assert.ok(!source.includes('source.note'));assert.ok(!source.includes('kind = TextType.AREATEXT'));
   assert.ok(!source.includes('TextType.POINTTEXT'));assert.ok(!source.includes('app.activeDocument'));
 });

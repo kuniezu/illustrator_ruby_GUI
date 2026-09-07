@@ -204,6 +204,35 @@ No Illustrator runtime, production wiring, source persistence, activation, or
 PR/Issue operation was performed. Runtime-dependent results remain explicitly
 `MANUAL_REQUIRED` or `CAPABILITY_UNAVAILABLE` in the report.
 
+## A-H review hardening results
+
+The follow-up hardening makes H use an actual BridgeTalk request with a
+RenderSpec-shaped payload and a disposable receiver that performs schema
+identity/geometry delivery, fresh rectangle creation, `areaText(path)`,
+typography/readback, and cleanup. H completion is gated so the single final
+report is built only after the callback or a send/availability failure. E
+stops on the first verified fit and does not continue after a non-retryable
+failure. A records path/frame lifecycle readbacks rather than asserting them;
+B reports tolerance comparisons for frame and textPath; D separates expected
+negative fit observations from diagnostic execution status; F checks actual
+mock state transitions; G includes disposable candidate readback; cleanup is
+idempotent and summary statuses are generated from recorded outcomes.
+
+Exact validation commands and results on this branch:
+
+- `node --test v2/formal-step2/tests/*.cjs`: **232/232 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **10/10 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files)**
+- `node --test v2/formal-step2/tests/gate-0.cjs`: **6/6 PASS**
+- `node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **6/6 PASS**
+- `git diff --check`: **PASS**
+
+New pure execution coverage is in
+`tests/area-text-native-diagnostic.cjs`; it covers first-fit termination,
+non-retryable termination, deferred final reporting, expected negative D
+cases, F state transitions, and single cleanup reporting. No Illustrator
+runtime was executed and no production wiring was changed.
+
 ## Final generated BridgeTalk parse validation at c967cb9
 
 Executed at the unchanged review HEAD:
