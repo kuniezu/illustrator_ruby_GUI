@@ -123,6 +123,7 @@
             try {
                 if(savePending || currentIndex<0) return;
                 saveEditor(); occurrence=bundle.occurrences[currentIndex];
+                if(occurrence.unsupported) fail("unsupported-occurrence-cannot-split");
                 boundaries=FormalSplitBoundaryUi.choose(occurrence.surface);
                 if(boundaries===null) return;
                 if(!boundaries.length) fail("分割境界を1つ以上選択してください");

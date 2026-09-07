@@ -23,7 +23,12 @@ var FormalMultiOrchestration = (function () {
         if(observation.status!=="complete")return unresolved(annotationId,(observation.reasons||["observation-unavailable"]).concat(reasons));
         if(reasons.length)return unresolved(annotationId,reasons);
         lineMap=localLines(resolved.start,annotation.anchor.baseText.length,observation.lines||[]);
-        if(!lineMap)return unresolved(annotationId,["annotation-line-intersection-unavailable"]);
+        if(!lineMap){
+            var visibleEnd=0, lineIndex;
+            for(lineIndex=0;lineIndex<(observation.lines||[]).length;lineIndex++) visibleEnd=Math.max(visibleEnd,observation.lines[lineIndex].end);
+            if(observation.overflow && resolved.start>=visibleEnd) return {annotationId:annotationId,status:"hidden",outcome:"hidden-confirmed",sourceStart:resolved.start,sourceEnd:resolved.start+annotation.anchor.baseText.length,decision:{status:"complete",segments:[]},reasons:["source-overset-hidden"]};
+            return unresolved(annotationId,["annotation-line-intersection-unavailable"]);
+        }
         decision=FormalSegments.plan(annotation.anchor.baseText,annotation.reading,lineMap,annotation.splitHints||[],bundle.revision,bundle.revision);
         return {annotationId:annotationId,status:decision.status,sourceStart:resolved.start,sourceEnd:resolved.start+annotation.anchor.baseText.length,decision:decision,reasons:decision.reasons||[]};
     }
