@@ -166,3 +166,13 @@ Added executable coverage covers unsupported glyph scaling, non-null spacing,
 missing or malformed nested geometry, tampered derived left/width values, and
 normal `create()` output acceptance. No Illustrator runtime or production
 wiring was performed.
+
+## Final generated BridgeTalk parse validation at c967cb9
+
+Executed at the unchanged review HEAD:
+
+`node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`
+
+Result: **6/6 PASS**. The generated BridgeTalk body parse case, named
+`production generated BridgeTalk body parses as a script`, passed. This was a
+validation-only run; no production code or runtime wiring changed.
