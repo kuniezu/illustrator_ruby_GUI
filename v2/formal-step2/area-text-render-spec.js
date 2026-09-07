@@ -3,6 +3,7 @@ var FormalAreaTextRenderSpec = (function () {
     var SCHEMA = "formal-area-text-render-spec:v1";
     var RENDERER_VERSION = "area-text-native-v1";
     var GEOMETRY_VERSION = "area-text-rectangle-v1";
+    var DERIVED_TOLERANCE = 0.000001;
 
     function finite(value) { return typeof value === "number" && isFinite(value); }
     function string(value) { return value == null ? "" : String(value); }
@@ -22,14 +23,15 @@ var FormalAreaTextRenderSpec = (function () {
         for (i = 0; i < allowed.length; i++) if (value === allowed[i]) return true;
         return false;
     }
-    function validOptionalNumber(value) { return value === null || finite(value); }
+    function validOptionalNumber(value) { return value === null; }
+    function sameDerived(a, b) { return finite(a) && finite(b) && Math.abs(a - b) <= DERIVED_TOLERANCE; }
     function validComposer(policy) {
         var i, values;
         if (!policy || typeof policy !== "object") return "render-spec-composer-policy";
         if (!validPolicyValue(policy.justification, ["full", "center"])) return "render-spec-justification";
         if (!validPolicyValue(policy.singleWordJustification, ["full", "center"])) return "render-spec-single-word-justification";
         if (!validPolicyValue(policy.oneCharacterPolicy, ["center"])) return "render-spec-one-character-policy";
-        if (!policy.glyphScaling || !finite(policy.glyphScaling.minimum) || !finite(policy.glyphScaling.desired) || !finite(policy.glyphScaling.maximum)) return "render-spec-glyph-scaling";
+        if (!policy.glyphScaling || policy.glyphScaling.minimum !== 100 || policy.glyphScaling.desired !== 100 || policy.glyphScaling.maximum !== 100) return "render-spec-glyph-scaling";
         if (!policy.letterSpacing || !validOptionalNumber(policy.letterSpacing.minimum) || !validOptionalNumber(policy.letterSpacing.desired) || !validOptionalNumber(policy.letterSpacing.maximum)) return "render-spec-letter-spacing";
         if (!policy.wordSpacing || !validOptionalNumber(policy.wordSpacing.minimum) || !validOptionalNumber(policy.wordSpacing.desired) || !validOptionalNumber(policy.wordSpacing.maximum)) return "render-spec-word-spacing";
         values = policy.trackingCandidates;
@@ -113,11 +115,14 @@ var FormalAreaTextRenderSpec = (function () {
         var composerError;
         if (!spec || spec.schema !== SCHEMA) return {ok:false,reason:"render-spec-schema"};
         if (spec.rendererMode !== "area-text-native") return {ok:false,reason:"render-spec-renderer-mode"};
+        if (spec.rendererVersion !== RENDERER_VERSION || spec.geometryVersion !== GEOMETRY_VERSION) return {ok:false,reason:"render-spec-version"};
         if (!spec.requestId || !spec.sourceFrameId || !spec.annotationId || !spec.logicalSegmentId || !spec.generationId || !spec.physicalId) return {ok:false,reason:"render-spec-identity"};
         if (!spec.reading) return {ok:false,reason:"render-spec-reading"};
         if (typeof spec.singleCharacter !== "boolean" || spec.singleCharacter !== (String(spec.reading).length === 1)) return {ok:false,reason:"render-spec-single-character"};
         if (!spec.appearance || typeof spec.appearance.fontName !== "string" || !spec.appearance.fontName || !finite(spec.appearance.fontSize) || spec.appearance.fontSize <= 0 || !finite(spec.appearance.manualDeltaX) || !finite(spec.appearance.widthScale) || spec.appearance.widthScale <= 0 || !finite(spec.appearance.gapEm) || spec.appearance.gapEm < 0) return {ok:false,reason:"render-spec-appearance"};
+        if (!spec.geometry || !finite(spec.geometry.autoLeft) || !finite(spec.geometry.autoTop) || !finite(spec.geometry.autoWidth) || spec.geometry.autoWidth <= 0 || !finite(spec.geometry.boxHeight) || spec.geometry.boxHeight <= 0) return {ok:false,reason:"render-spec-nested-geometry"};
         if (!finite(spec.finalLeft) || !finite(spec.finalTop) || !finite(spec.finalWidth) || spec.finalWidth <= 0 || !finite(spec.finalHeight) || spec.finalHeight <= 0) return {ok:false,reason:"render-spec-geometry"};
+        if (!sameDerived(spec.finalLeft, spec.geometry.autoLeft + spec.appearance.manualDeltaX) || !sameDerived(spec.finalTop, spec.geometry.autoTop) || !sameDerived(spec.finalWidth, spec.geometry.autoWidth * spec.appearance.widthScale) || !sameDerived(spec.finalHeight, spec.geometry.boxHeight)) return {ok:false,reason:"render-spec-derived-geometry"};
         composerError = validComposer(spec.composerPolicy);
         if (composerError) return {ok:false,reason:composerError};
         return {ok:true,reason:"render-spec-valid"};

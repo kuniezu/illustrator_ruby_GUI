@@ -143,3 +143,26 @@ New executable coverage includes activation ownership and immutability,
 unchanged-active plus owned-candidate activation, batch conversion before DOM
 creation, and tracking call-count termination after a non-retryable readback
 failure.
+
+## Receiver contract closure at ee96fc7 follow-up
+
+The receiver contract now requires the supported fixed glyph scaling policy
+(minimum, desired, and maximum all exactly 100). Letter and word spacing are
+currently supported only as explicit `null` values; arbitrary unverified
+numeric values are rejected. Nested geometry and appearance fields are
+required, and derived final geometry must match the nested values within an
+explicit `0.000001` tolerance. Renderer and geometry versions must match the
+v1 receiver contract.
+
+This cycle is separate from the prior 224/224 result:
+
+- `node --test v2/formal-step2/tests/*.cjs`: 225/225 PASS
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: 9/9 PASS
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: PASS (29 production files)
+- `node --test v2/formal-step2/tests/gate-0.cjs`: 6/6 PASS
+- `git diff --check`: PASS
+
+Added executable coverage covers unsupported glyph scaling, non-null spacing,
+missing or malformed nested geometry, tampered derived left/width values, and
+normal `create()` output acceptance. No Illustrator runtime or production
+wiring was performed.

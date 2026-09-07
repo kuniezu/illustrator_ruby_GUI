@@ -58,3 +58,18 @@ test('received render specs require complete supported composer policy',()=>{
   x=Object.assign({},base,{composerPolicy:Object.assign({},base.composerPolicy,{trackingCandidates:[-101]})});
   assert.equal(S.validate(x).ok,false);
 });
+
+test('received specs reject unsupported composer values and nested geometry mutations',()=>{
+  const base=S.create(input());
+  let x=Object.assign({},base,{composerPolicy:Object.assign({},base.composerPolicy,{glyphScaling:Object.assign({},base.composerPolicy.glyphScaling,{minimum:90})})});
+  assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{composerPolicy:Object.assign({},base.composerPolicy,{glyphScaling:Object.assign({},base.composerPolicy.glyphScaling,{desired:110})})});
+  assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{composerPolicy:Object.assign({},base.composerPolicy,{letterSpacing:Object.assign({},base.composerPolicy.letterSpacing,{desired:1})})});
+  assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base);delete x.geometry;assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{geometry:Object.assign({},base.geometry,{autoWidth:0})});assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{finalLeft:999});assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{finalWidth:999});assert.equal(S.validate(x).ok,false);
+  assert.equal(S.validate(base).ok,true);
+});
