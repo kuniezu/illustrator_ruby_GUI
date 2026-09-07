@@ -9,8 +9,8 @@ var FormalLongText = (function () {
             (code >= 0x3005 && code <= 0x3007);
     }
     function hasUnsupportedSequence(text) {
-        var source=String(text),i,code,next;
-        for(i=0;i<source.length;i++) { code=source.charCodeAt(i); next=i+1<source.length?source.charCodeAt(i+1):0; if((code>=0xd800&&code<=0xdbff&&next>=0xdc00&&next<=0xdfff)||(code>=0xfe00&&code<=0xfe0f)) return true; }
+        var source=String(text),i,code,next,point,previous;
+        for(i=0;i<source.length;i++) { code=source.charCodeAt(i); next=i+1<source.length?source.charCodeAt(i+1):0; previous=i>0?source.charCodeAt(i-1):0; if(code>=0xd800&&code<=0xdbff&&next>=0xdc00&&next<=0xdfff) { point=(code-0xd800)*0x400+(next-0xdc00)+0x10000; if(point>=0x20000&&point<=0x323af) return true; i++; } else if(code>=0xfe00&&code<=0xfe0f && isKanji(String.fromCharCode(previous))) return true; }
         return false;
     }
     function cloneOccurrence(occurrence) {

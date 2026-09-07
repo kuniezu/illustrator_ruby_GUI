@@ -40,8 +40,17 @@ var FormalLongTextReResolution = (function () {
         return contextMatches;
     }
     function sameRoot(first,second) { return first.lineage && second.lineage && first.lineage.length && second.lineage.length && first.lineage[0]===second.lineage[0]; }
-    function expandLocalRuns(previousOccurrences,current) {
-        var expanded=[],i,j,group,start,end,combined,rawMatches,raw,offset,child,source;
+    function compatibleBefore(expected,actual) { return expected.length>0 && (expected===actual || (actual.length>=expected.length && actual.substring(actual.length-expected.length)===expected)); }
+    function compatibleAfter(expected,actual) { return expected.length>0 && (expected===actual || (actual.length>=expected.length && actual.substring(0,expected.length)===expected)); }
+    function localRunScore(bundle,group,raw,currentText) {
+        var first=group[0],last=group[group.length-1],before=evidenceFor(bundle,first),after=evidenceFor(bundle,last),candidate=context(currentText,raw.start,raw.end),score=0;
+        if(raw.start===first.start) score+=2;
+        if(compatibleBefore(before.before,candidate.before)) score++;
+        if(compatibleAfter(after.after,candidate.after)) score++;
+        return score;
+    }
+    function expandLocalRuns(bundle,previousOccurrences,current) {
+        var expanded=[],i,j,group,start,end,combined,rawMatches,raw,offset,child,source,best,bestScore=-1,tied,r,score;
         for(i=0;i<current.occurrences.length;i++) expanded.push(current.occurrences[i]);
         for(i=0;i<previousOccurrences.length;) {
             group=[previousOccurrences[i]]; j=i+1;
@@ -50,8 +59,10 @@ var FormalLongTextReResolution = (function () {
                 combined=""; for(var g=0;g<group.length;g++) combined+=group[g].surface;
                 rawMatches=[];
                 for(var r=0;r<expanded.length;r++) if(expanded[r].surface===combined) rawMatches.push(expanded[r]);
-                if(rawMatches.length===1) {
-                    raw=rawMatches[0]; offset=0;
+                best=null; bestScore=-1; tied=false;
+                for(r=0;r<rawMatches.length;r++) { score=localRunScore(bundle,group,rawMatches[r],current.textSnapshot); if(score>bestScore) { best=rawMatches[r]; bestScore=score; tied=false; } else if(score===bestScore) tied=true; }
+                if(best && bestScore>0 && !tied) {
+                    raw=best; offset=0;
                     for(var k=0;k<group.length;k++) { source=group[k]; child={occurrenceId:raw.occurrenceId+"-local-"+k,start:raw.start+offset,end:raw.start+offset+source.surface.length,surface:source.surface,groupId:source.groupId,visible:true,enabled:true,reading:"",readingConfirmed:false,lineage:source.lineage.slice(0),localRun:true}; expanded.splice(expanded.indexOf(raw)+k,0,child); offset+=source.surface.length; }
                     expanded.splice(expanded.indexOf(raw),1);
                 }
@@ -102,7 +113,7 @@ var FormalLongTextReResolution = (function () {
         next.annotations=annotations;
     }
     function reconcile(previousBundle,currentText) {
-        var previousOccurrences=previousBundle.occurrences||[], current=expandLocalRuns(previousOccurrences,FormalLongText.extract(currentText)), next=FormalMulti.clone(previousBundle), mapping={oldToNew:{},currentToOld:{},oldReason:{}},unresolved=[],reservedIds={},matchSets=[],candidateOwners={},localIds={},i,j,old,matches,chosen,inherited;
+        var previousOccurrences=previousBundle.occurrences||[], current=expandLocalRuns(previousBundle,previousOccurrences,FormalLongText.extract(currentText)), next=FormalMulti.clone(previousBundle), mapping={oldToNew:{},currentToOld:{},oldReason:{}},unresolved=[],reservedIds={},matchSets=[],candidateOwners={},localIds={},i,j,old,matches,chosen,inherited;
         for(i=0;i<previousOccurrences.length-1;i++) if(previousOccurrences[i].end===previousOccurrences[i+1].start && sameRoot(previousOccurrences[i],previousOccurrences[i+1])) { localIds[previousOccurrences[i].occurrenceId]=true; localIds[previousOccurrences[i+1].occurrenceId]=true; }
         /* Resolve all evidence before assigning anything. A candidate claimed by
            two old occurrences is globally ambiguous, regardless of array order. */
