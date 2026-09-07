@@ -99,7 +99,10 @@ function FormalStep2Adapter(doc, source) {
             mark("observe.measurement", "line=" + i + ",left=" + visual.left + ",glyphTop=" + visual.top + ",rubyTop=" + rubyTop + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
             lines.push({start: start, end: end, geometry: {left: visual.left, top: rubyTop, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: visual.top, measuredWidth: measured.width, leading: leading, gap: gap, visualRight: visual.right, charWidths: charWidths}});
         }
-        mark("observe.line-map", visualLines.length < range.lines.length ? "complete-line-count-mismatch" : "complete"); return {status: "complete", kind: source.kind, orientation: source.orientation, overflow: false, overflowEvidence: null, overflowReason: "illustrator-overflow-api-unavailable", lines: lines};
+        var visibleEnd = 0, sourceEnd = total, suffixHasText;
+        for (i = 0; i < lines.length; i++) visibleEnd = Math.max(visibleEnd, lines[i].end);
+        suffixHasText = visibleEnd < sourceEnd && FormalMultiOrchestration.hasRenderableSuffix(String(source.contents), visibleEnd, sourceEnd);
+        mark("observe.line-map", visualLines.length < range.lines.length ? (suffixHasText ? "complete-overflow-suffix" : "complete-line-count-mismatch") : "complete"); return {status: "complete", kind: source.kind, orientation: source.orientation, overflow: suffixHasText, overflowEvidence: suffixHasText ? {visibleEnd:visibleEnd, sourceEnd:sourceEnd, suffixHasText:true} : null, overflowReason: suffixHasText ? "visible-end-before-renderable-suffix" : "no-confirmed-hidden-text-suffix", lines: lines};
     }
     function reconcile(bundle, decision, created) {
         var old = inspect(bundle), wanted = decision.segments || [], i, item, geometry, count, delta, tracking;
