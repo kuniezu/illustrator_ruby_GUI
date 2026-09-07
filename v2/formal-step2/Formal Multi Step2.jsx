@@ -39,20 +39,20 @@
     }
 
     function run() {
-        var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint, renderSources, stageFile, renderSupported;
+        var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint, renderSources, stageFile;
         var editor, readingInput, enabledCheck, confirmedCheck, selectedText;
         var saveButton, closeButton, splitButton, mergeButton, stateText, savePending = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, i;
 
         if (!app.documents.length) fail("AIファイルを開いてください");
         documentRef = app.activeDocument;
-        picked = FormalMultiSelectionAdapter.resolveFrame(documentRef.selection, TextType, TextOrientation);
+        picked = FormalMultiSelectionAdapter.resolveMultiFrame(documentRef.selection, TextType, TextOrientation);
         source = picked.sourceFrame;
-        renderSupported = source.kind === TextType.AREATEXT;
         renderSources = runtimeSources();
         stageFile = File(Folder.temp.fsName + "/formal-multi-host-" + new Date().getTime() + ".log");
         sourceIdentity = FormalMultiPersistenceAdapter.captureIdentity(source, documentRef);
         if (!sourceIdentity.uuid || !sourceIdentity.documentPath) fail("save-document-first-for-long-text-persistence");
         cachedNote = String(source.note);
+        if (FormalLongText.hasUnsupportedSequence(picked.text)) fail("unsupported-supplementary-kanji-or-ivs");
         stored = FormalMultiStore.read(cachedNote);
         if (stored && stored.textSnapshot !== picked.text) { reResolution=FormalLongTextReResolution.reconcile(stored,picked.text); bundle=reResolution.bundle; }
         else bundle = stored || FormalMulti.createFrame(picked.text);
@@ -177,16 +177,6 @@
                 saveEditor();
                 requestRevision = bundle.revision;
                 stageFile = File(Folder.temp.fsName + "/formal-multi-host-" + new Date().getTime() + "-" + requestId + ".log");
-                if (!renderSupported) {
-                    bundle = FormalMultiProjection.project(bundle);
-                    result = FormalMultiPersistenceAdapter.saveBridgeOnly(bundle.textSnapshot, cachedNote, bundle, sourceIdentity, {
-                        pending: function (diagnostics) { if (requestId !== activeSaveRequestId || requestRevision !== bundle.revision) return; stateText.text = "状態: persistence-onlyを実行中 / " + diagnostics.join(" | "); },
-                        success: function (value) { if (requestId !== activeSaveRequestId || requestRevision !== bundle.revision) return; setSavePending(false); cachedNote = value.note; refreshList(); stateText.text = "状態: 保存完了 / persistence-only / PointTextはrender対象外"; },
-                        failure: function (diagnostics) { if (requestId !== activeSaveRequestId || requestRevision !== bundle.revision) return; setSavePending(false); stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
-                    });
-                    if (result.status === "failed" && requestId === activeSaveRequestId && requestRevision === bundle.revision) { setSavePending(false); stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }
-                    return;
-                }
                 bundle = FormalMultiProjection.project(bundle);
                 bundle.renderStatus = "complete";
                 result = FormalMultiPersistenceAdapter.saveRendered(bundle.textSnapshot, cachedNote, bundle, sourceIdentity, FormalMultiRenderer.specifications(bundle), renderSources, {

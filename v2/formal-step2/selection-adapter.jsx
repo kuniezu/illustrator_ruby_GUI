@@ -83,6 +83,16 @@ var FormalMultiSelectionAdapter = (function () {
         if(result)return result;
         fail("source-frame-resolution-failed: " + diagnostics.join(" | "));
     }
-    return {resolve:resolve,resolveFrame:resolveFrame};
+    function resolveMultiFrame(selection, TextTypeRef, TextOrientationRef) {
+        var candidate;
+        if(selection && selection.typename === "TextFrame") candidate=selection;
+        else if(selection && typeof selection.length === "number" && selection.length===1) candidate=selection[0];
+        else fail("single-area-text-frame-selection-required");
+        if(!candidate || candidate.typename!=="TextFrame") fail("text-range-selection-unsupported");
+        if(candidate.orientation!==TextOrientationRef.HORIZONTAL) fail("text-frame-vertical-unsupported");
+        if(candidate.kind!==TextTypeRef.AREATEXT) fail("multi-area-text-only");
+        return {sourceFrame:candidate,text:String(candidate.contents),strategy:"Multi-direct-area-frame"};
+    }
+    return {resolve:resolve,resolveFrame:resolveFrame,resolveMultiFrame:resolveMultiFrame};
 }());
 if(typeof module!=="undefined")module.exports=FormalMultiSelectionAdapter;

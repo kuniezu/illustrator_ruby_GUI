@@ -9,6 +9,7 @@ test('extracts every contiguous kanji occurrence without including kana or brack
   ]);
   assert.notEqual(b.occurrences[0].occurrenceId, b.occurrences[1].occurrenceId);
 });
+test('supplementary-plane and IVS sequences are explicitly unsupported',()=>{assert.equal(M.hasUnsupportedSequence('甲𠮷'),true);assert.equal(M.hasUnsupportedSequence('甲\uFE00'),true);assert.equal(M.hasUnsupportedSequence('甲乙'),false);});
 
 test('groups repeated surfaces while preserving distinct occurrences', () => {
   const b = M.extract('甲 甲 乙');

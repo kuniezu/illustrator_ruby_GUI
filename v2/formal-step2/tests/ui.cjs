@@ -22,7 +22,7 @@ check('includes long-text model and multi namespace',
   source.indexOf('#include "multi-store.js"') >= 0 &&
   source.indexOf('#include "workflow.js"') >= 0);
 check('uses TextFrame selection without partial-range dependency',
-  source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0 &&
+  source.indexOf('FormalMultiSelectionAdapter.resolveMultiFrame') >= 0 &&
   source.indexOf('picked.strategy') >= 0 &&
   source.indexOf('picked.text') >= 0 &&
   source.indexOf('sourceKindText(source)') >= 0);
@@ -73,22 +73,20 @@ check('connects projection to the existing observed renderer contract',
   source.indexOf('FormalStep2Adapter') < 0 &&
   source.indexOf('renderAdapter') < 0 &&
   source.indexOf('source.contents') < 0);
-check('guards PointText from the visible render path and exposes a disposable stage file',
-  source.indexOf('renderSupported = source.kind === TextType.AREATEXT') >= 0 &&
+check('guards unsupported entry paths and exposes a disposable stage file',
+  source.indexOf('resolveMultiFrame') >= 0 &&
   saveClickBody.indexOf('source.kind') < 0 &&
   saveClickBody.indexOf('source.contents') < 0 &&
   saveClickBody.indexOf('source.note') < 0 &&
   saveClickBody.indexOf('FormalMultiPersistenceAdapter.save(source') < 0 &&
-  source.indexOf('FormalMultiPersistenceAdapter.saveBridgeOnly') >= 0 &&
   source.indexOf('source.note=') < 0 &&
-  source.indexOf('persistence-only') >= 0 &&
-  source.indexOf('PointTextはrender対象外') >= 0 &&
+  source.indexOf('unsupported-supplementary-kanji-or-ivs') >= 0 &&
   source.indexOf('Folder.temp') >= 0 &&
   source.indexOf('stageFile.fsName') >= 0 &&
   source.indexOf('undefined, stageFile.fsName') >= 0);
 check('validates the bundle before showing the palette',
   source.indexOf('FormalMulti.validate(bundle)') >= 0 &&
-  source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0);
+  source.indexOf('FormalMultiSelectionAdapter.resolveMultiFrame') >= 0);
 check('exposes local split and merge without creating UI-owned model state',
   source.indexOf('局所分割') >= 0 &&
   source.indexOf('隣接結合') >= 0 &&
@@ -98,3 +96,9 @@ check('exposes local split and merge without creating UI-owned model state',
   source.indexOf('function sameLocalRoot') >= 0 &&
   source.indexOf('bundle=FormalLongText.splitAt') >= 0 &&
   source.indexOf('bundle=FormalLongText.mergeAdjacent') >= 0);
+check('freezes the supported Multi boundary',
+  source.indexOf('resolveMultiFrame') >= 0 &&
+  source.indexOf('FormalLongText.hasUnsupportedSequence') >= 0 &&
+  source.indexOf('unsupported-supplementary-kanji-or-ivs') >= 0 &&
+  source.indexOf('FormalMultiWorkflow.setOccurrenceReading') >= 0 &&
+  source.indexOf('PointTextはrender対象外') < 0);

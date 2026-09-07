@@ -6,9 +6,11 @@ var FormalMultiWorkflow = (function () {
     function setReading(bundle, annotationId, reading, confirmed) { var value=String(reading), ok=confirmed!==false&&value.length>0, target=null, reasons=[], i; for(i=0;i<bundle.annotations.length;i++)if(bundle.annotations[i].annotationId===annotationId)target=bundle.annotations[i]; if(!target)fail("multi-annotation-missing"); for(i=0;i<target.reviewReasons.length;i++)if(target.reviewReasons[i]!=="reading-unconfirmed")reasons.push(target.reviewReasons[i]); if(!ok)reasons.push("reading-unconfirmed"); return FormalMulti.update(bundle,annotationId,{reading:value,readingConfirmed:ok,reviewReasons:reasons,splitHints:[]}); }
     function setEnabled(bundle, annotationId, enabled) { return FormalMulti.update(bundle,annotationId,{enabled:!!enabled}); }
     function occurrence(bundle, occurrenceId) { for (var i=0;i<(bundle.occurrences||[]).length;i++) if (bundle.occurrences[i].occurrenceId===occurrenceId) return bundle.occurrences[i]; return null; }
+    function validHiragana(value) { return /^[\u3041-\u3096\u309D-\u309F]*$/.test(value); }
     function setOccurrenceReading(bundle, occurrenceId, reading, confirmed) {
         var next=FormalMulti.clone(bundle), target=occurrence(next,occurrenceId), value=String(reading);
         if (!target) fail("long-text-occurrence-missing");
+        if (!validHiragana(value)) fail("reading-hiragana-only");
         target.reading=value; target.readingConfirmed=confirmed!==false&&value.length>0;
         return FormalMulti.validate(next);
     }
@@ -26,6 +28,6 @@ var FormalMultiWorkflow = (function () {
     function findSelection(bundle, sourceFrameId, sourceText, start, end) { var found=null, i, a; if(typeof start!=="number"||typeof end!=="number") return null; for(i=0;i<bundle.annotations.length;i++){a=bundle.annotations[i];if(a.sourceFrameId===sourceFrameId&&a.anchor.startHint===start&&a.anchor.baseText===sourceText.substring(start,end)){if(found)fail("ambiguous-selection-match");found=a.annotationId;}} return found; }
     function reviewQueue(bundle, results) { var queue=[],i,j; for(i=0;i<bundle.annotations.length;i++)for(j=0;j<results.length;j++)if(results[j].annotationId===bundle.annotations[i].annotationId&&results[j].status==="unresolved"){queue.push(bundle.annotations[i].annotationId);break;} return queue; }
     function navigate(queue, currentId, direction) { var i; for(i=0;i<queue.length;i++)if(queue[i]===currentId){i+=direction;return i>=0&&i<queue.length?queue[i]:null;} return queue.length?(direction>0?queue[0]:queue[queue.length-1]):null; }
-    return {addSelection:addSelection,setReading:setReading,setEnabled:setEnabled,setOccurrenceReading:setOccurrenceReading,setOccurrenceEnabled:setOccurrenceEnabled,occurrenceStatus:occurrenceStatus,findSelection:findSelection,reviewQueue:reviewQueue,navigate:navigate};
+    return {addSelection:addSelection,setReading:setReading,setEnabled:setEnabled,setOccurrenceReading:setOccurrenceReading,setOccurrenceEnabled:setOccurrenceEnabled,occurrenceStatus:occurrenceStatus,findSelection:findSelection,reviewQueue:reviewQueue,navigate:navigate,validHiragana:validHiragana};
 }());
 if(typeof module!=="undefined")module.exports=FormalMultiWorkflow;

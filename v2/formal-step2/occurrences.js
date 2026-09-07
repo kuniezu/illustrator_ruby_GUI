@@ -8,6 +8,11 @@ var FormalLongText = (function () {
             (code >= 0xf900 && code <= 0xfaff) ||
             (code >= 0x3005 && code <= 0x3007);
     }
+    function hasUnsupportedSequence(text) {
+        var source=String(text),i,code,next;
+        for(i=0;i<source.length;i++) { code=source.charCodeAt(i); next=i+1<source.length?source.charCodeAt(i+1):0; if((code>=0xd800&&code<=0xdbff&&next>=0xdc00&&next<=0xdfff)||(code>=0xfe00&&code<=0xfe0f)) return true; }
+        return false;
+    }
     function cloneOccurrence(occurrence) {
         return {occurrenceId: occurrence.occurrenceId, start: occurrence.start, end: occurrence.end,
             surface: occurrence.surface, groupId: occurrence.groupId, visible: occurrence.visible,
@@ -87,6 +92,6 @@ var FormalLongText = (function () {
         }
         return validate(next);
     }
-    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, setGroupReading: setGroupReading};
+    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence};
 }());
 if (typeof module !== "undefined") module.exports = FormalLongText;

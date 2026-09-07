@@ -1,26 +1,9 @@
-# Formal Step 2 Multi manual check
+# Formal Multi Step 2 runtime checkpoint
 
-Run `Formal Multi Step2.jsx` in Illustrator with exactly one horizontal Area Text
-range selected. The script opens a nonmodal palette so the selection can be changed
-between Add operations.
+1. Open and save an Illustrator document containing one horizontal AreaText TextFrame. Select the whole TextFrame and run `Formal Multi Step2.jsx`.
+2. Confirm the nonmodal palette lists each contiguous Kanji occurrence with its source range. Select a row, enter a hiragana reading, change `enabled`, and confirm the reading.
+3. For a longer Kanji run, use `局所分割` with UTF-16 boundaries, assign readings only to intended local units, and use `隣接結合` to verify local merge.
+4. Click `保存`, close the palette, run the same JSX again, and confirm occurrence state and readings are restored. Save again and check that managed ruby count, position, width, tracking, and reading do not drift.
+5. Disable or clear one occurrence and confirm only its managed ruby is removed. Confirm foreign/unmanaged objects and unrelated managed output remain.
 
-The script automatically writes a compact, read-only `[formal-multi-selection]`
-diagnostic to the ExtendScript console before opening the palette. No separate
-diagnostic script is required; retain that report with the palette results.
-
-1. Confirm the selected base text is shown and click **Add**.
-2. Select a second word in the same Area Text frame and click **Add** again.
-   Confirm that two separate annotations exist by using **Next unresolved**.
-3. Enter a reading and click **Apply**; confirm the annotation-local status and reason update.
-4. Use **Previous unresolved** and **Next unresolved** to move between annotations that still have reasons.
-5. Select a different text frame and click **Add**; confirm the palette rejects the
-   source-frame switch without changing the bound store.
-6. Use **Suppress** and **Re-enable** and confirm the annotation remains in the
-   same source frame.
-7. Close the palette, save the document, reopen it, and run the script again.
-   Confirm the multi annotation state is restored from the v2 multi note block.
-8. With a saved word selected, run the script again and confirm its saved reading
-   is displayed; changing it and clicking **Apply** must persist after reopening.
-
-This shell intentionally does not run rendering or reconciliation. Gate D geometry
-and runtime lifecycle checks remain separate manual procedures.
+This checkpoint supports only direct selection of one saved horizontal AreaText TextFrame through `Formal Multi Step2.jsx`. PointText, vertical text, direct TextRange selection, supplementary-plane Kanji/IVS, mixed typography guarantees, and the legacy single-annotation Step 2 entry are unsupported or deferred. Runtime verification is manual; pure tests and parse gates do not substitute for Illustrator verification.
