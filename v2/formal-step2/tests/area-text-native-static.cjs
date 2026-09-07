@@ -6,6 +6,20 @@ test('native pure helper parses in ordinary JavaScript',()=>{
   assert.doesNotThrow(()=>new vm.Script(fs.readFileSync(file,'utf8'),{filename:file}));
 });
 
+test('native backend scaffold parses and only creates fresh area text candidates',()=>{
+  const file=path.join(root,'v2','formal-step2','area-text-native-backend.jsx');
+  const source=fs.readFileSync(file,'utf8');
+  assert.doesNotThrow(()=>new vm.Script(source,{filename:file}));
+  assert.ok(source.includes('layer.pathItems.rectangle'));
+  assert.ok(source.includes('layer.textFrames.areaText(path)'));
+  assert.ok(source.includes('FormalAreaTextNative.verifyOneLineFit'));
+  assert.ok(source.includes('FormalAreaTextNative.trackingCandidates'));
+  assert.ok(source.includes('candidate.frame.remove()'));
+  assert.ok(!source.includes('kind = TextType.AREATEXT'));
+  assert.ok(!source.includes('source.note'));
+  assert.ok(!source.includes('activeBindings'));
+});
+
 test('native capability probe is isolated in a disposable document',()=>{
   const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Probe.jsx');
   const source=fs.readFileSync(file,'utf8');
