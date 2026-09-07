@@ -41,7 +41,7 @@
     function run() {
         var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint, renderSources, stageFile, renderSupported;
         var editor, readingInput, enabledCheck, confirmedCheck, selectedText;
-        var saveButton, closeButton, stateText, savePending = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, i;
+        var saveButton, closeButton, splitButton, mergeButton, stateText, savePending = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, i;
 
         if (!app.documents.length) fail("AIファイルを開いてください");
         documentRef = app.activeDocument;
@@ -86,6 +86,8 @@
 
         var actions = dialog.add("group");
         actions.orientation = "row";
+        splitButton = actions.add("button", undefined, "局所分割");
+        mergeButton = actions.add("button", undefined, "隣接結合");
         saveButton = actions.add("button", undefined, "保存");
         closeButton = actions.add("button", undefined, "閉じる");
         stateText = dialog.add("statictext", undefined, reResolution ? "状態: source変更を再解決済み / unresolved=" + reResolution.unresolved.length + "件（保存で新snapshotを確定）" : "状態: 読み込み完了");
@@ -112,7 +114,40 @@
 
         function refreshList() {
             var j;
-            for (j = 0; j < bundle.occurrences.length; j++) list.items[j].text = listText(bundle.occurrences[j]);
+            list.removeAll();
+            for (j = 0; j < bundle.occurrences.length; j++) list.add("item", listText(bundle.occurrences[j]));
+            if (bundle.occurrences.length) { if (currentIndex < 0 || currentIndex >= bundle.occurrences.length) currentIndex = 0; list.selection = currentIndex; loadEditor(currentIndex); }
+        }
+        function parseBoundaries(text) {
+            var parts=String(text).split(","), result=[], j, value;
+            for(j=0;j<parts.length;j++) { value=Number(parts[j]); if(!isFinite(value) || Math.floor(value)!==value) fail("分割境界はUTF-16整数で指定してください"); result.push(value); }
+            return result;
+        }
+        function sameLocalRoot(first, second) {
+            var j;
+            if(!first||!second||first.end!==second.start) return false;
+            for(j=0;j<first.lineage.length;j++) if(first.lineage[j]===second.lineage[0]) return true;
+            for(j=0;j<second.lineage.length;j++) if(second.lineage[j]===first.lineage[0]) return true;
+            return first.lineage[0]===second.lineage[0];
+        }
+        splitButton.onClick = function () {
+            var occurrence, raw, boundaries;
+            try {
+                if(savePending || currentIndex<0) return;
+                saveEditor(); occurrence=bundle.occurrences[currentIndex];
+                raw=prompt("分割境界（occurrence先頭からのUTF-16位置、カンマ区切り）", "");
+                if(raw===null) return;
+                boundaries=parseBoundaries(raw); bundle=FormalLongText.splitAt(bundle, occurrence.occurrenceId, boundaries); editRevision++; bundle.revision=editRevision; currentIndex=Math.min(currentIndex,bundle.occurrences.length-1); refreshList(); stateText.text="状態: occurrenceを局所分割しました。各readingを確認して保存してください";
+            } catch(error) { stateText.text="状態: 分割失敗 / "+(error.message||error); }
+        };
+        mergeButton.onClick = function () {
+            var first, second;
+            try {
+                if(savePending || currentIndex<0 || currentIndex+1>=bundle.occurrences.length) return;
+                saveEditor(); first=bundle.occurrences[currentIndex]; second=bundle.occurrences[currentIndex+1];
+                if(!sameLocalRoot(first,second)) fail("隣接する同一local lineageだけ結合できます");
+                bundle=FormalLongText.mergeAdjacent(bundle,[first.occurrenceId,second.occurrenceId]); editRevision++; bundle.revision=editRevision; refreshList(); stateText.text="状態: occurrenceを局所結合しました。readingを確認して保存してください";
+            } catch(error) { stateText.text="状態: 結合失敗 / "+(error.message||error); }
         }
 
         list.onChange = function () {
@@ -130,6 +165,8 @@
             readingInput.enabled = !value;
             enabledCheck.enabled = !value;
             confirmedCheck.enabled = !value;
+            splitButton.enabled = !value;
+            mergeButton.enabled = !value;
         }
         saveButton.onClick = function () {
             var result, requestId, requestRevision;

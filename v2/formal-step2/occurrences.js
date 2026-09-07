@@ -57,7 +57,7 @@ var FormalLongText = (function () {
         for (i = 0; i < next.occurrences.length; i++) if (next.occurrences[i].occurrenceId === occurrenceId) index = i;
         if (index < 0) fail("occurrence-missing");
         source = next.occurrences[index];
-        for (i = 0; i < boundaries.length; i++) { if (typeof boundaries[i] !== "number" || boundaries[i] <= points[points.length - 1] || boundaries[i] >= source.end - source.start) fail("invalid-split-boundary"); points.push(boundaries[i]); }
+        for (i = 0; i < boundaries.length; i++) { if (typeof boundaries[i] !== "number" || !isFinite(boundaries[i]) || Math.floor(boundaries[i]) !== boundaries[i] || boundaries[i] <= points[points.length - 1] || boundaries[i] >= source.end - source.start) fail("invalid-split-boundary"); points.push(boundaries[i]); }
         points.push(source.end - source.start);
         for (i = 0; i < points.length - 1; i++) {
             start = source.start + points[i]; end = source.start + points[i + 1];

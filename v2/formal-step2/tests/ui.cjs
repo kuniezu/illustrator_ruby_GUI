@@ -89,3 +89,12 @@ check('guards PointText from the visible render path and exposes a disposable st
 check('validates the bundle before showing the palette',
   source.indexOf('FormalMulti.validate(bundle)') >= 0 &&
   source.indexOf('FormalMultiSelectionAdapter.resolveFrame') >= 0);
+check('exposes local split and merge without creating UI-owned model state',
+  source.indexOf('局所分割') >= 0 &&
+  source.indexOf('隣接結合') >= 0 &&
+  source.indexOf('FormalLongText.splitAt') >= 0 &&
+  source.indexOf('FormalLongText.mergeAdjacent') >= 0 &&
+  source.indexOf('occurrence.occurrenceId') >= 0 &&
+  source.indexOf('function sameLocalRoot') >= 0 &&
+  source.indexOf('bundle=FormalLongText.splitAt') >= 0 &&
+  source.indexOf('bundle=FormalLongText.mergeAdjacent') >= 0);

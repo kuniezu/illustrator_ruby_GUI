@@ -79,6 +79,7 @@ test('invalid and empty grouping selections are rejected', () => {
   assert.throws(() => M.splitAt(b, b.occurrences[0].occurrenceId, []), /empty-split-boundaries/);
   assert.throws(() => M.mergeAdjacent(b, ['missing', 'also-missing']), /occurrence-missing/);
   assert.throws(() => M.splitAt(b, b.occurrences[0].occurrenceId, [99]), /invalid-split-boundary/);
+  assert.throws(() => M.splitAt(b, b.occurrences[0].occurrenceId, [NaN]), /invalid-split-boundary/);
   let separated = M.extract('甲 乙');
   assert.throws(() => M.mergeAdjacent(separated, separated.occurrences.map(x => x.occurrenceId)), /merge-requires-contiguous-ranges/);
 });
