@@ -233,6 +233,32 @@ non-retryable termination, deferred final reporting, expected negative D
 cases, F state transitions, and single cleanup reporting. No Illustrator
 runtime was executed and no production wiring was changed.
 
+## A-H semantic review hardening at 8b3b9e2 follow-up
+
+The diagnostic now routes H through the actual
+`FormalAreaTextRenderSpec.create` -> `validate` -> `backendSpec` path before
+building the BridgeTalk payload. The disposable receiver performs fresh
+rectangle creation, `areaText(path)`, typography/readback, geometry and line
+reporting, and owned cleanup. The final report is deferred until H completes
+or fails, so the receiver result/error is included in the one displayed
+report. E terminates at the first verified fit or first non-retryable result;
+A records path/frame lifecycle observations; B emits tolerance comparisons;
+D records expected negative fit outcomes without classifying the diagnostic as
+failed; F checks state transitions; G includes disposable candidate readback;
+and cleanup is guarded against duplicate processing.
+
+Exact validation commands and results for this follow-up:
+
+- `node --test v2/formal-step2/tests/*.cjs`: **232/232 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **10/10 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files)**
+- `node --test v2/formal-step2/tests/gate-0.cjs`: **6/6 PASS**
+- `node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **6/6 PASS**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
+operation was performed.
+
 ## Final generated BridgeTalk parse validation at c967cb9
 
 Executed at the unchanged review HEAD:

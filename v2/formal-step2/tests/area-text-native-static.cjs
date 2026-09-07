@@ -99,7 +99,7 @@ test('tracking stops after the first non-retryable readback failure',()=>{
 test('native capability probe is isolated in a disposable document',()=>{
   const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Probe.jsx');
   const source=fs.readFileSync(file,'utf8');
-  const parseable=source.replace(/^\s*#target.*$/gm,'');
+  const parseable=source.replace(/^\s*#target.*$/gm,'').replace(/^\s*#include.*$/gm,'');
   assert.doesNotThrow(()=>new vm.Script(parseable,{filename:file}));
   assert.ok(source.includes('app.documents.add()'));
   assert.ok(source.includes('SaveOptions.DONOTSAVECHANGES'));
@@ -126,6 +126,7 @@ test('A-H one-shot diagnostic is disposable, aggregated, and not production wiri
   for(const id of ['A1','B1','B2','C1','C2','D1','D2','D3','D4','F1','F2','F3','F4','G1','G2','G3','G4','H']) assert.ok(source.includes('"'+id+'"'),id);
   assert.ok(source.includes('"E" + i'));
   assert.ok(source.includes('areaText(path)'));assert.ok(source.includes('BridgeTalk'));assert.ok(source.includes('bt.send(30)'));
+  assert.ok(source.includes('FormalAreaTextRenderSpec.create'));assert.ok(source.includes('FormalAreaTextRenderSpec.validate'));assert.ok(source.includes('FormalAreaTextRenderSpec.backendSpec'));
   assert.ok(source.includes('Window("dialog"'));assert.ok(source.includes('report.join("\\n")'));
   assert.ok(source.includes('app.documents.add()'));assert.ok(source.includes('DONOTSAVECHANGES'));
   assert.ok(source.includes('var TRACKING = [0, -25, -50, -75, -100]'));
