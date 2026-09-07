@@ -1,12 +1,22 @@
 /* ScriptUI boundary picker; model boundaries remain UTF-16 offsets. */
 var FormalSplitBoundaryUi = (function () {
+    var contextLength = 4;
+    function safeContext(source, start, end) {
+        if (start > 0 && source.charCodeAt(start) >= 0xdc00 && source.charCodeAt(start) <= 0xdfff) start--;
+        if (end < source.length && source.charCodeAt(end - 1) >= 0xd800 && source.charCodeAt(end - 1) <= 0xdbff) end++;
+        return source.substring(start, end);
+    }
+    function boundaryLabel(source, offset) {
+        var leftStart = Math.max(0, offset - contextLength), rightEnd = Math.min(source.length, offset + contextLength), left = safeContext(source, leftStart, offset), right = safeContext(source, offset, rightEnd);
+        return (leftStart > 0 ? "…" : "") + left + "｜" + right + (rightEnd < source.length ? "…" : "");
+    }
     function boundaryItems(text) {
         var source = String(text), result = [], i = 0, next, character;
         while (i < source.length) {
             next = i + 1 < source.length ? source.charCodeAt(i + 1) : 0;
             character = source.charCodeAt(i) >= 0xd800 && source.charCodeAt(i) <= 0xdbff && next >= 0xdc00 && next <= 0xdfff ? source.substring(i, i + 2) : source.charAt(i);
             i += character.length;
-            if (i < source.length) result.push({character: character, offset: i});
+            if (i < source.length) result.push({character: character, offset: i, label: boundaryLabel(source, i)});
         }
         return result;
     }
@@ -15,7 +25,7 @@ var FormalSplitBoundaryUi = (function () {
         list = dialog.add("listbox", undefined, [], {multiselect: true});
         list.preferredSize = [520, 360];
         items = boundaryItems(text);
-        for (i = 0; i < items.length; i++) list.add("item", "「" + items[i].character + "」の後");
+        for (i = 0; i < items.length; i++) list.add("item", items[i].label);
         actions = dialog.add("group");
         ok = actions.add("button", undefined, "決定", {name: "ok"});
         cancel = actions.add("button", undefined, "キャンセル", {name: "cancel"});
