@@ -92,6 +92,27 @@ function lintProductionSources() {
   return violations;
 }
 
+function diagnosticSourceFile() {
+  return path.join(repoRoot, 'v2', 'diagnostics', 'Formal Step2 AreaText Native Probe.jsx');
+}
+
+function scanDiagnosticCompatibility(source, filename) {
+  const violations = scanExtendScriptCompatibility(source, filename);
+  const reservedProperty = /\{\s*(new|delete|default|class|enum|extends|super|import|export)\s*:/g;
+  let match;
+  while ((match = reservedProperty.exec(source)) !== null) {
+    violations.push({ filename: filename, token: 'reserved property ' + match[1],
+      line: source.slice(0, match.index).split('\n').length });
+  }
+  return violations;
+}
+
+function lintDiagnosticSource() {
+  const file = diagnosticSourceFile();
+  return scanDiagnosticCompatibility(fs.readFileSync(file, 'utf8'),
+    path.relative(repoRoot, file));
+}
+
 if (require.main === module) {
   const violations = lintProductionSources();
   if (violations.length) {
@@ -107,5 +128,8 @@ module.exports = {
   formatViolations: formatViolations,
   lintProductionSources: lintProductionSources,
   productionSourceFiles: productionSourceFiles,
-  scanExtendScriptCompatibility: scanExtendScriptCompatibility
+  scanExtendScriptCompatibility: scanExtendScriptCompatibility,
+  diagnosticSourceFile: diagnosticSourceFile,
+  lintDiagnosticSource: lintDiagnosticSource,
+  scanDiagnosticCompatibility: scanDiagnosticCompatibility
 };

@@ -1,11 +1,17 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const root=path.resolve(__dirname,'..','..','..');
+const compat=require('../extendscript-compat-lint.cjs');
 
 function parse(relative){
   const file=path.join(root,relative),source=fs.readFileSync(file,'utf8');
   assert.doesNotThrow(()=>new vm.Script(source,{filename:file}));
   return source;
 }
+
+test('diagnostic JSX passes ES3 reserved-property compatibility lint',()=>{
+  assert.deepEqual(compat.lintDiagnosticSource(),[]);
+  assert.equal(compat.scanDiagnosticCompatibility('var x={new:1};','fixture.jsx').length,1);
+});
 
 test('native pure helpers parse in ordinary JavaScript',()=>{
   parse(path.join('v2','formal-step2','area-text-native.js'));

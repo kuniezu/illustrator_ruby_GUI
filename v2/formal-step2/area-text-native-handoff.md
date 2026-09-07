@@ -259,6 +259,28 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## ExtendScript parse compatibility fix at 239ea64 follow-up
+
+The A-H probe's `runF` no longer uses the reserved-word property literal
+`{ new: ... }`; it assigns the candidate record through
+`candidateRecords["new"]`, preserving the same manifest semantics. A
+diagnostic-specific compatibility scan now checks the probe JSX for reserved
+word property literals, in addition to the existing production API/syntax
+denylist. A regression fixture proves that `{new:1}` is rejected while the
+current probe passes. No A-H semantic contract was changed.
+
+Exact validation commands and results for this follow-up:
+
+- `node --test v2/formal-step2/tests/*.cjs`: **236/236 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **11/11 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files)**
+- `node --test v2/formal-step2/tests/gate-0.cjs`: **6/6 PASS**
+- `node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **6/6 PASS**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
+operation was performed.
+
 ## A-H final semantic closure at cde4bbc follow-up
 
 H now transports the complete RenderSpec object literal rather than a pipe
