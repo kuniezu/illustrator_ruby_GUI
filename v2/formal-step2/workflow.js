@@ -21,6 +21,7 @@ var FormalMultiWorkflow = (function () {
         return FormalMulti.validate(next);
     }
     function occurrenceStatus(occurrence) {
+        if (occurrence.unsupported) return "unsupported";
         if (!occurrence.enabled) return "suppressed";
         if (!occurrence.readingConfirmed||!occurrence.reading) return "unresolved";
         return "ready";

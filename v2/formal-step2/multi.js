@@ -8,7 +8,7 @@ var FormalMulti = (function () {
         var splitHints=[],i; for(i=0;i<(a.splitHints||[]).length;i++)splitHints.push(copyHint(a.splitHints[i]));
         return {annotationId:a.annotationId,sourceFrameId:a.sourceFrameId,anchor:{baseText:h.baseText,startHint:h.startHint,beforeContext:h.beforeContext,afterContext:h.afterContext},reading:a.reading,enabled:a.enabled,placementMode:a.placementMode,reviewReasons:a.reviewReasons.slice(0),readingConfirmed:a.readingConfirmed,style:{sizeRatio:a.style.sizeRatio,gapRatio:a.style.gapRatio},offset:{inlineEm:a.offset.inlineEm,blockEm:a.offset.blockEm},splitHints:splitHints};
     }
-    function copyOccurrence(o) { return {occurrenceId:o.occurrenceId,start:o.start,end:o.end,surface:o.surface,groupId:o.groupId,visible:o.visible,enabled:o.enabled,reading:o.reading,readingConfirmed:o.readingConfirmed,lineage:o.lineage.slice(0)}; }
+    function copyOccurrence(o) { return {occurrenceId:o.occurrenceId,start:o.start,end:o.end,surface:o.surface,groupId:o.groupId,visible:o.visible,enabled:o.enabled,reading:o.reading,readingConfirmed:o.readingConfirmed,lineage:o.lineage.slice(0),unsupported:!!o.unsupported}; }
     function validateOccurrences(bundle) {
         if (bundle.occurrences === undefined) return;
         if (!(bundle.occurrences instanceof Array)) fail("invalid-multi-occurrences");

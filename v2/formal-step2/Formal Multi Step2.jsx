@@ -17,7 +17,7 @@
 /* Minimal scalable long-text shell. Logical occurrences stay separate from render segments. */
 (function () {
     function fail(message) { throw Error(message); }
-    function statusText(occurrence) { return FormalMultiWorkflow.occurrenceStatus(occurrence); }
+    function statusText(occurrence) { return occurrence.unsupported ? "unsupported" : FormalMultiWorkflow.occurrenceStatus(occurrence); }
     function sourceKindText(source) { return source.kind === TextType.POINTTEXT ? "POINTTEXT" : "AREATEXT"; }
     function listText(occurrence) {
         return occurrence.start + ".." + occurrence.end + "  " + occurrence.surface + "  [" + statusText(occurrence) + "]";
@@ -52,7 +52,6 @@
         sourceIdentity = FormalMultiPersistenceAdapter.captureIdentity(source, documentRef);
         if (!sourceIdentity.uuid || !sourceIdentity.documentPath) fail("save-document-first-for-long-text-persistence");
         cachedNote = String(source.note);
-        if (FormalLongText.hasUnsupportedSequence(picked.text)) fail("unsupported-supplementary-kanji-or-ivs");
         stored = FormalMultiStore.read(cachedNote);
         if (stored && stored.textSnapshot !== picked.text) { reResolution=FormalLongTextReResolution.reconcile(stored,picked.text); bundle=reResolution.bundle; }
         else bundle = stored || FormalMulti.createFrame(picked.text);

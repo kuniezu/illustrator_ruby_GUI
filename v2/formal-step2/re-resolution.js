@@ -28,7 +28,7 @@ var FormalLongTextReResolution = (function () {
             candidate=current.occurrences[i];
             if(candidate.surface===old.surface && (!localOnly || candidate.localRun)) candidates.push(candidate);
         }
-        for(i=0;i<candidates.length;i++) if(candidates[i].localRun) contextMatches.push(candidates[i]);
+        for(i=0;i<candidates.length;i++) if(candidates[i].localRun && candidates[i].localEvidence) contextMatches.push(candidates[i]);
         if(contextMatches.length===1) return contextMatches;
         contextMatches=[];
         for(i=0;i<candidates.length;i++) if(candidates[i].start===old.start) {
@@ -44,13 +44,12 @@ var FormalLongTextReResolution = (function () {
     function compatibleAfter(expected,actual) { return expected.length>0 && (expected===actual || (actual.length>=expected.length && actual.substring(0,expected.length)===expected)); }
     function localRunScore(bundle,group,raw,currentText) {
         var first=group[0],last=group[group.length-1],before=evidenceFor(bundle,first),after=evidenceFor(bundle,last),candidate=context(currentText,raw.start,raw.end),score=0;
-        if(raw.start===first.start) score+=2;
         if(compatibleBefore(before.before,candidate.before)) score++;
         if(compatibleAfter(after.after,candidate.after)) score++;
-        return score;
+        return {context:score,position:raw.start===first.start?1:0};
     }
     function expandLocalRuns(bundle,previousOccurrences,current) {
-        var expanded=[],i,j,group,start,end,combined,rawMatches,raw,offset,child,source,best,bestScore=-1,tied,r,score;
+        var expanded=[],i,j,group,start,end,combined,rawMatches,raw,offset,child,source,best,bestScore=-1,bestPosition=-1,tied,r,score;
         for(i=0;i<current.occurrences.length;i++) expanded.push(current.occurrences[i]);
         for(i=0;i<previousOccurrences.length;) {
             group=[previousOccurrences[i]]; j=i+1;
@@ -59,11 +58,11 @@ var FormalLongTextReResolution = (function () {
                 combined=""; for(var g=0;g<group.length;g++) combined+=group[g].surface;
                 rawMatches=[];
                 for(var r=0;r<expanded.length;r++) if(expanded[r].surface===combined) rawMatches.push(expanded[r]);
-                best=null; bestScore=-1; tied=false;
-                for(r=0;r<rawMatches.length;r++) { score=localRunScore(bundle,group,rawMatches[r],current.textSnapshot); if(score>bestScore) { best=rawMatches[r]; bestScore=score; tied=false; } else if(score===bestScore) tied=true; }
+                best=null; bestScore=-1; bestPosition=-1; tied=false;
+                for(r=0;r<rawMatches.length;r++) { score=localRunScore(bundle,group,rawMatches[r],current.textSnapshot); if(score.context>bestScore || (score.context===bestScore && score.position>bestPosition)) { best=rawMatches[r]; bestScore=score.context; bestPosition=score.position; tied=false; } else if(score.context===bestScore && score.position===bestPosition) tied=true; }
                 if(best && bestScore>0 && !tied) {
                     raw=best; offset=0;
-                    for(var k=0;k<group.length;k++) { source=group[k]; child={occurrenceId:raw.occurrenceId+"-local-"+k,start:raw.start+offset,end:raw.start+offset+source.surface.length,surface:source.surface,groupId:source.groupId,visible:true,enabled:true,reading:"",readingConfirmed:false,lineage:source.lineage.slice(0),localRun:true}; expanded.splice(expanded.indexOf(raw)+k,0,child); offset+=source.surface.length; }
+                    for(var k=0;k<group.length;k++) { source=group[k]; child={occurrenceId:raw.occurrenceId+"-local-"+k,start:raw.start+offset,end:raw.start+offset+source.surface.length,surface:source.surface,groupId:source.groupId,visible:true,enabled:true,reading:"",readingConfirmed:false,lineage:source.lineage.slice(0),localRun:true,localEvidence:true}; expanded.splice(expanded.indexOf(raw)+k,0,child); offset+=source.surface.length; }
                     expanded.splice(expanded.indexOf(raw),1);
                 }
             }
@@ -72,7 +71,7 @@ var FormalLongTextReResolution = (function () {
         return {textSnapshot:current.textSnapshot,occurrences:expanded};
     }
     function copyOccurrence(occurrence) {
-        return {occurrenceId:occurrence.occurrenceId,start:occurrence.start,end:occurrence.end,surface:occurrence.surface,groupId:occurrence.groupId,visible:occurrence.visible,enabled:occurrence.enabled,reading:occurrence.reading,readingConfirmed:occurrence.readingConfirmed,lineage:occurrence.lineage.slice(0)};
+        return {occurrenceId:occurrence.occurrenceId,start:occurrence.start,end:occurrence.end,surface:occurrence.surface,groupId:occurrence.groupId,visible:occurrence.visible,enabled:occurrence.enabled,reading:occurrence.reading,readingConfirmed:occurrence.readingConfirmed,lineage:occurrence.lineage.slice(0),unsupported:!!occurrence.unsupported};
     }
     function inheritedOccurrence(old,current) {
         var result=copyOccurrence(current);

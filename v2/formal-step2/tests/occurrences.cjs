@@ -10,6 +10,7 @@ test('extracts every contiguous kanji occurrence without including kana or brack
   assert.notEqual(b.occurrences[0].occurrenceId, b.occurrences[1].occurrenceId);
 });
 test('supplementary-plane and IVS sequences are explicitly unsupported',()=>{assert.equal(M.hasUnsupportedSequence('甲𠮷'),true);assert.equal(M.hasUnsupportedSequence('甲\uFE00'),true);assert.equal(M.hasUnsupportedSequence('本文😀だけ'),false);assert.equal(M.hasUnsupportedSequence('甲乙'),false);});
+test('normal BMP runs remain available beside an unsupported candidate run',()=>{let b=M.extract('甲😀乙。𠮷。丙');assert.deepEqual(b.occurrences.map(x=>({surface:x.surface,unsupported:x.unsupported})),[{surface:'甲',unsupported:false},{surface:'乙',unsupported:false},{surface:'𠮷',unsupported:true},{surface:'丙',unsupported:false}]);});
 
 test('groups repeated surfaces while preserving distinct occurrences', () => {
   const b = M.extract('甲 甲 乙');

@@ -80,7 +80,8 @@ check('guards unsupported entry paths and exposes a disposable stage file',
   saveClickBody.indexOf('source.note') < 0 &&
   saveClickBody.indexOf('FormalMultiPersistenceAdapter.save(source') < 0 &&
   source.indexOf('source.note=') < 0 &&
-  source.indexOf('unsupported-supplementary-kanji-or-ivs') >= 0 &&
+  source.indexOf('occurrence.unsupported') >= 0 &&
+  source.indexOf('hasUnsupportedSequence(picked.text)') < 0 &&
   source.indexOf('Folder.temp') >= 0 &&
   source.indexOf('stageFile.fsName') >= 0 &&
   source.indexOf('undefined, stageFile.fsName') >= 0);
@@ -98,7 +99,7 @@ check('exposes local split and merge without creating UI-owned model state',
   source.indexOf('bundle=FormalLongText.mergeAdjacent') >= 0);
 check('freezes the supported Multi boundary',
   source.indexOf('resolveMultiFrame') >= 0 &&
-  source.indexOf('FormalLongText.hasUnsupportedSequence') >= 0 &&
-  source.indexOf('unsupported-supplementary-kanji-or-ivs') >= 0 &&
+  source.indexOf('occurrence.unsupported') >= 0 &&
+  source.indexOf('hasUnsupportedSequence(picked.text)') < 0 &&
   source.indexOf('FormalMultiWorkflow.setOccurrenceReading') >= 0 &&
   source.indexOf('PointTextはrender対象外') < 0);

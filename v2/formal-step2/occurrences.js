@@ -13,11 +13,17 @@ var FormalLongText = (function () {
         for(i=0;i<source.length;i++) { code=source.charCodeAt(i); next=i+1<source.length?source.charCodeAt(i+1):0; previous=i>0?source.charCodeAt(i-1):0; if(code>=0xd800&&code<=0xdbff&&next>=0xdc00&&next<=0xdfff) { point=(code-0xd800)*0x400+(next-0xdc00)+0x10000; if(point>=0x20000&&point<=0x323af) return true; i++; } else if(code>=0xfe00&&code<=0xfe0f && isKanji(String.fromCharCode(previous))) return true; }
         return false;
     }
+    function unsupportedKanjiAt(text,index) {
+        var source=String(text),high=source.charCodeAt(index),low=source.charCodeAt(index+1),point;
+        if(high<0xd800||high>0xdbff||low<0xdc00||low>0xdfff) return false;
+        point=(high-0xd800)*0x400+(low-0xdc00)+0x10000;
+        return point>=0x20000&&point<=0x323af;
+    }
     function cloneOccurrence(occurrence) {
         return {occurrenceId: occurrence.occurrenceId, start: occurrence.start, end: occurrence.end,
             surface: occurrence.surface, groupId: occurrence.groupId, visible: occurrence.visible,
             enabled: occurrence.enabled, reading: occurrence.reading, readingConfirmed: occurrence.readingConfirmed,
-            lineage: occurrence.lineage.slice(0)};
+            lineage: occurrence.lineage.slice(0), unsupported: !!occurrence.unsupported};
     }
     function clone(bundle) {
         var occurrences = [], i;
@@ -41,18 +47,18 @@ var FormalLongText = (function () {
         return bundle;
     }
     function extract(text) {
-        var source = String(text), occurrences = [], i = 0, start, end, surface, groups = {}, groupId;
+        var source = String(text), occurrences = [], i = 0, start, end, surface, groups = {}, groupId, unsupported;
         while (i < source.length) {
-            if (!isKanji(source.charAt(i))) { i++; continue; }
+            if (!isKanji(source.charAt(i)) && !unsupportedKanjiAt(source,i)) { i++; continue; }
             start = i;
-            while (i < source.length && isKanji(source.charAt(i))) i++;
+            while (i < source.length && (isKanji(source.charAt(i)) || unsupportedKanjiAt(source,i) || (source.charCodeAt(i)>=0xfe00 && source.charCodeAt(i)<=0xfe0f))) i += unsupportedKanjiAt(source,i) ? 2 : 1;
             end = i;
-            surface = source.substring(start, end);
+            surface = source.substring(start, end); unsupported=hasUnsupportedSequence(surface);
             groupId = groups[surface];
             if (!groupId) { groupId = "lexeme-" + occurrences.length; groups[surface] = groupId; }
             occurrences.push({occurrenceId: "occurrence-" + occurrences.length, start: start, end: end,
                 surface: surface, groupId: groupId, visible: true, enabled: true, reading: "", readingConfirmed: false,
-                lineage: ["occurrence-" + occurrences.length]});
+                lineage: ["occurrence-" + occurrences.length], unsupported:unsupported});
         }
         return validate({schemaVersion: 1, textSnapshot: source, occurrences: occurrences});
     }
@@ -62,6 +68,7 @@ var FormalLongText = (function () {
         for (i = 0; i < next.occurrences.length; i++) if (next.occurrences[i].occurrenceId === occurrenceId) index = i;
         if (index < 0) fail("occurrence-missing");
         source = next.occurrences[index];
+        if(source.unsupported) fail("unsupported-occurrence-cannot-split");
         for (i = 0; i < boundaries.length; i++) { if (typeof boundaries[i] !== "number" || !isFinite(boundaries[i]) || Math.floor(boundaries[i]) !== boundaries[i] || boundaries[i] <= points[points.length - 1] || boundaries[i] >= source.end - source.start) fail("invalid-split-boundary"); points.push(boundaries[i]); }
         points.push(source.end - source.start);
         for (i = 0; i < points.length - 1; i++) {
@@ -92,6 +99,6 @@ var FormalLongText = (function () {
         }
         return validate(next);
     }
-    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence};
+    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence, unsupportedKanjiAt:unsupportedKanjiAt};
 }());
 if (typeof module !== "undefined") module.exports = FormalLongText;
