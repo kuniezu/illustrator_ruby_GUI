@@ -31,6 +31,7 @@ Work:
 - Fix the current entry-script syntax error.
 - Add a parse/syntax gate for the actual entry after include preprocessing or an equivalent faithful build step.
 - Parse generated BridgeTalk bodies used by the production path.
+- Run the mandatory ExtendScript compatibility denylist gate against production source, the include-expanded entrypoint, and generated BridgeTalk bodies.
 - Stop using string-presence tests or unrelated pure wrappers as evidence that the production entry is executable.
 
 Completion criteria:
