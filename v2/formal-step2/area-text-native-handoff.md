@@ -259,6 +259,37 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## A-H runtime evidence follow-up at edea280
+
+The real Illustrator probe reported H failure because the generated receiver
+IIFE ended with `result;` and did not return its value. The receiver now ends
+with `return result;`. A mock ExtendScript execution test exercises both the
+success path (`PASS:` with actual fields) and backend capability failure
+(`CAPABILITY_UNAVAILABLE:`), rather than checking only source text.
+
+The diagnostic geometry comparator is now an explicit ES3-safe numeric helper
+with exact, in-tolerance, out-of-tolerance, and nonnumeric tests. Comparison
+errors are recorded as geometry reasons instead of being silently converted
+to false. The probe now reports previous/next frame readability, self
+identity, kind, and contents. It does not relax the unresolved nextFrame
+production assumption. Tracking reports each trial's tracking, fit,
+retryable, and stop reason. Path cleanup diagnostics identify post-frame path
+invalidation separately from a successful path removal. F fixture IDs were
+made descriptive without changing manifest semantics.
+
+Exact validation commands and results for this follow-up:
+
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/*.cjs`: **241/241 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/area-text-native-static.cjs`: **11/11 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files; diagnostic entrypoint PASS)**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **matching production BridgeTalk ES3 test PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/area-text-native-diagnostic.cjs`: **H generated receiver execution/return-value and geometry tests PASS**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
+operation was performed.
+
 ## Real ES3 parser authority at 7d6206b follow-up
 
 The ES3 grammar gate now uses the fixed development dependency Acorn 8.15.0

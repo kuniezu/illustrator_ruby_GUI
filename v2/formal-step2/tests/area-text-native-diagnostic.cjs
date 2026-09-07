@@ -6,6 +6,12 @@ test('tracking stops at first verified fit',()=>{
   let calls=[];const r=D.runTracking([0,-25,-50,-75,-100],v=>{calls.push(v);return {ok:v===0,retryable:true};});
   assert.deepEqual(calls,[0]);assert.equal(r.tracking,0);
 });
+test('geometry comparator accepts exact and tolerance-bound values but rejects drift',()=>{
+  assert.equal(D.withinTolerance(10,10,0.01),true);
+  assert.equal(D.withinTolerance(10.009,10,0.01),true);
+  assert.equal(D.withinTolerance(10.011,10,0.01),false);
+  assert.throws(()=>D.withinTolerance('10',10,0.01),/non-numeric-tolerance/);
+});
 test('tracking stops at first non-retryable failure',()=>{
   let calls=[];const r=D.runTracking([0,-25,-50],v=>{calls.push(v);return {ok:false,retryable:v!==0,reason:'style'};});
   assert.deepEqual(calls,[0]);assert.equal(r.stopped,true);assert.equal(r.reason,'style');
@@ -45,4 +51,13 @@ test('generated H receiver body parses with full RenderSpec payload',()=>{
   const spec={schema:'formal-area-text-render-spec:v1',rendererMode:'area-text-native',rendererVersion:'area-text-native-v1',geometryVersion:'area-text-rectangle-v1',requestId:'r',sourceFrameId:'f',annotationId:'a',logicalSegmentId:'s',generationId:'g',physicalId:'p',reading:'かな',singleCharacter:false,appearance:{fontName:'TestFont',fontSize:8,manualDeltaX:0,widthScale:1,gapEm:.15},geometry:{autoLeft:10,autoTop:20,autoWidth:40,boxHeight:12},composerPolicy:{justification:'full',singleWordJustification:'full',oneCharacterPolicy:'center',glyphScaling:{minimum:100,desired:100,maximum:100},letterSpacing:{minimum:null,desired:null,maximum:null},wordSpacing:{minimum:null,desired:null,maximum:null},trackingCandidates:[0,-25,-50,-75,-100]},finalLeft:10,finalTop:20,finalWidth:40,finalHeight:12};
   const body=D.buildReceiverBody(JSON.stringify(spec),JSON.stringify('C:/repo'));
   assert.doesNotThrow(()=>new vm.Script(body,{filename:'generated-h-receiver.jsx'}));assert.doesNotThrow(()=>grammarGate.parseES3(body,'generated-h-receiver.jsx'));assert.match(body,/FormalAreaTextRenderSpec\.validate/);assert.match(body,/FormalAreaTextNativeBackend/);assert.match(body,/DONOTSAVECHANGES/);assert.match(body,/result='PASS:/);assert.match(body,/rendererMode=/);assert.match(body,/fontName=/);assert.match(body,/\$\.evalFile/);
+});
+test('generated H receiver executes and returns explicit PASS or capability result',()=>{
+  const spec={schema:'s',rendererMode:'m',rendererVersion:'rv',geometryVersion:'gv',requestId:'r',sourceFrameId:'f',annotationId:'a',logicalSegmentId:'l',generationId:'g',physicalId:'p',reading:'かな',singleCharacter:false,appearance:{fontName:'TestFont',fontSize:8,manualDeltaX:0,widthScale:1,gapEm:.15},geometry:{autoLeft:10,autoTop:20,autoWidth:40,boxHeight:12},composerPolicy:{trackingCandidates:[0]},finalLeft:10,finalTop:20,finalWidth:40,finalHeight:12};
+  function execute(fail) {
+    const context={File:p=>p,$:{evalFile(){context.loaded=(context.loaded||0)+1;}},FormalAreaTextRenderSpec:{validate:()=>({ok:true}),backendSpec:s=>s},FormalAreaTextNativeBackend:function(){return {prepareCandidate(){if(fail)throw Error('font-unavailable');return {frame:{textRange:{characterAttributes:{textFont:{name:'TestFont'}}}}};},verifyCandidate(){return {ok:true,reason:'verified-fit'};},disposeCandidate(){}};},app:{documents:{add(){return {layers:[{}],close(){}};}}},SaveOptions:{DONOTSAVECHANGES:'x'}};
+    context.$.evalFile=function(){context.loaded=(context.loaded||0)+1;context.FormalAreaTextNativeBackend=context.FormalAreaTextNativeBackend;};
+    return vm.runInNewContext(D.buildReceiverBody(JSON.stringify(spec),JSON.stringify('C:/repo')),context);
+  }
+  assert.match(execute(false),/^PASS:/);assert.match(execute(true),/^CAPABILITY_UNAVAILABLE:/);
 });

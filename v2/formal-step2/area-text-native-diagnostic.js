@@ -34,6 +34,13 @@ var FormalAreaTextNativeDiagnostic = (function () {
         value = String(value || "");
         return value.substring(0, prefix.length) === prefix;
     }
+    function withinTolerance(actual, expected, tolerance) {
+        var delta;
+        if (typeof actual !== "number" || typeof expected !== "number" || typeof tolerance !== "number" || isNaN(actual) || isNaN(expected) || isNaN(tolerance) || tolerance < 0) throw Error("non-numeric-tolerance");
+        delta = actual - expected;
+        if (delta < 0) delta = -delta;
+        return delta <= tolerance;
+    }
     function parseReceiverResult(body, expected) {
         var text = String(body || ""), prefix, detail, parts, fields = {}, i, pair, key;
         if (startsWith(text, "CAPABILITY_UNAVAILABLE:")) {
@@ -56,7 +63,7 @@ var FormalAreaTextNativeDiagnostic = (function () {
         return { status: "PASS", detail: detail, fields: fields };
     }
     function buildReceiverBody(specLiteral, rootLiteral) {
-        return "(function(){var receivedSpec=" + specLiteral + ";var root=" + rootLiteral + ";var rs=null;var backend=null;var candidate=null;var disposable=null;var result='';var fontName='';try{$.evalFile(File(root+'/formal-step2/area-text-render-spec.js'));$.evalFile(File(root+'/formal-step2/area-text-native.js'));$.evalFile(File(root+'/formal-step2/area-text-native-backend.jsx'));rs=FormalAreaTextRenderSpec.validate(receivedSpec);if(!rs.ok)throw Error('received-spec-invalid:'+rs.reason);var backendSpec=FormalAreaTextRenderSpec.backendSpec(receivedSpec);disposable=app.documents.add();backend=FormalAreaTextNativeBackend(disposable,disposable.layers[0]);candidate=backend.prepareCandidate(backendSpec);rs=backend.verifyCandidate(candidate,backendSpec);if(!rs.ok&&rs.retryable!==false)rs=backend.tryTracking(candidate,backendSpec);if(!rs.ok)throw Error('candidate-unverified:'+rs.reason);fontName=String(candidate.frame.textRange.characterAttributes.textFont.name);result='PASS:schema='+receivedSpec.schema+',rendererMode='+receivedSpec.rendererMode+',rendererVersion='+receivedSpec.rendererVersion+',geometryVersion='+receivedSpec.geometryVersion+',requestId='+receivedSpec.requestId+',sourceFrameId='+receivedSpec.sourceFrameId+',annotationId='+receivedSpec.annotationId+',logicalSegmentId='+receivedSpec.logicalSegmentId+',generationId='+receivedSpec.generationId+',physicalId='+receivedSpec.physicalId+',reading='+receivedSpec.reading+',singleCharacter='+receivedSpec.singleCharacter+',finalGeometry='+receivedSpec.finalLeft+':'+receivedSpec.finalTop+':'+receivedSpec.finalWidth+':'+receivedSpec.finalHeight+',verify='+rs.reason+',fontName='+fontName;}catch(e){result='CAPABILITY_UNAVAILABLE:'+String(e.message||e);}finally{try{if(backend&&candidate)backend.disposeCandidate(candidate);}catch(e1){}try{if(disposable)disposable.close(SaveOptions.DONOTSAVECHANGES);}catch(e2){}}result;})();";
+        return "(function(){var receivedSpec=" + specLiteral + ";var root=" + rootLiteral + ";var rs=null;var backend=null;var candidate=null;var disposable=null;var result='';var fontName='';try{$.evalFile(File(root+'/formal-step2/area-text-render-spec.js'));$.evalFile(File(root+'/formal-step2/area-text-native.js'));$.evalFile(File(root+'/formal-step2/area-text-native-backend.jsx'));rs=FormalAreaTextRenderSpec.validate(receivedSpec);if(!rs.ok)throw Error('received-spec-invalid:'+rs.reason);var backendSpec=FormalAreaTextRenderSpec.backendSpec(receivedSpec);disposable=app.documents.add();backend=FormalAreaTextNativeBackend(disposable,disposable.layers[0]);candidate=backend.prepareCandidate(backendSpec);rs=backend.verifyCandidate(candidate,backendSpec);if(!rs.ok&&rs.retryable!==false)rs=backend.tryTracking(candidate,backendSpec);if(!rs.ok)throw Error('candidate-unverified:'+rs.reason);fontName=String(candidate.frame.textRange.characterAttributes.textFont.name);result='PASS:schema='+receivedSpec.schema+',rendererMode='+receivedSpec.rendererMode+',rendererVersion='+receivedSpec.rendererVersion+',geometryVersion='+receivedSpec.geometryVersion+',requestId='+receivedSpec.requestId+',sourceFrameId='+receivedSpec.sourceFrameId+',annotationId='+receivedSpec.annotationId+',logicalSegmentId='+receivedSpec.logicalSegmentId+',generationId='+receivedSpec.generationId+',physicalId='+receivedSpec.physicalId+',reading='+receivedSpec.reading+',singleCharacter='+receivedSpec.singleCharacter+',finalGeometry='+receivedSpec.finalLeft+':'+receivedSpec.finalTop+':'+receivedSpec.finalWidth+':'+receivedSpec.finalHeight+',verify='+rs.reason+',fontName='+fontName;}catch(e){result='CAPABILITY_UNAVAILABLE:'+String(e.message||e);}finally{try{if(backend&&candidate)backend.disposeCandidate(candidate);}catch(e1){}try{if(disposable)disposable.close(SaveOptions.DONOTSAVECHANGES);}catch(e2){}}return result;})();";
     }
     function cleanupOnce(entry, remove) {
         if (!entry || entry.cleaned) return false;
@@ -67,6 +74,6 @@ var FormalAreaTextNativeDiagnostic = (function () {
         for (var i = 0; i < state.queue.length; i++) copy.queue.push(state.queue[i]);
         try { result = action(copy); return result; } catch (e) { return { state: state, failed: true, reason: e.message || String(e) }; }
     }
-    return { runTracking: runTracking, buildSummary: buildSummary, reportGate: reportGate, completionGate: completionGate, parseReceiverResult: parseReceiverResult, buildReceiverBody: buildReceiverBody, cleanupOnce: cleanupOnce, transaction: transaction };
+    return { runTracking: runTracking, buildSummary: buildSummary, reportGate: reportGate, completionGate: completionGate, withinTolerance: withinTolerance, parseReceiverResult: parseReceiverResult, buildReceiverBody: buildReceiverBody, cleanupOnce: cleanupOnce, transaction: transaction };
 }());
 if (typeof module !== "undefined") module.exports = FormalAreaTextNativeDiagnostic;
