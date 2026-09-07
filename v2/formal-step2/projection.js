@@ -8,12 +8,12 @@ var FormalMultiProjection = (function () {
     function find(annotations, annotationId) { var i; for(i=0;i<annotations.length;i++) if(annotations[i].annotationId===annotationId) return annotations[i]; return null; }
     function create(bundle, occurrence) { var a=FormalStep1.create(bundle.textSnapshot).annotation, c=context(bundle.textSnapshot,occurrence.start,occurrence.end); a.annotationId=id(bundle,occurrence); a.sourceFrameId=bundle.sourceFrameId; a.anchor={baseText:occurrence.surface,startHint:occurrence.start,beforeContext:c.beforeContext,afterContext:c.afterContext}; a.reading=occurrence.reading; a.readingConfirmed=true; a.enabled=true; a.reviewReasons=[]; a.splitHints=[]; return a; }
     function project(bundle) {
-        var next=FormalMulti.clone(bundle), annotations=[], occurrence, existing, generated={}, candidateIds={}, retired=[], i, j, c;
+        var next=FormalMulti.clone(bundle), annotations=[], occurrence, existing, generated={}, currentIds={}, ancestorIds={}, retired=[], i, j, c;
         if(bundle.occurrences===undefined) return next;
         for(i=0;i<bundle.occurrences.length;i++) {
             occurrence=bundle.occurrences[i];
-            candidateIds[id(bundle,occurrence)]=true;
-            for(j=0;j<occurrence.lineage.length;j++) candidateIds[idForKey(bundle.sourceFrameId,occurrence.lineage[j])]=true;
+            currentIds[id(bundle,occurrence)]=true;
+            for(j=0;j<occurrence.lineage.length;j++) ancestorIds[idForKey(bundle.sourceFrameId,occurrence.lineage[j])]=true;
             if(!eligible(occurrence)) continue;
             existing=find(next.annotations,id(bundle,occurrence));
             if(existing) {
@@ -24,7 +24,8 @@ var FormalMultiProjection = (function () {
         for(i=0;i<bundle.annotations.length;i++) {
             if(bundle.annotations[i].annotationId.indexOf(prefix)!==0) { annotations.push(bundle.annotations[i]); continue; }
             if(generated[bundle.annotations[i].annotationId]) continue;
-            if(candidateIds[bundle.annotations[i].annotationId]) retired.push(bundle.annotations[i].annotationId); else annotations.push(bundle.annotations[i]);
+            if(currentIds[bundle.annotations[i].annotationId]) continue;
+            if(ancestorIds[bundle.annotations[i].annotationId]) retired.push(bundle.annotations[i].annotationId); else annotations.push(bundle.annotations[i]);
         }
         next.annotations=annotations; next.retiredAnnotationIds=retired; return FormalMulti.validate(next);
     }
