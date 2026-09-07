@@ -259,6 +259,37 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## ES3 grammar gate hardening at bd69731 follow-up
+
+The diagnostic JSX reserved-word parse regression is now covered by an
+explicit ES3 grammar gate, separate from the API/syntax denylist. The gate
+uses the repository's dependency-free conservative parser: ordinary syntax is
+parsed with Node's script parser after directives are removed, while the
+ExtendScript ES3 subset rejects reserved-word property literals, object
+trailing commas, getters/setters, method/property shorthand, destructuring,
+optional chaining, arrow functions, template literals, let/const, and class
+syntax. Array trailing commas and quoted/bracketed reserved properties remain
+valid fixtures. Acorn was checked but is not installed in this runtime, so no
+untracked external dependency was added.
+
+The gate now covers all formal-step production sources, the faithful expanded
+diagnostic entrypoint and its includes, the production generated BridgeTalk
+body, and the generated H receiver body. The normal denylist CLI now reports
+its evidence separately as `ExtendScript API/syntax denylist` and includes the
+diagnostic entrypoint check.
+
+Exact validation commands and results for this follow-up:
+
+- `node --test v2/formal-step2/tests/*.cjs`: **239/239 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **11/11 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files; diagnostic entrypoint PASS)**
+- `node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **matching parse test PASS**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
+operation was performed.
+
 ## ExtendScript parse compatibility fix at 239ea64 follow-up
 
 The A-H probe's `runF` no longer uses the reserved-word property literal

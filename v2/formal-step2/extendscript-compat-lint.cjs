@@ -114,13 +114,13 @@ function lintDiagnosticSource() {
 }
 
 if (require.main === module) {
-  const violations = lintProductionSources();
+  const violations = lintProductionSources().concat(lintDiagnosticSource());
   if (violations.length) {
     process.stderr.write(formatViolations(violations) + '\n');
     process.exitCode = 1;
   } else {
-    process.stdout.write('ExtendScript compatibility: PASS (' +
-      productionSourceFiles().length + ' production files)\n');
+    process.stdout.write('ExtendScript API/syntax denylist: PASS (' +
+      productionSourceFiles().length + ' production files; diagnostic entrypoint PASS)\n');
   }
 }
 

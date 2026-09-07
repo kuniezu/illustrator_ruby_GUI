@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const compatibilityLint = require('../extendscript-compat-lint.cjs');
+const grammarGate = require('../es3-grammar-gate.cjs');
 
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 
@@ -56,6 +57,25 @@ test('production source passes the formal ExtendScript compatibility gate', () =
   });
 });
 
+test('production source passes the explicit ES3 grammar gate', () => {
+  compatibilityLint.productionSourceFiles().forEach((file) => {
+    assert.doesNotThrow(() => grammarGate.parseES3(fs.readFileSync(file, 'utf8'), path.relative(repoRoot, file)));
+  });
+});
+
+test('ES3 grammar fixtures reject modern and reserved constructs', () => {
+  const failures = [
+    '{new:1}', '{delete:1}', '{default:1}', '{class:1}', '{enum:1}',
+    '{extends:1}', '{super:1}', '{import:1}', '{export:1}', '{a:1,}',
+    '({get value(){return 1;}})', '({value(){return 1;}})', 'var x={value};',
+    'var {x}=value;', 'var [x]=value;', 'obj?.x', 'x=>x', '`x`', 'let x=1;',
+    'const x=1;', 'class X {}'
+  ];
+  failures.forEach((source) => assert.throws(() => grammarGate.parseES3(source, 'es3-fixture.js'), source));
+  assert.doesNotThrow(() => grammarGate.parseES3('({"new":1})', 'es3-pass.js'));
+  assert.doesNotThrow(() => grammarGate.parseES3('obj["new"]; new Foo(); delete obj.foo; var x={a:1}; var y=[1,];', 'es3-pass.js'));
+});
+
 test('ExtendScript compatibility denylist catches forbidden APIs and allows ES3 strings', () => {
   const violations = scanExtendScriptCompatibility(
     'var text="x"; text.indexOf("x"); var values=[]; values.indexOf(1); values.map(function(x){return x;}); var modern = new Set();',
@@ -72,6 +92,12 @@ test('include-expanded entrypoint passes the formal ExtendScript compatibility g
   const entry = path.join(repoRoot, 'v2', 'formal-step2', 'Formal Multi Step2.jsx');
   const expanded = expandIncludes(entry);
   assertExtendScriptCompatible(expanded, 'include-expanded Formal Multi Step2.jsx');
+});
+
+test('diagnostic expanded entrypoint passes the explicit ES3 grammar gate', () => {
+  const entry = path.join(repoRoot, 'v2', 'diagnostics', 'Formal Step2 AreaText Native Probe.jsx');
+  const expanded = expandIncludes(entry);
+  assert.doesNotThrow(() => grammarGate.parseES3(expanded, 'expanded AreaText Native Probe.jsx'));
 });
 
 test('production generated BridgeTalk body parses as a script', () => {
@@ -107,6 +133,7 @@ test('production generated BridgeTalk body parses as a script', () => {
   );
   assert.doesNotThrow(() => new vm.Script(body, { filename: 'generated-rendered-bridge.jsx' }));
   assertExtendScriptCompatible(body, 'generated-rendered-bridge.jsx');
+  assert.doesNotThrow(() => grammarGate.parseES3(body, 'generated-rendered-bridge.jsx'));
   assert.doesNotMatch(body, /eval\(decodeURIComponent\(/);
   assert.ok(body.indexOf('core.js') < body.indexOf('segments.js'));
   assert.ok(body.indexOf('segments.js') < body.indexOf('orchestration.js'));

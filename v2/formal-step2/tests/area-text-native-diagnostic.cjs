@@ -1,5 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm');
 const D=require('../area-text-native-diagnostic.js');
+const grammarGate=require('../es3-grammar-gate.cjs');
 
 test('tracking stops at first verified fit',()=>{
   let calls=[];const r=D.runTracking([0,-25,-50,-75,-100],v=>{calls.push(v);return {ok:v===0,retryable:true};});
@@ -43,5 +44,5 @@ test('cleanup report is emitted once for one owned entry',()=>{
 test('generated H receiver body parses with full RenderSpec payload',()=>{
   const spec={schema:'formal-area-text-render-spec:v1',rendererMode:'area-text-native',rendererVersion:'area-text-native-v1',geometryVersion:'area-text-rectangle-v1',requestId:'r',sourceFrameId:'f',annotationId:'a',logicalSegmentId:'s',generationId:'g',physicalId:'p',reading:'かな',singleCharacter:false,appearance:{fontName:'TestFont',fontSize:8,manualDeltaX:0,widthScale:1,gapEm:.15},geometry:{autoLeft:10,autoTop:20,autoWidth:40,boxHeight:12},composerPolicy:{justification:'full',singleWordJustification:'full',oneCharacterPolicy:'center',glyphScaling:{minimum:100,desired:100,maximum:100},letterSpacing:{minimum:null,desired:null,maximum:null},wordSpacing:{minimum:null,desired:null,maximum:null},trackingCandidates:[0,-25,-50,-75,-100]},finalLeft:10,finalTop:20,finalWidth:40,finalHeight:12};
   const body=D.buildReceiverBody(JSON.stringify(spec),JSON.stringify('C:/repo'));
-  assert.doesNotThrow(()=>new vm.Script(body,{filename:'generated-h-receiver.jsx'}));assert.match(body,/FormalAreaTextRenderSpec\.validate/);assert.match(body,/FormalAreaTextNativeBackend/);assert.match(body,/DONOTSAVECHANGES/);assert.match(body,/result='PASS:/);assert.match(body,/rendererMode=/);assert.match(body,/fontName=/);assert.match(body,/\$\.evalFile/);
+  assert.doesNotThrow(()=>new vm.Script(body,{filename:'generated-h-receiver.jsx'}));assert.doesNotThrow(()=>grammarGate.parseES3(body,'generated-h-receiver.jsx'));assert.match(body,/FormalAreaTextRenderSpec\.validate/);assert.match(body,/FormalAreaTextNativeBackend/);assert.match(body,/DONOTSAVECHANGES/);assert.match(body,/result='PASS:/);assert.match(body,/rendererMode=/);assert.match(body,/fontName=/);assert.match(body,/\$\.evalFile/);
 });
