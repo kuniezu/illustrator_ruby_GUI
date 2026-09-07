@@ -19,6 +19,13 @@ var FormalMultiPersistenceAdapter = (function () {
         try { stageFile.write("formal-multi-host:request-" + requestId + ":pre-send"); } finally { stageFile.close(); }
         return stagePath;
     }
+    function verifyRuntimeSources(sources) {
+        var names=["step1","segments","orchestration","adapter"],i,file;
+        if(!sources) throw Error("runtime-sources-required");
+        if(typeof File === "undefined") throw Error("runtime-source-file-unavailable");
+        for(i=0;i<names.length;i++) { if(!sources[names[i]]) throw Error("runtime-source-path-missing:"+names[i]); file=File(sources[names[i]]); if(!file.exists) throw Error("runtime-source-not-found:"+names[i]); }
+        return sources;
+    }
     function bridgeBody(expectedText, cachedNote, nextNote, identity) {
         return "(function(){" +
             "function fail(m){throw Error(m);}" +
@@ -52,31 +59,24 @@ var FormalMultiPersistenceAdapter = (function () {
         if (renderFailureNote && typeof renderFailureNote === "object") {
             stagePath = sources; sources = specifications; specifications = bundle; bundle = identity; identity = renderFailureNote; renderFailureNote = nextNote;
         }
-        var specs=scriptLiteral(specifications), step1=encoded(sources.step1), segments=encoded(sources.segments), orchestration=encoded(sources.orchestration), adapter=encoded(sources.adapter), documentPath=encoded(identity.documentPath || ""), uuid=encoded(identity.uuid || ""), stageFilePath=encoded(stagePath || ""), stageRequestId=encoded(requestId || "unknown");
+        var specs=scriptLiteral(specifications), step1Path=encoded(sources.step1), segmentsPath=encoded(sources.segments), orchestrationPath=encoded(sources.orchestration), adapterPath=encoded(sources.adapter), documentPath=encoded(identity.documentPath || ""), uuid=encoded(identity.uuid || "");
         return "(function(){"+
             "function fail(m){throw Error(m);}"+
-            "var requestId=decodeURIComponent(\""+stageRequestId+"\");"+
-            "function stage(n){try{if(typeof $!==\"undefined\"&&$.writeln)$.writeln(\"formal-multi-host:request-\"+requestId+\":\"+n);}catch(ignore){}}"+
-            "stage(\"host-entry\");"+
-            "stage(\"step1-eval-start\");"+
-            "eval(decodeURIComponent(\""+step1+"\"));"+
-            "stage(\"step1-eval-end\");stage(\"segments-eval-start\");"+
-            "eval(decodeURIComponent(\""+segments+"\"));"+
-            "stage(\"segments-eval-end\");stage(\"orchestration-eval-start\");"+
-            "eval(decodeURIComponent(\""+orchestration+"\"));"+
-            "stage(\"orchestration-eval-end\");stage(\"adapter-eval-start\");"+
-            "eval(decodeURIComponent(\""+adapter+"\"));"+
-            "stage(\"adapter-eval-end\");"+
+            "$.evalFile(File(decodeURIComponent(\""+step1Path+"\")));"+
+            "$.evalFile(File(decodeURIComponent(\""+segmentsPath+"\")));"+
+            "$.evalFile(File(decodeURIComponent(\""+orchestrationPath+"\")));"+
+            "$.evalFile(File(decodeURIComponent(\""+adapterPath+"\")));"+
             "var expected=decodeURIComponent(\""+encoded(expectedText)+"\"),cached=decodeURIComponent(\""+encoded(cachedNote)+"\"),next=decodeURIComponent(\""+encoded(nextNote)+"\"),renderFailure=decodeURIComponent(\""+encoded(renderFailureNote)+"\"),documentPath=decodeURIComponent(\""+documentPath+"\"),uuid=decodeURIComponent(\""+uuid+"\"),specs="+specs+",doc,frame,renderAdapter,observation,plans=[],i,spec,one,result,commitStarted=false,renderError;"+
-            "stage(\"host-validation-start\");if(!app.documents.length)fail(\"there is no document\");doc=app.activeDocument;if(!documentPath||!doc.fullName||!doc.fullName.fsName||String(doc.fullName.fsName)!==documentPath)fail(\"origin-document-mismatch\");if(!uuid||typeof doc.getPageItemFromUuid!==\"function\")fail(\"uuid-lookup-unavailable\");frame=doc.getPageItemFromUuid(uuid);if(!frame)fail(\"source-uuid-not-found\");if(String(frame.contents)!==expected)fail(\"source-snapshot-mismatch\");if(String(frame.note)!==cached)fail(\"source-note-target-mismatch\");stage(\"host-validation-end\");renderAdapter=FormalStep2Adapter(doc,frame);stage(\"adapter-constructed\");stage(\"observe-start\");observation=renderAdapter.observe();stage(\"observe-end\");"+
-            "if(observation.status!==\"complete\"){stage(\"render-failed\");frame.note=renderFailure;if(String(frame.note)!==renderFailure)fail(\"persistence-after-render-failure-mismatch\");return \"B-render-persist:render-failed\";}"+
-            "stage(\"plan-start\");for(i=0;i<specs.length;i++){spec=specs[i];stage(\"plan-annotation-\"+i+\"-start\");if(!spec.annotation||!spec.annotation.enabled){plans.push({annotationId:spec.annotationId,decision:{status:\"complete\",segments:[]}});stage(\"plan-annotation-\"+i+\"-end:cleanup\");continue;}one={textSnapshot:expected,revision:"+String(bundle.revision)+",annotations:[spec.annotation]};result=FormalMultiOrchestration.planOne(one,spec.annotationId,expected,observation);if(result.status!==\"complete\"){stage(\"render-failed\");frame.note=renderFailure;if(String(frame.note)!==renderFailure)fail(\"persistence-after-render-failure-mismatch\");return \"B-render-persist:render-failed\";}plans.push({annotationId:spec.annotationId,decision:result.decision});stage(\"plan-annotation-\"+i+\"-end\");}stage(\"plan-end\");stage(\"transaction-start\");try{renderAdapter.renderAndStoreTransaction(\""+encoded(bundle.sourceFrameId)+"\",plans,function(){commitStarted=true;stage(\"note-commit-start\");frame.note=next;if(String(frame.note)!==next)fail(\"store-readback-mismatch\");stage(\"note-commit-end\");});}catch(error){if(commitStarted)fail(error.message||error);renderError=error;}if(renderError){stage(\"render-failed\");frame.note=renderFailure;if(String(frame.note)!==renderFailure)fail(\"persistence-after-render-failure-mismatch\");return \"B-render-persist:render-failed\";}stage(\"transaction-end\");stage(\"return\");return \"B-render-persist:success\";}());";
+            "if(!app.documents.length)fail(\"there is no document\");doc=app.activeDocument;if(!documentPath||!doc.fullName||!doc.fullName.fsName||String(doc.fullName.fsName)!==documentPath)fail(\"origin-document-mismatch\");if(!uuid||typeof doc.getPageItemFromUuid!==\"function\")fail(\"uuid-lookup-unavailable\");frame=doc.getPageItemFromUuid(uuid);if(!frame)fail(\"source-uuid-not-found\");if(String(frame.contents)!==expected)fail(\"source-snapshot-mismatch\");if(String(frame.note)!==cached)fail(\"source-note-target-mismatch\");renderAdapter=FormalStep2Adapter(doc,frame);observation=renderAdapter.observe();"+
+            "if(observation.status!==\"complete\"){frame.note=renderFailure;if(String(frame.note)!==renderFailure)fail(\"persistence-after-render-failure-mismatch\");return \"B-render-persist:render-failed\";}"+
+            "for(i=0;i<specs.length;i++){spec=specs[i];if(!spec.annotation||!spec.annotation.enabled){plans.push({annotationId:spec.annotationId,decision:{status:\"complete\",segments:[]}});continue;}one={textSnapshot:expected,revision:"+String(bundle.revision)+",annotations:[spec.annotation]};result=FormalMultiOrchestration.planOne(one,spec.annotationId,expected,observation);if(result.status!==\"complete\"){frame.note=renderFailure;if(String(frame.note)!==renderFailure)fail(\"persistence-after-render-failure-mismatch\");return \"B-render-persist:render-failed\";}plans.push({annotationId:spec.annotationId,decision:result.decision});}try{renderAdapter.renderAndStoreTransaction(\""+encoded(bundle.sourceFrameId)+"\",plans,function(){commitStarted=true;frame.note=next;if(String(frame.note)!==next)fail(\"store-readback-mismatch\");});}catch(error){if(commitStarted)fail(error.message||error);renderError=error;}if(renderError){frame.note=renderFailure;if(String(frame.note)!==renderFailure)fail(\"persistence-after-render-failure-mismatch\");return \"B-render-persist:render-failed\";}return \"B-render-persist:success\";}());";
     }
     function renderedBridge(expectedText, cachedNote, nextNote, renderFailureNote, identity, bundle, specifications, sources, callbacks, bridgeTalkRef, stagePath, requestId) {
         var bt, sent, finished=false;
         if(!bridgeTalkRef) throw Error("B-bridge-talk-unavailable");
         if(typeof bridgeTalkRef.getSpecifier!=="function") throw Error("B-bridge-talk-specifier-unavailable");
         if (stagePath) verifyStagePath(stagePath, requestId || "unknown");
+        verifyRuntimeSources(sources);
         bt=new bridgeTalkRef(); bt.target=bridgeTalkRef.getSpecifier("illustrator"); if(!bt.target) throw Error("B-bridge-talk-target-unavailable"); bt.body=renderedBridgeBody(expectedText,cachedNote,nextNote,renderFailureNote,identity,bundle,specifications,sources,stagePath,requestId); bt.timeout=30;
         function finish(callback,value){if(finished)return;finished=true;removeMessage(bt);callback(value);}
         bt.onResult=function(result){if(result&&result.body==="B-render-persist:success")finish(callbacks.success,{strategy:"B-render-persist",note:nextNote});else if(result&&result.body==="B-render-persist:render-failed")finish(callbacks.success,{strategy:"B-render-persist",note:renderFailureNote,renderStatus:"failed"});else finish(callbacks.failure,"B-render-persist: invalid-result:"+(result&&result.body?result.body:"empty"));};

@@ -43,10 +43,10 @@ test('Formal Multi Step2 entrypoint parses after faithful include expansion', ()
 test('production generated BridgeTalk body parses as a script', () => {
   const adapter = loadPersistenceAdapter();
   const sources = {
-    step1: fs.readFileSync(path.join(repoRoot, 'v2', 'formal-step1', 'core.js'), 'utf8'),
-    segments: fs.readFileSync(path.join(repoRoot, 'v2', 'formal-step2', 'segments.js'), 'utf8'),
-    orchestration: fs.readFileSync(path.join(repoRoot, 'v2', 'formal-step2', 'orchestration.js'), 'utf8'),
-    adapter: fs.readFileSync(path.join(repoRoot, 'v2', 'formal-step2', 'adapter.jsx'), 'utf8')
+    step1: path.join(repoRoot, 'v2', 'formal-step1', 'core.js'),
+    segments: path.join(repoRoot, 'v2', 'formal-step2', 'segments.js'),
+    orchestration: path.join(repoRoot, 'v2', 'formal-step2', 'orchestration.js'),
+    adapter: path.join(repoRoot, 'v2', 'formal-step2', 'adapter.jsx')
   };
   const body = adapter.renderedBridgeBody(
     '甲',
@@ -71,5 +71,8 @@ test('production generated BridgeTalk body parses as a script', () => {
     'C:/Temp/formal-multi-host-gate-0.log'
   );
   assert.doesNotThrow(() => new vm.Script(body, { filename: 'generated-rendered-bridge.jsx' }));
+  assert.doesNotMatch(body, /eval\(decodeURIComponent\(/);
+  assert.ok(body.indexOf('core.js') < body.indexOf('segments.js'));
+  assert.ok(body.indexOf('segments.js') < body.indexOf('orchestration.js'));
+  assert.ok(body.indexOf('orchestration.js') < body.indexOf('adapter.jsx'));
 });
-

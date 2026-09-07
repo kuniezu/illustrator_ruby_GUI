@@ -73,6 +73,12 @@ check('connects projection to the existing observed renderer contract',
   source.indexOf('FormalStep2Adapter') < 0 &&
   source.indexOf('renderAdapter') < 0 &&
   source.indexOf('source.contents') < 0);
+check('passes runtime files to the host by absolute path',
+  source.indexOf('step1: File(here.parent + "/formal-step1/core.js").fsName') >= 0 &&
+  source.indexOf('segments: File(here + "/segments.js").fsName') >= 0 &&
+  source.indexOf('orchestration: File(here + "/orchestration.js").fsName') >= 0 &&
+  source.indexOf('adapter: File(here + "/adapter.jsx").fsName') >= 0 &&
+  source.indexOf('readRuntimeSource') < 0);
 check('guards unsupported entry paths and exposes a disposable stage file',
   source.indexOf('resolveMultiFrame') >= 0 &&
   saveClickBody.indexOf('source.kind') < 0 &&

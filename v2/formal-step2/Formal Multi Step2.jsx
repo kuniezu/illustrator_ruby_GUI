@@ -22,19 +22,13 @@
     function listText(occurrence) {
         return occurrence.start + ".." + occurrence.end + "  " + occurrence.surface + "  [" + statusText(occurrence) + "]";
     }
-    function readRuntimeSource(file) {
-        var text = "";
-        if (!file.open("r")) fail("runtime-source-open-failed: " + file.fsName);
-        try { text = file.read(); } finally { file.close(); }
-        return text;
-    }
     function runtimeSources() {
         var here = File($.fileName).parent;
         return {
-            step1: readRuntimeSource(File(here.parent + "/formal-step1/core.js")),
-            segments: readRuntimeSource(File(here + "/segments.js")),
-            orchestration: readRuntimeSource(File(here + "/orchestration.js")),
-            adapter: readRuntimeSource(File(here + "/adapter.jsx"))
+            step1: File(here.parent + "/formal-step1/core.js").fsName,
+            segments: File(here + "/segments.js").fsName,
+            orchestration: File(here + "/orchestration.js").fsName,
+            adapter: File(here + "/adapter.jsx").fsName
         };
     }
 
