@@ -24,12 +24,17 @@ function FormalAreaTextNativeHost(doc, layer) {
     }
 
     function prepareAll(renderSpecs) {
-        var batch = { candidates: [], records: [], status: "prepared" }, i, spec, backendSpec, candidate;
+        var batch = { candidates: [], records: [], status: "prepared" }, i, spec, backendSpec, candidate, backendSpecs = [];
         try {
             validateBatch(renderSpecs);
             for (i = 0; i < renderSpecs.length; i++) {
                 spec = renderSpecs[i];
                 backendSpec = FormalAreaTextRenderSpec.backendSpec(spec);
+                backendSpecs.push(backendSpec);
+            }
+            for (i = 0; i < renderSpecs.length; i++) {
+                spec = renderSpecs[i];
+                backendSpec = backendSpecs[i];
                 candidate = backend.prepareCandidate(backendSpec);
                 batch.candidates.push({ spec: spec, backendSpec: backendSpec, candidate: candidate });
             }

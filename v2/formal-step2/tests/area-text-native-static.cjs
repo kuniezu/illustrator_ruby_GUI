@@ -59,12 +59,41 @@ test('native host validates the complete batch before DOM creation',()=>{
   assert.equal(context.created,0);
 });
 
+test('native host converts every backend spec before creating any candidate',()=>{
+  const source=parse(path.join('v2','formal-step2','area-text-native-host.jsx'));
+  const context={
+    FormalAreaTextNativeBackend:()=>({prepareCandidate(){context.created++;return {};},disposeCandidate(){}}),
+    FormalAreaTextRenderSpec:{validate(){return {ok:true};},backendSpec(s){if(s.fail)throw Error('backend-spec-failed');return s;}},
+    created:0
+  };
+  vm.runInNewContext(source+';this.Host=FormalAreaTextNativeHost;',context);
+  const host=new context.Host({},{}), base={requestId:'r1',sourceFrameId:'f1',physicalId:'p1',logicalSegmentId:'s1'};
+  assert.throws(()=>host.prepareAll([base,Object.assign({},base,{physicalId:'p2',logicalSegmentId:'s2',fail:true})]),/backend-spec-failed/);
+  assert.equal(context.created,0);
+});
+
 test('native state activation is verified-only and ownership-scoped',()=>{
   const source=parse(path.join('v2','formal-step2','area-text-native.js'));
   assert.ok(source.includes('operation-not-verified'));
   assert.ok(source.includes('activation-record-not-owned'));
   assert.ok(source.includes('activation-binding-record-mismatch'));
   assert.ok(source.includes('cannot-activate-retired-physical'));
+});
+
+test('tracking stops after the first non-retryable readback failure',()=>{
+  const source=parse(path.join('v2','formal-step2','area-text-native-backend.jsx'));
+  let trackingWrites=0, size=8, tracking=0;
+  const attrs={get size(){return size;},set size(v){size=v;},textFont:{name:'RubyFont'},horizontalScale:100,verticalScale:100,
+    get tracking(){return tracking;},set tracking(v){trackingWrites++;tracking=v;if(trackingWrites===1)size=7;}};
+  const range={start:0,end:2,contents:'かな',lines:[{start:0,end:2,contents:'かな'}],characterAttributes:attrs,
+    paragraphAttributes:{justification:'full',singleWordJustification:'full',minimumGlyphScaling:100,desiredGlyphScaling:100,maximumGlyphScaling:100,minimumLetterSpacing:null,desiredLetterSpacing:null,maximumLetterSpacing:null,minimumWordSpacing:null,desiredWordSpacing:null,maximumWordSpacing:null}};
+  const frame={kind:'area',orientation:'horizontal',previousFrame:null,nextFrame:null,contents:'かな',textRange:range,left:10,top:20,width:30,height:12,textPath:{left:10,top:20,width:30,height:12}};
+  const context={TextType:{AREATEXT:'area'},TextOrientation:{HORIZONTAL:'horizontal'},Justification:{FULLJUSTIFY:'full',CENTER:'center'},app:{redraw(){}},FormalAreaTextNative:{verifyOneLineFit(){return {ok:false,reason:'fit-failed'};}}};
+  vm.runInNewContext(source+';this.Backend=FormalAreaTextNativeBackend;',context);
+  const backend=context.Backend({},{}), candidate={frame:frame};
+  const spec={singleCharacter:false,reading:'かな',left:10,top:20,width:30,height:12,appearance:{fontName:'RubyFont',fontSize:8},composerPolicy:{minimumGlyphScaling:100,desiredGlyphScaling:100,maximumGlyphScaling:100,minimumLetterSpacing:null,desiredLetterSpacing:null,maximumLetterSpacing:null,minimumWordSpacing:null,desiredWordSpacing:null,maximumWordSpacing:null,justification:'full',singleWordJustification:'full',trackingCandidates:[0,-25,-50]}};
+  const result=backend.tryTracking(candidate,spec);
+  assert.equal(result.ok,false);assert.equal(result.reason,'style-size-mismatch');assert.equal(result.retryable,false);assert.equal(trackingWrites,1);
 });
 
 test('native capability probe is isolated in a disposable document',()=>{

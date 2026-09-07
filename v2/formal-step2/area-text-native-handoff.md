@@ -115,3 +115,31 @@ The backend therefore accepts composer values but does not choose arbitrary lett
 - delete-all/rebuild rollback
 
 Source-geometry temporary PointText measurement is a separate concern and should not be deleted merely because managed ruby becomes AreaText-native.
+
+## Residual review fixes at 16bbed6 follow-up
+
+Activation now accepts only unchanged active bindings or operation-owned
+candidates whose physical ID, request ID, and logical segment ID all match.
+Final physical IDs are one-to-one; foreign, reassigned, and duplicate
+bindings fail before applying changes, and rejection leaves the input manifest
+unchanged.
+
+RenderSpec validation now covers the received nested composer policy,
+supported enum values, single-character consistency, required numeric fields,
+and non-empty finite tracking candidates in the agreed -100..0 range. The host
+validates the complete batch and converts every backend spec before creating
+the first DOM candidate. Tracking fallback stops immediately on a
+non-retryable style, identity, or geometry failure.
+
+This cycle's results are distinct from the historical 212/212 result:
+
+- `node --test v2/formal-step2/tests/*.cjs`: 224/224 PASS
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: 9/9 PASS
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: PASS (29 production files)
+- `node --test v2/formal-step2/tests/gate-0.cjs`: 6/6 PASS
+- `git diff --check`: PASS
+
+New executable coverage includes activation ownership and immutability,
+unchanged-active plus owned-candidate activation, batch conversion before DOM
+creation, and tracking call-count termination after a non-retryable readback
+failure.

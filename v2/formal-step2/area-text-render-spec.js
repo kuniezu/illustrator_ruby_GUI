@@ -16,6 +16,27 @@ var FormalAreaTextRenderSpec = (function () {
         for (i = 0; i < values.length; i++) out.push(values[i]);
         return out;
     }
+    function validPolicyValue(value, allowed) {
+        var i;
+        if (typeof value !== "string") return false;
+        for (i = 0; i < allowed.length; i++) if (value === allowed[i]) return true;
+        return false;
+    }
+    function validOptionalNumber(value) { return value === null || finite(value); }
+    function validComposer(policy) {
+        var i, values;
+        if (!policy || typeof policy !== "object") return "render-spec-composer-policy";
+        if (!validPolicyValue(policy.justification, ["full", "center"])) return "render-spec-justification";
+        if (!validPolicyValue(policy.singleWordJustification, ["full", "center"])) return "render-spec-single-word-justification";
+        if (!validPolicyValue(policy.oneCharacterPolicy, ["center"])) return "render-spec-one-character-policy";
+        if (!policy.glyphScaling || !finite(policy.glyphScaling.minimum) || !finite(policy.glyphScaling.desired) || !finite(policy.glyphScaling.maximum)) return "render-spec-glyph-scaling";
+        if (!policy.letterSpacing || !validOptionalNumber(policy.letterSpacing.minimum) || !validOptionalNumber(policy.letterSpacing.desired) || !validOptionalNumber(policy.letterSpacing.maximum)) return "render-spec-letter-spacing";
+        if (!policy.wordSpacing || !validOptionalNumber(policy.wordSpacing.minimum) || !validOptionalNumber(policy.wordSpacing.desired) || !validOptionalNumber(policy.wordSpacing.maximum)) return "render-spec-word-spacing";
+        values = policy.trackingCandidates;
+        if (!values || typeof values.length !== "number" || values.length === 0) return "render-spec-tracking-candidates";
+        for (i = 0; i < values.length; i++) if (!finite(values[i]) || values[i] < -100 || values[i] > 0) return "render-spec-tracking-candidate-range";
+        return null;
+    }
     function copyComposer(policy) {
         policy = policy || {};
         if (policy.justification != null && policy.justification !== "full" && policy.justification !== "center") throw Error("render-spec-justification-unsupported");
@@ -89,12 +110,16 @@ var FormalAreaTextRenderSpec = (function () {
     }
 
     function validate(spec) {
+        var composerError;
         if (!spec || spec.schema !== SCHEMA) return {ok:false,reason:"render-spec-schema"};
         if (spec.rendererMode !== "area-text-native") return {ok:false,reason:"render-spec-renderer-mode"};
         if (!spec.requestId || !spec.sourceFrameId || !spec.annotationId || !spec.logicalSegmentId || !spec.generationId || !spec.physicalId) return {ok:false,reason:"render-spec-identity"};
         if (!spec.reading) return {ok:false,reason:"render-spec-reading"};
-        if (!spec.appearance || !finite(spec.appearance.fontSize) || spec.appearance.fontSize <= 0) return {ok:false,reason:"render-spec-appearance"};
+        if (typeof spec.singleCharacter !== "boolean" || spec.singleCharacter !== (String(spec.reading).length === 1)) return {ok:false,reason:"render-spec-single-character"};
+        if (!spec.appearance || typeof spec.appearance.fontName !== "string" || !spec.appearance.fontName || !finite(spec.appearance.fontSize) || spec.appearance.fontSize <= 0 || !finite(spec.appearance.manualDeltaX) || !finite(spec.appearance.widthScale) || spec.appearance.widthScale <= 0 || !finite(spec.appearance.gapEm) || spec.appearance.gapEm < 0) return {ok:false,reason:"render-spec-appearance"};
         if (!finite(spec.finalLeft) || !finite(spec.finalTop) || !finite(spec.finalWidth) || spec.finalWidth <= 0 || !finite(spec.finalHeight) || spec.finalHeight <= 0) return {ok:false,reason:"render-spec-geometry"};
+        composerError = validComposer(spec.composerPolicy);
+        if (composerError) return {ok:false,reason:composerError};
         return {ok:true,reason:"render-spec-valid"};
     }
 

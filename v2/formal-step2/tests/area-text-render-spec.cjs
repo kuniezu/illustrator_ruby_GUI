@@ -44,3 +44,17 @@ test('render spec rejects unsupported typography policy instead of dropping it',
   x=input();x.composerPolicy={singleWordJustification:'left'};assert.throws(()=>S.create(x),/render-spec-single-word-justification-unsupported/);
   x=input();x.composerPolicy={oneCharacterPolicy:'stretch'};assert.throws(()=>S.create(x),/render-spec-one-character-policy-unsupported/);
 });
+
+test('received render specs require complete supported composer policy',()=>{
+  const base=S.create(input());
+  let x=Object.assign({},base);delete x.composerPolicy;
+  assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{composerPolicy:Object.assign({},base.composerPolicy,{trackingCandidates:[]})});
+  assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{composerPolicy:Object.assign({},base.composerPolicy,{justification:'bogus'})});
+  assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{singleCharacter:true});
+  assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{composerPolicy:Object.assign({},base.composerPolicy,{trackingCandidates:[-101]})});
+  assert.equal(S.validate(x).ok,false);
+});

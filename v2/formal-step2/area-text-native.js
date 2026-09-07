@@ -78,20 +78,38 @@ var FormalAreaTextNative = (function () {
     }
 
     function activate(state, requestId, bindings, records, retireIds) {
-        var out = cloneManifest(state), id = String(requestId || ""), key, i, retire = unique(retireIds || []);
+        var out = cloneManifest(state), id = String(requestId || ""), key, i, physical, record, current, seen = {}, retire = unique(retireIds || []);
         if (!out.operation || out.operation.requestId !== id) throw Error("operation-request-mismatch");
         if (out.operation.phase !== "verified") throw Error("operation-not-verified");
         bindings = bindings || {};
         records = records || {};
-        for (key in bindings) if (own(bindings, key)) out.activeBindings[key] = bindings[key];
+        for (key in records) if (own(records, key) && !contains(out.operation.candidateIds, key)) throw Error("activation-record-not-owned");
+        for (key in bindings) if (own(bindings, key)) {
+            physical = bindings[key];
+            current = state.activeBindings && state.activeBindings[key];
+            if (!physical || (current !== physical && !contains(out.operation.candidateIds, physical))) throw Error("activation-binding-not-owned");
+            if (own(seen, physical)) throw Error("activation-physical-duplicate");
+            seen[physical] = true;
+            if (current !== physical) {
+                if (!own(records, physical)) throw Error("activation-binding-record-missing");
+                record = records[physical];
+                if (!record || record.physicalId !== physical || record.requestId !== id || record.logicalSegmentId !== key) throw Error("activation-record-mismatch");
+            }
+        }
+        for (key in state.activeBindings) if (own(state.activeBindings, key) && !own(bindings, key)) {
+            physical = state.activeBindings[key];
+            if (own(seen, physical)) throw Error("activation-physical-duplicate");
+            seen[physical] = true;
+        }
         for (key in records) if (own(records, key)) {
             if (!contains(out.operation.candidateIds, key)) throw Error("activation-record-not-owned");
-            if (!records[key] || records[key].physicalId !== key || records[key].requestId !== id || !records[key].logicalSegmentId) throw Error("activation-record-mismatch");
-            if (out.activeBindings[records[key].logicalSegmentId] !== key) throw Error("activation-binding-record-mismatch");
-            out.renderRecords[key] = records[key];
+            record = records[key];
+            if (!record || record.physicalId !== key || record.requestId !== id || !record.logicalSegmentId) throw Error("activation-record-mismatch");
+            if (!own(bindings, record.logicalSegmentId) || bindings[record.logicalSegmentId] !== key) throw Error("activation-binding-record-mismatch");
         }
-        for (key in bindings) if (own(bindings, key) && contains(out.operation.candidateIds, bindings[key]) && !own(records, bindings[key])) throw Error("activation-binding-record-missing");
-        for (key in out.activeBindings) if (own(out.activeBindings, key) && contains(out.operation.candidateIds, out.activeBindings[key]) && !own(records, out.activeBindings[key])) throw Error("activation-binding-record-missing");
+        for (key in out.activeBindings) if (own(out.activeBindings, key) && contains(out.operation.candidateIds, out.activeBindings[key]) && !own(records, out.activeBindings[key]) && (!state.activeBindings || state.activeBindings[key] !== out.activeBindings[key])) throw Error("activation-binding-record-missing");
+        for (key in bindings) if (own(bindings, key)) out.activeBindings[key] = bindings[key];
+        for (key in records) if (own(records, key)) out.renderRecords[key] = records[key];
         for (i = 0; i < retire.length; i++) {
             for (key in out.activeBindings) if (own(out.activeBindings, key) && out.activeBindings[key] === retire[i]) throw Error("cannot-activate-retired-physical");
         }

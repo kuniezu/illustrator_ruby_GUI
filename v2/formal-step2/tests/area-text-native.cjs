@@ -46,6 +46,28 @@ test('activation rejects records outside the operation ownership set',()=>{
   assert.throws(()=>N.activate(s,'req-1',{seg1:'p-new'},{'p-old':{physicalId:'p-old',requestId:'req-1',logicalSegmentId:'seg1'}},[]),/activation-record-not-owned/);
 });
 
+test('activation rejects foreign and duplicate physical bindings without mutating the manifest',()=>{
+  let s=N.createManifest();s=N.beginOperation(s,'r1',['p1']);s=N.markVerified(s,'r1');
+  const before=JSON.stringify(s);
+  assert.throws(()=>N.activate(s,'r1',{s1:'foreign'},{},[]),/activation-binding-not-owned/);
+  assert.equal(JSON.stringify(s),before);
+  assert.throws(()=>N.activate(s,'r1',{s1:'p1',s2:'p1'},{p1:{physicalId:'p1',requestId:'r1',logicalSegmentId:'s1'}},[]),/activation-physical-duplicate/);
+  assert.equal(JSON.stringify(s),before);
+});
+
+test('activation permits unchanged active binding plus one owned candidate',()=>{
+  let s=N.createManifest();s.activeBindings.s1='existing';s.renderRecords.existing={generationId:'old'};
+  s=N.beginOperation(s,'r1',['p1']);s=N.markVerified(s,'r1');
+  s=N.activate(s,'r1',{s1:'existing',s2:'p1'},{p1:{physicalId:'p1',requestId:'r1',logicalSegmentId:'s2'}},[]);
+  assert.equal(s.activeBindings.s1,'existing');assert.equal(s.activeBindings.s2,'p1');
+});
+
+test('activation rejects reassigning a non-candidate active physical to another segment',()=>{
+  let s=N.createManifest();s.activeBindings.s1='existing';
+  s=N.beginOperation(s,'r1',['p1']);s=N.markVerified(s,'r1');
+  assert.throws(()=>N.activate(s,'r1',{s2:'existing'},{},[]),/activation-binding-not-owned/);
+});
+
 test('different request cannot overwrite an active prepare operation',()=>{
   let s=N.beginOperation(N.createManifest(),'req-a',['p-a']);
   assert.throws(()=>N.beginOperation(s,'req-b',['p-b']),/operation-already-active/);

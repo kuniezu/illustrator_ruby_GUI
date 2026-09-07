@@ -199,6 +199,7 @@ function FormalAreaTextNativeBackend(doc, layer) {
             range.characterAttributes.tracking = values[i];
             result = verifyCandidate(candidate, spec, values[i]);
             if (result.ok) { result.tracking = values[i]; return result; }
+            if (result.retryable === false) return result;
         }
         result.tracking = values[values.length - 1];
         return result;
