@@ -126,7 +126,10 @@ test('A-H one-shot diagnostic is disposable, aggregated, and not production wiri
   for(const id of ['A1','B1','B2','C1','C2','D1','D2','D3','D4','F1','F2','F3','F4','G1','G2','G3','G4','H']) assert.ok(source.includes('"'+id+'"'),id);
   assert.ok(source.includes('"E" + i'));
   assert.ok(source.includes('areaText(path)'));assert.ok(source.includes('BridgeTalk'));assert.ok(source.includes('bt.send(30)'));
-  assert.ok(source.includes('FormalAreaTextRenderSpec.create'));assert.ok(source.includes('FormalAreaTextRenderSpec.validate'));assert.ok(source.includes('FormalAreaTextRenderSpec.backendSpec'));
+  assert.ok(source.includes('FormalAreaTextRenderSpec.create'));assert.ok(source.includes('FormalAreaTextRenderSpec.validate'));assert.ok(source.includes('FormalAreaTextRenderSpec.backendSpec'));assert.ok(source.includes('FormalAreaTextNativeBackend'));assert.ok(source.includes('backend.prepareCandidate'));assert.ok(source.includes('backend.verifyCandidate'));assert.ok(source.includes('backend.disposeCandidate'));assert.ok(source.includes('FormalAreaTextNativeDiagnostic.buildReceiverBody'));
+  assert.ok(source.includes('FormalAreaTextNative.createManifest'));assert.ok(source.includes('FormalAreaTextNative.beginOperation'));assert.ok(source.includes('FormalAreaTextNative.activate'));assert.ok(source.includes('FormalAreaTextNative.captureManualAdjustment'));
+  assert.ok(source.includes('FormalAreaTextNativeDiagnostic.runTracking'));
+  assert.ok(source.includes('bt.onTimeout'));assert.ok(source.includes('callback-timeout'));assert.ok(source.includes('renderSpecLiteral'));
   assert.ok(source.includes('Window("dialog"'));assert.ok(source.includes('report.join("\\n")'));
   assert.ok(source.includes('app.documents.add()'));assert.ok(source.includes('DONOTSAVECHANGES'));
   assert.ok(source.includes('var TRACKING = [0, -25, -50, -75, -100]'));

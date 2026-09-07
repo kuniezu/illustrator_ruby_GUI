@@ -259,6 +259,70 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## A-H final semantic closure at cde4bbc follow-up
+
+H now transports the complete RenderSpec object literal rather than a pipe
+protocol. The sender uses `FormalAreaTextRenderSpec.create`, `validate`, and
+`backendSpec`; the receiver loads the same RenderSpec/native/backend source
+files, validates the received object, converts it, and runs
+`prepareCandidate`, `verifyCandidate`/`tryTracking`, and `disposeCandidate`
+against a disposable document. The generated receiver body has a dedicated
+Node parse test. BridgeTalk result, error, and documented `onTimeout` all use
+the same completion path, and the final report is deferred until completion.
+
+E uses the diagnostic helper's first-fit/non-retryable algorithm and performs
+runtime observation checks for kind, orientation, threading, and stability. F
+uses the existing `FormalAreaTextNative` manifest transitions. G performs
+disposable frame/textPath readback and uses `captureManualAdjustment` for
+version mismatch. Summary statuses come from recorded outcomes and cleanup is
+idempotent.
+
+Exact validation commands and results for this follow-up:
+
+- `node --test v2/formal-step2/tests/*.cjs`: **234/234 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **10/10 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files)**
+- `node --test v2/formal-step2/tests/gate-0.cjs`: **6/6 PASS**
+- `node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **6/6 PASS**
+- `git diff --check`: **PASS**
+
+The H-specific generated-body test is
+`generated H receiver body parses with full RenderSpec payload`. No
+Illustrator runtime, main-branch merge, production wiring, PR, or Issue
+operation was performed.
+
+## A-H final review hardening at cde4bbc follow-up
+
+H no longer converts the payload to a pipe protocol. The sender creates and
+validates a complete RenderSpec, serializes every contract field, and the
+generated receiver validates the received object before `backendSpec`
+conversion. The receiver loads the existing native core and backend via
+`$.evalFile`, then uses `prepareCandidate`, `verifyCandidate`/`tryTracking`,
+and `disposeCandidate` on a disposable document only. `onResult`, `onError`,
+and the documented BridgeTalk `onTimeout` path all converge through one
+completion gate; the final report is not built while H is pending and timeout
+reports `CAPABILITY_UNAVAILABLE reason=callback-timeout`.
+
+E now uses the same retry semantics as the production scaffold through the
+pure diagnostic helper tests; F executes the existing
+`FormalAreaTextNative` manifest state transitions; G performs disposable
+frame/textPath readback and uses `captureManualAdjustment` for version
+mismatch; and the H generated body has its own Node parse test.
+
+Exact validation commands and results for this follow-up:
+
+- `node --test v2/formal-step2/tests/*.cjs`: **234/234 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **10/10 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files)**
+- `node --test v2/formal-step2/tests/gate-0.cjs`: **6/6 PASS**
+- `node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **6/6 PASS**
+- `git diff --check`: **PASS**
+
+The H-specific generated body parse is included in the full suite as
+`generated H receiver body parses with full RenderSpec payload`. No
+Illustrator runtime, main-branch merge, production wiring, PR, or Issue
+operation was performed.
+
 ## Final generated BridgeTalk parse validation at c967cb9
 
 Executed at the unchanged review HEAD:
