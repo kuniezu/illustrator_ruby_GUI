@@ -32,22 +32,30 @@ test('splitAt edits one logical range and mergeAdjacent restores it', () => {
   assert.ok(b.occurrences[0].lineage.length >= 3);
 });
 
-test('split clears a confirmed reading instead of duplicating it', () => {
+test('split copies reading mechanically but clears confirmation', () => {
   let b = M.extract('徳川家康');
   b = M.setGroupReading(b, b.occurrences[0].groupId, 'とくがわいえやす', true);
   b = M.splitAt(b, b.occurrences[0].occurrenceId, [2]);
   assert.deepEqual(b.occurrences.map(x => ({reading:x.reading,confirmed:x.readingConfirmed})), [
-    {reading:'',confirmed:false}, {reading:'',confirmed:false}
+    {reading:'とくがわいえやす',confirmed:false}, {reading:'とくがわいえやす',confirmed:false}
   ]);
 });
 
-test('merge clears conflicting child readings instead of inheriting one', () => {
+test('merge concatenates child readings and clears confirmation', () => {
   let b = M.extract('徳川家康');
   b = M.splitAt(b, b.occurrences[0].occurrenceId, [2]);
-  b = M.setGroupReading(b, b.occurrences[0].groupId, 'とくがわ', true);
+  b = M.setGroupReading(b, b.occurrences[0].groupId, 'とく', true);
+  b = M.setGroupReading(b, b.occurrences[1].groupId, 'いえやす', true);
   b = M.mergeAdjacent(b, b.occurrences.map(x => x.occurrenceId));
-  assert.equal(b.occurrences[0].reading, '');
+  assert.equal(b.occurrences[0].reading, 'とくいえやす');
   assert.equal(b.occurrences[0].readingConfirmed, false);
+});
+
+test('split and merge keep empty readings empty and unconfirmed', () => {
+  let b=M.extract('徳川家康'); b=M.splitAt(b,b.occurrences[0].occurrenceId,[2]);
+  assert.deepEqual(b.occurrences.map(x=>x.reading),['','']);
+  b=M.mergeAdjacent(b,b.occurrences.map(x=>x.occurrenceId));
+  assert.equal(b.occurrences[0].reading,''); assert.equal(b.occurrences[0].readingConfirmed,false);
 });
 
 test('supports multiple logical units with readings on only selected units', () => {

@@ -8,11 +8,12 @@ var FormalMultiProjection = (function () {
     function find(annotations, annotationId) { var i; for(i=0;i<annotations.length;i++) if(annotations[i].annotationId===annotationId) return annotations[i]; return null; }
     function create(bundle, occurrence) { var a=FormalStep1.create(bundle.textSnapshot).annotation, c=context(bundle.textSnapshot,occurrence.start,occurrence.end); a.annotationId=id(bundle,occurrence); a.sourceFrameId=bundle.sourceFrameId; a.anchor={baseText:occurrence.surface,startHint:occurrence.start,beforeContext:c.beforeContext,afterContext:c.afterContext}; a.reading=occurrence.reading; a.readingConfirmed=true; a.enabled=true; a.reviewReasons=[]; a.splitHints=[]; return a; }
     function project(bundle) {
-        var next=FormalMulti.clone(bundle), annotations=[], occurrence, existing, generated={}, currentIds={}, ancestorIds={}, retired=[], i, j, c;
+        var next=FormalMulti.clone(bundle), annotations=[], occurrence, existing, generated={}, currentIds={}, ancestorIds={}, history=next.managedAnnotationIds||[], retired=[], retiredSeen={}, i, j, c;
         if(bundle.occurrences===undefined) return next;
         for(i=0;i<bundle.occurrences.length;i++) {
             occurrence=bundle.occurrences[i];
             currentIds[id(bundle,occurrence)]=true;
+            if (history.indexOf(id(bundle,occurrence)) < 0) history.push(id(bundle,occurrence));
             for(j=0;j<occurrence.lineage.length;j++) ancestorIds[idForKey(bundle.sourceFrameId,occurrence.lineage[j])]=true;
             if(!eligible(occurrence)) continue;
             existing=find(next.annotations,id(bundle,occurrence));
@@ -25,9 +26,10 @@ var FormalMultiProjection = (function () {
             if(bundle.annotations[i].annotationId.indexOf(prefix)!==0) { annotations.push(bundle.annotations[i]); continue; }
             if(generated[bundle.annotations[i].annotationId]) continue;
             if(currentIds[bundle.annotations[i].annotationId]) continue;
-            if(ancestorIds[bundle.annotations[i].annotationId]) retired.push(bundle.annotations[i].annotationId); else annotations.push(bundle.annotations[i]);
+            if(ancestorIds[bundle.annotations[i].annotationId]) { if(!retiredSeen[bundle.annotations[i].annotationId]) { retired.push(bundle.annotations[i].annotationId); retiredSeen[bundle.annotations[i].annotationId]=true; } } else annotations.push(bundle.annotations[i]);
         }
-        next.annotations=annotations; next.retiredAnnotationIds=retired; return FormalMulti.validate(next);
+        for(i=0;i<history.length;i++) if(!currentIds[history[i]]&&!retiredSeen[history[i]]) { retired.push(history[i]); retiredSeen[history[i]]=true; }
+        next.annotations=annotations; next.managedAnnotationIds=history; next.retiredAnnotationIds=retired; return FormalMulti.validate(next);
     }
     return {project:project,eligible:eligible,id:id};
 }());
