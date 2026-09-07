@@ -136,7 +136,7 @@
                 saveEditor(); occurrence=bundle.occurrences[currentIndex];
                 raw=prompt("分割境界（occurrence先頭からのUTF-16位置、カンマ区切り）", "");
                 if(raw===null) return;
-                boundaries=parseBoundaries(raw); bundle=FormalLongText.splitAt(bundle, occurrence.occurrenceId, boundaries); editRevision++; bundle.revision=editRevision; currentIndex=Math.min(currentIndex,bundle.occurrences.length-1); refreshList(); stateText.text="状態: occurrenceを局所分割しました。各readingを確認して保存してください";
+                boundaries=parseBoundaries(raw); bundle=FormalMulti.replaceOccurrences(bundle, FormalLongText.splitAt(bundle, occurrence.occurrenceId, boundaries).occurrences); editRevision++; bundle.revision=editRevision; currentIndex=Math.min(currentIndex,bundle.occurrences.length-1); refreshList(); stateText.text="状態: occurrenceを局所分割しました。各readingを確認して保存してください";
             } catch(error) { stateText.text="状態: 分割失敗 / "+(error.message||error); }
         };
         mergeButton.onClick = function () {
@@ -145,7 +145,7 @@
                 if(savePending || currentIndex<0 || currentIndex+1>=bundle.occurrences.length) return;
                 saveEditor(); first=bundle.occurrences[currentIndex]; second=bundle.occurrences[currentIndex+1];
                 if(!sameLocalRoot(first,second)) fail("隣接する同一local lineageだけ結合できます");
-                bundle=FormalLongText.mergeAdjacent(bundle,[first.occurrenceId,second.occurrenceId]); editRevision++; bundle.revision=editRevision; refreshList(); stateText.text="状態: occurrenceを局所結合しました。readingを確認して保存してください";
+                bundle=FormalMulti.replaceOccurrences(bundle, FormalLongText.mergeAdjacent(bundle,[first.occurrenceId,second.occurrenceId]).occurrences); editRevision++; bundle.revision=editRevision; refreshList(); stateText.text="状態: occurrenceを局所結合しました。readingを確認して保存してください";
             } catch(error) { stateText.text="状態: 結合失敗 / "+(error.message||error); }
         }
 
@@ -168,7 +168,7 @@
             mergeButton.enabled = !value;
         }
         saveButton.onClick = function () {
-            var result, requestId, requestRevision;
+            var result, requestId, requestRevision = null;
             if (savePending) return;
             setSavePending(true);
             requestId = ++activeSaveRequestId;
@@ -185,7 +185,7 @@
                 }, undefined, stageFile.fsName, requestId);
                 if(result.status === "success" && requestId === activeSaveRequestId && requestRevision === bundle.revision) { setSavePending(false); cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / " + result.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; }
                 else if(result.status === "failed" && requestId === activeSaveRequestId && requestRevision === bundle.revision) { setSavePending(false); stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }
-            } catch (error) { if (requestId === activeSaveRequestId && requestRevision === bundle.revision) { setSavePending(false); stateText.text = "状態: error / " + (error.message || error); } }
+            } catch (error) { if (requestId === activeSaveRequestId) { setSavePending(false); stateText.text = "状態: error / " + (error.message || error); } }
         };
         closeButton.onClick = function () { dialog.close(); };
         if (bundle.occurrences.length) { list.selection = 0; loadEditor(0); }

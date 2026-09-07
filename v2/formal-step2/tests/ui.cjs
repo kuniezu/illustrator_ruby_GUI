@@ -95,8 +95,12 @@ check('exposes local split and merge without creating UI-owned model state',
   source.indexOf('FormalLongText.mergeAdjacent') >= 0 &&
   source.indexOf('occurrence.occurrenceId') >= 0 &&
   source.indexOf('function sameLocalRoot') >= 0 &&
-  source.indexOf('bundle=FormalLongText.splitAt') >= 0 &&
-  source.indexOf('bundle=FormalLongText.mergeAdjacent') >= 0);
+  source.indexOf('FormalLongText.splitAt(bundle') >= 0 &&
+  source.indexOf('FormalLongText.mergeAdjacent(bundle') >= 0 &&
+  source.indexOf('FormalMulti.replaceOccurrences') >= 0);
+check('recovers from a save-preparation exception',
+  source.indexOf('requestRevision = null') >= 0 &&
+  source.indexOf('if (requestId === activeSaveRequestId) { setSavePending(false)') >= 0);
 check('freezes the supported Multi boundary',
   source.indexOf('resolveMultiFrame') >= 0 &&
   source.indexOf('occurrence.unsupported') >= 0 &&
