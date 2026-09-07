@@ -8,9 +8,10 @@ var FormalLongText = (function () {
             (code >= 0xf900 && code <= 0xfaff) ||
             (code >= 0x3005 && code <= 0x3007);
     }
+    function variationSelectorLength(text,index) { var source=String(text), code=source.charCodeAt(index), next=source.charCodeAt(index+1), point; if(code>=0xfe00&&code<=0xfe0f) return 1; if(code>=0xd800&&code<=0xdbff&&next>=0xdc00&&next<=0xdfff) { point=(code-0xd800)*0x400+(next-0xdc00)+0x10000; if(point>=0xe0100&&point<=0xe01ef) return 2; } return 0; }
     function hasUnsupportedSequence(text) {
-        var source=String(text),i,code,next,point,previous;
-        for(i=0;i<source.length;i++) { code=source.charCodeAt(i); next=i+1<source.length?source.charCodeAt(i+1):0; previous=i>0?source.charCodeAt(i-1):0; if(code>=0xd800&&code<=0xdbff&&next>=0xdc00&&next<=0xdfff) { point=(code-0xd800)*0x400+(next-0xdc00)+0x10000; if(point>=0x20000&&point<=0x323af) return true; i++; } else if(code>=0xfe00&&code<=0xfe0f && isKanji(String.fromCharCode(previous))) return true; }
+        var source=String(text),i,code,next,point,previous,selectorLength;
+        for(i=0;i<source.length;i++) { code=source.charCodeAt(i); next=i+1<source.length?source.charCodeAt(i+1):0; previous=i>0?source.charCodeAt(i-1):0; if(code>=0xd800&&code<=0xdbff&&next>=0xdc00&&next<=0xdfff) { point=(code-0xd800)*0x400+(next-0xdc00)+0x10000; if(point>=0x20000&&point<=0x323af) return true; selectorLength=variationSelectorLength(source,i); if(selectorLength&&isKanji(String.fromCharCode(previous))) return true; i+=selectorLength||1; } else if(code>=0xfe00&&code<=0xfe0f && isKanji(String.fromCharCode(previous))) return true; }
         return false;
     }
     function unsupportedKanjiAt(text,index) {
@@ -51,7 +52,7 @@ var FormalLongText = (function () {
         while (i < source.length) {
             if (!isKanji(source.charAt(i)) && !unsupportedKanjiAt(source,i)) { i++; continue; }
             start = i;
-            while (i < source.length && (isKanji(source.charAt(i)) || unsupportedKanjiAt(source,i) || (source.charCodeAt(i)>=0xfe00 && source.charCodeAt(i)<=0xfe0f))) i += unsupportedKanjiAt(source,i) ? 2 : 1;
+            while (i < source.length && (isKanji(source.charAt(i)) || unsupportedKanjiAt(source,i) || variationSelectorLength(source,i))) i += unsupportedKanjiAt(source,i) ? 2 : (variationSelectorLength(source,i) || 1);
             end = i;
             surface = source.substring(start, end); unsupported=hasUnsupportedSequence(surface);
             groupId = groups[surface];
@@ -100,6 +101,6 @@ var FormalLongText = (function () {
         }
         return validate(next);
     }
-    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence, unsupportedKanjiAt:unsupportedKanjiAt};
+    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence, unsupportedKanjiAt:unsupportedKanjiAt, variationSelectorLength:variationSelectorLength};
 }());
 if (typeof module !== "undefined") module.exports = FormalLongText;

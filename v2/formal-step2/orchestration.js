@@ -26,7 +26,7 @@ var FormalMultiOrchestration = (function () {
         if(!lineMap){
             var visibleEnd=0, lineIndex;
             for(lineIndex=0;lineIndex<(observation.lines||[]).length;lineIndex++) visibleEnd=Math.max(visibleEnd,observation.lines[lineIndex].end);
-            if(observation.overflow && resolved.start>=visibleEnd) return {annotationId:annotationId,status:"hidden",outcome:"hidden-confirmed",sourceStart:resolved.start,sourceEnd:resolved.start+annotation.anchor.baseText.length,decision:{status:"complete",segments:[]},reasons:["source-overset-hidden"]};
+            if(observation.overflow===true && observation.overflowEvidence && observation.overflowEvidence.sourceOverflows===true && resolved.start>=visibleEnd) return {annotationId:annotationId,status:"hidden",outcome:"hidden-confirmed",sourceStart:resolved.start,sourceEnd:resolved.start+annotation.anchor.baseText.length,decision:{status:"complete",segments:[]},reasons:["source-overset-hidden"]};
             return unresolved(annotationId,["annotation-line-intersection-unavailable"]);
         }
         decision=FormalSegments.plan(annotation.anchor.baseText,annotation.reading,lineMap,annotation.splitHints||[],bundle.revision,bundle.revision);

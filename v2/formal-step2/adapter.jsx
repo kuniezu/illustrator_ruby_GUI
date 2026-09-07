@@ -99,7 +99,8 @@ function FormalStep2Adapter(doc, source) {
             mark("observe.measurement", "line=" + i + ",left=" + visual.left + ",glyphTop=" + visual.top + ",rubyTop=" + rubyTop + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
             lines.push({start: start, end: end, geometry: {left: visual.left, top: rubyTop, width: measured.width, baseSize: first.characterAttributes.size, measuredLeft: measured.left, measuredTop: visual.top, measuredWidth: measured.width, leading: leading, gap: gap, visualRight: visual.right, charWidths: charWidths}});
         }
-        mark("observe.line-map", visualLines.length < range.lines.length ? "complete-overflow" : "complete"); return {status: "complete", kind: source.kind, orientation: source.orientation, overflow: visualLines.length < range.lines.length, lines: lines};
+        var overflowVerified = source.overflows === true && visualLines.length < range.lines.length;
+        mark("observe.line-map", overflowVerified ? "complete-overflow-verified" : (visualLines.length < range.lines.length ? "complete-line-count-mismatch" : "complete")); return {status: "complete", kind: source.kind, orientation: source.orientation, overflow: overflowVerified, overflowEvidence: overflowVerified ? {sourceOverflows:true, visualLineCount:visualLines.length, sourceLineCount:range.lines.length} : null, lines: lines};
     }
     function reconcile(bundle, decision, created) {
         var old = inspect(bundle), wanted = decision.segments || [], i, item, geometry, count, delta, tracking;
