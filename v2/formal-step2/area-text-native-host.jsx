@@ -6,12 +6,29 @@
 function FormalAreaTextNativeHost(doc, layer) {
     var backend = FormalAreaTextNativeBackend(doc, layer);
 
+    function validateBatch(renderSpecs) {
+        var requestId = null, sourceFrameId = null, physical = {}, logical = {}, i, spec;
+        if (!renderSpecs || typeof renderSpecs.length !== "number") throw Error("native-render-specs-required");
+        for (i = 0; i < renderSpecs.length; i++) {
+            spec = renderSpecs[i];
+            if (!FormalAreaTextRenderSpec.validate(spec).ok) throw Error("render-spec-invalid:" + i);
+            if (requestId === null) requestId = spec.requestId;
+            if (sourceFrameId === null) sourceFrameId = spec.sourceFrameId;
+            if (requestId !== spec.requestId) throw Error("render-spec-request-mismatch");
+            if (sourceFrameId !== spec.sourceFrameId) throw Error("render-spec-source-mismatch");
+            if (physical[spec.physicalId]) throw Error("render-spec-physical-duplicate");
+            if (logical[spec.logicalSegmentId]) throw Error("render-spec-logical-duplicate");
+            physical[spec.physicalId] = true;
+            logical[spec.logicalSegmentId] = true;
+        }
+    }
+
     function prepareAll(renderSpecs) {
         var batch = { candidates: [], records: [], status: "prepared" }, i, spec, backendSpec, candidate;
         try {
+            validateBatch(renderSpecs);
             for (i = 0; i < renderSpecs.length; i++) {
                 spec = renderSpecs[i];
-                if (!FormalAreaTextRenderSpec.validate(spec).ok) throw Error("render-spec-invalid:" + i);
                 backendSpec = FormalAreaTextRenderSpec.backendSpec(spec);
                 candidate = backend.prepareCandidate(backendSpec);
                 batch.candidates.push({ spec: spec, backendSpec: backendSpec, candidate: candidate });
@@ -30,7 +47,7 @@ function FormalAreaTextNativeHost(doc, layer) {
             for (i = 0; i < batch.candidates.length; i++) {
                 entry = batch.candidates[i];
                 result = backend.verifyCandidate(entry.candidate, entry.backendSpec);
-                if (!result.ok) result = backend.tryTracking(entry.candidate, entry.backendSpec);
+                if (!result.ok && result.retryable !== false) result = backend.tryTracking(entry.candidate, entry.backendSpec);
                 if (!result.ok) throw Error("native-fit-failed:" + result.reason);
                 observation = result.observation;
                 records.push({

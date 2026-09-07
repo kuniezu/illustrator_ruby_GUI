@@ -18,6 +18,9 @@ var FormalAreaTextRenderSpec = (function () {
     }
     function copyComposer(policy) {
         policy = policy || {};
+        if (policy.justification != null && policy.justification !== "full" && policy.justification !== "center") throw Error("render-spec-justification-unsupported");
+        if (policy.singleWordJustification != null && policy.singleWordJustification !== "full" && policy.singleWordJustification !== "center") throw Error("render-spec-single-word-justification-unsupported");
+        if (policy.oneCharacterPolicy != null && policy.oneCharacterPolicy !== "center") throw Error("render-spec-one-character-policy-unsupported");
         return {
             justification: policy.justification || "full",
             singleWordJustification: policy.singleWordJustification || "full",

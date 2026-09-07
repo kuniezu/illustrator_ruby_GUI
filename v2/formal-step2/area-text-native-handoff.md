@@ -64,6 +64,10 @@ These tests are intended to be run by the implementation reviewer before any bra
 
 The branch was fetched and reviewed at `87dce54`, then the scaffold was corrected without wiring it into the production renderer. The review pass ran the full pure suite (212/212), the native tests (18/18), Gate 0 (6/6), and the ExtendScript compatibility lint (29 production files). Corrections were limited to candidate kind readback, official `doc.textFrames.areaText(path)` construction, RenderSpec tracking-policy transport, manifest retirement guards, and matching static tests. Illustrator runtime was not executed.
 
+## Follow-up contract hardening
+
+The follow-up review requires activation only from `verified` operations, validates candidate ownership and record/binding/request correspondence, and validates every RenderSpec in a batch before creating any DOM object. RenderSpec typography accepts only explicitly supported `full`/`center` mappings; backend readback checks AreaText kind, font, size, glyph scale, justification, tracking, and final geometry, while style/identity failures do not enter tracking fallback. Rectangle construction is recorded as a candidate invariant separate from AreaText kind readback. These changes remain scaffold-only and are covered by pure/static regression tests.
+
 ## Important non-decisions
 
 Do not treat the scaffolding as runtime proof.

@@ -38,3 +38,9 @@ test('render spec refuses missing identity and invalid dimensions',()=>{
   let x=input();x.meta.physicalId='';assert.throws(()=>S.create(x),/render-spec-identity-required/);
   x=input();x.geometry.autoWidth=0;assert.throws(()=>S.create(x),/render-spec-auto-width-invalid/);
 });
+
+test('render spec rejects unsupported typography policy instead of dropping it',()=>{
+  let x=input();x.composerPolicy={justification:'right'};assert.throws(()=>S.create(x),/render-spec-justification-unsupported/);
+  x=input();x.composerPolicy={singleWordJustification:'left'};assert.throws(()=>S.create(x),/render-spec-single-word-justification-unsupported/);
+  x=input();x.composerPolicy={oneCharacterPolicy:'stretch'};assert.throws(()=>S.create(x),/render-spec-one-character-policy-unsupported/);
+});

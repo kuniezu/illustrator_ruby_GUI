@@ -19,6 +19,12 @@ test('native backend scaffold parses and only creates fresh area text candidates
   assert.ok(source.includes('FormalAreaTextNative.verifyOneLineFit'));
   assert.ok(source.includes('FormalAreaTextNative.trackingCandidates'));
   assert.ok(source.includes('candidate.frame.remove()'));
+  assert.ok(source.includes('constructedFromRectangle: true'));
+  assert.ok(source.includes('areaTextKind: frame.kind'));
+  assert.ok(source.includes('style-font-mismatch'));
+  assert.ok(source.includes('style-composer-mismatch'));
+  assert.ok(source.includes('geometry-readback-mismatch'));
+  assert.ok(source.includes('candidate-justification-unsupported'));
   assert.ok(source.includes('applyComposerPolicy'));
   assert.ok(!source.includes('kind = TextType.AREATEXT'));
   assert.ok(!source.includes('source.note'));
@@ -34,6 +40,31 @@ test('native host batch keeps activation and source persistence outside backend'
   assert.ok(source.includes('bindingsByLogicalSegmentId'));
   assert.ok(!source.includes('source.note'));
   assert.ok(!source.includes('.remove()'));
+});
+
+test('native host validates the complete batch before DOM creation',()=>{
+  const source=parse(path.join('v2','formal-step2','area-text-native-host.jsx'));
+  const context={
+    FormalAreaTextNativeBackend:()=>({prepareCandidate(){context.created++;return {};},disposeCandidate(){}}),
+    FormalAreaTextRenderSpec:{validate(){return {ok:true};},backendSpec(s){return s;}},
+    created:0
+  };
+  vm.runInNewContext(source+';this.Host=FormalAreaTextNativeHost;',context);
+  const host=new context.Host({},{}), base={requestId:'r1',sourceFrameId:'f1',physicalId:'p1',logicalSegmentId:'s1'};
+  assert.throws(()=>host.prepareAll([base,Object.assign({},base,{physicalId:'p2'})]),/render-spec-logical-duplicate/);
+  assert.equal(context.created,0);
+  assert.throws(()=>host.prepareAll([base,Object.assign({},base,{physicalId:'p1',logicalSegmentId:'s2'})]),/render-spec-physical-duplicate/);
+  assert.equal(context.created,0);
+  assert.throws(()=>host.prepareAll([base,Object.assign({},base,{physicalId:'p2',logicalSegmentId:'s2',requestId:'r2'})]),/render-spec-request-mismatch/);
+  assert.equal(context.created,0);
+});
+
+test('native state activation is verified-only and ownership-scoped',()=>{
+  const source=parse(path.join('v2','formal-step2','area-text-native.js'));
+  assert.ok(source.includes('operation-not-verified'));
+  assert.ok(source.includes('activation-record-not-owned'));
+  assert.ok(source.includes('activation-binding-record-mismatch'));
+  assert.ok(source.includes('cannot-activate-retired-physical'));
 });
 
 test('native capability probe is isolated in a disposable document',()=>{

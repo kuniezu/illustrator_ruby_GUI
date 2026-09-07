@@ -6,7 +6,7 @@ test('manifest uses source-side active bindings as authority',()=>{
   s=N.beginOperation(s,'req-1',['p-new']);
   assert.equal(N.physicalStatus(s,'p-new'),'pending');
   s=N.markVerified(s,'req-1');
-  s=N.activate(s,'req-1',{seg1:'p-new'},{'p-new':{generationId:'g2'}},['p-old']);
+  s=N.activate(s,'req-1',{seg1:'p-new'},{'p-new':{physicalId:'p-new',requestId:'req-1',logicalSegmentId:'seg1',generationId:'g2'}},['p-old']);
   assert.equal(N.activePhysicalId(s,'seg1'),'p-new');
   assert.equal(N.physicalStatus(s,'p-new'),'active');
   assert.equal(N.physicalStatus(s,'p-old'),'cleanup-pending');
@@ -15,7 +15,7 @@ test('manifest uses source-side active bindings as authority',()=>{
 test('activation does not require retiring old identity first',()=>{
   let s=N.createManifest();s.activeBindings.seg1='p-old';s.renderRecords['p-old']={generationId:'g1'};
   s=N.beginOperation(s,'req-2',['p-new']);s=N.markVerified(s,'req-2');
-  s=N.activate(s,'req-2',{seg1:'p-new'},{'p-new':{generationId:'g2'}},['p-old']);
+  s=N.activate(s,'req-2',{seg1:'p-new'},{'p-new':{physicalId:'p-new',requestId:'req-2',logicalSegmentId:'seg1',generationId:'g2'}},['p-old']);
   assert.equal(N.activePhysicalId(s,'seg1'),'p-new');
   assert.equal(N.physicalStatus(s,'p-old'),'cleanup-pending');
   s=N.markRetired(s,['p-old']);
@@ -26,14 +26,24 @@ test('activation does not require retiring old identity first',()=>{
 test('retirement cannot leave an active physical binding',()=>{
   let s=N.createManifest();s.activeBindings.seg1='p-old';s.renderRecords['p-old']={generationId:'g1'};
   assert.throws(()=>N.markRetired(s,['p-old']),/cannot-retire-active-physical/);
-  s=N.beginOperation(s,'req-2',['p-new']);s=N.markVerified(s,'req-2');s=N.activate(s,'req-2',{seg1:'p-new'},{'p-new':{generationId:'g2'}},['p-old']);
+  s=N.beginOperation(s,'req-2',['p-new']);s=N.markVerified(s,'req-2');s=N.activate(s,'req-2',{seg1:'p-new'},{'p-new':{physicalId:'p-new',requestId:'req-2',logicalSegmentId:'seg1',generationId:'g2'}},['p-old']);
   s=N.markRetired(s,['p-old']);assert.equal(s.activeBindings.seg1,'p-new');assert.equal(N.physicalStatus(s,'p-old'),'unreferenced');
 });
 
 test('activation rejects a physical id that remains active while queued for retirement',()=>{
   let s=N.createManifest();s.activeBindings.seg1='p-old';s.renderRecords['p-old']={generationId:'g1'};
   s=N.beginOperation(s,'req-1',['p-old']);s=N.markVerified(s,'req-1');
-  assert.throws(()=>N.activate(s,'req-1',{}, {}, ['p-old']),/cannot-activate-retired-physical/);
+  assert.throws(()=>N.activate(s,'req-1',{seg1:'p-old'},{'p-old':{physicalId:'p-old',requestId:'req-1',logicalSegmentId:'seg1'}}, ['p-old']),/cannot-activate-retired-physical/);
+});
+
+test('activation is forbidden before candidate verification',()=>{
+  let s=N.beginOperation(N.createManifest(),'req-1',['p-new']);
+  assert.throws(()=>N.activate(s,'req-1',{seg1:'p-new'},{'p-new':{physicalId:'p-new',requestId:'req-1',logicalSegmentId:'seg1'}},[]),/operation-not-verified/);
+});
+
+test('activation rejects records outside the operation ownership set',()=>{
+  let s=N.beginOperation(N.createManifest(),'req-1',['p-new']);s=N.markVerified(s,'req-1');
+  assert.throws(()=>N.activate(s,'req-1',{seg1:'p-new'},{'p-old':{physicalId:'p-old',requestId:'req-1',logicalSegmentId:'seg1'}},[]),/activation-record-not-owned/);
 });
 
 test('different request cannot overwrite an active prepare operation',()=>{
