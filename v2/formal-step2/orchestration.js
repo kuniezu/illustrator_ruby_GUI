@@ -2,6 +2,7 @@
 var FormalMultiOrchestration = (function () {
     function unresolved(id, reasons) { return {annotationId:id,status:"unresolved",reasons:reasons}; }
     function hasRenderableSuffix(text, start, end) { var source=String(text),i,code; for(i=Math.max(0,start);i<Math.min(source.length,end);i++){code=source.charCodeAt(i);if(code!==0x0d&&code!==0x0a&&code!==0x2028&&code!==0x2029)return true;} return false; }
+    function textualVisibleEnd(lines, baseStart) { var result=0,i,end; for(i=0;i<(lines||[]).length;i++){end=lines[i].end-baseStart;if(end>result)result=end;} return result; }
     function find(bundle, annotationId) { for(var i=0;i<bundle.annotations.length;i++) if(bundle.annotations[i].annotationId===annotationId)return bundle.annotations[i]; return null; }
     function slicedGeometry(geometry, offset, length) {
         var widths=geometry&&geometry.charWidths, prefix=0, width=0, i, result;
@@ -35,6 +36,6 @@ var FormalMultiOrchestration = (function () {
     }
     function planAll(bundle, sourceText, observation) { var results=[],i,hasFailed=false,hasUnresolved=false; FormalMulti.validate(bundle); for(i=0;i<bundle.annotations.length;i++){results.push(planOne(bundle,bundle.annotations[i].annotationId,sourceText,observation));if(results[i].status==="failed")hasFailed=true;else if(results[i].status!=="complete")hasUnresolved=true;} return {status:hasFailed?"failed":(hasUnresolved?"unresolved":"complete"),results:results}; }
     function projectAndPlanAll(bundle, sourceText, observation) { var projected=FormalMultiProjection.project(bundle); return {bundle:projected,plan:planAll(projected,sourceText,observation)}; }
-    return {planOne:planOne,planAll:planAll,projectAndPlanAll:projectAndPlanAll,localLines:localLines,hasRenderableSuffix:hasRenderableSuffix};
+    return {planOne:planOne,planAll:planAll,projectAndPlanAll:projectAndPlanAll,localLines:localLines,hasRenderableSuffix:hasRenderableSuffix,textualVisibleEnd:textualVisibleEnd};
 }());
 if(typeof module!=="undefined")module.exports=FormalMultiOrchestration;
