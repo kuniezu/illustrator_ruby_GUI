@@ -55,10 +55,15 @@ check('keeps persistence strategies inside one save action',
   source.indexOf('pending: function') >= 0 &&
   source.indexOf('failure: function') >= 0 &&
   source.indexOf('if (savePending) return') >= 0 &&
-  source.indexOf('saveButton.enabled = false') >= 0 &&
-  source.indexOf('closeButton.enabled = false') >= 0 &&
-  source.indexOf('closeButton.enabled = true') >= 0 &&
+  source.indexOf('setSavePending(true)') >= 0 &&
+  source.indexOf('list.enabled = !value') >= 0 &&
+  source.indexOf('setSavePending(false)') >= 0 &&
   source.indexOf('source.note =') < 0);
+check('binds pending completion to request and revision',
+  source.indexOf('activeSaveRequestId') >= 0 &&
+  source.indexOf('requestRevision = bundle.revision') >= 0 &&
+  source.indexOf('requestId !== activeSaveRequestId') >= 0 &&
+  source.indexOf('stageFile.fsName, requestId') >= 0);
 check('connects projection to the existing observed renderer contract',
   source.indexOf('FormalMultiPersistenceAdapter.save') >= 0 &&
   source.indexOf('FormalLongTextReResolution.reconcile') >= 0 &&

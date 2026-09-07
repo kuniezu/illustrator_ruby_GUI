@@ -1,8 +1,9 @@
 /* Minimal area-text adapter using observed line geometry. */
 var FORMAL_STEP2_TRACKING_FLOOR = -400;
 function FormalStep2Adapter(doc, source) {
-    var trace = [];
+    var trace = [], cleanupFailed = false;
     function mark(stage, detail) { trace.push(stage + (detail ? ":" + detail : "")); }
+    function markCleanupFailure(stage, error) { cleanupFailed = true; mark(stage, "cleanup-failed" + (error ? ":" + (error.message || error) : "")); }
     function snapshot() { if (app.activeDocument !== doc) throw Error("document-changed"); return {text: String(source.contents), note: String(source.note)}; }
     function inspect(bundle) {
         var out = [], seen = {}, i, item, parts, note;
@@ -44,7 +45,7 @@ function FormalStep2Adapter(doc, source) {
             mark("observe.measurement", "failed:" + (e.message || e));
             return null;
         } finally {
-            if (probe) try { probe.remove(); } catch (ignore) { mark("observe.measurement", "cleanup-failed"); }
+            if (probe) try { probe.remove(); } catch (ignore) { markCleanupFailure("observe.measurement", ignore); }
         }
     }
     function outlineLines(leading) {
@@ -71,8 +72,8 @@ function FormalStep2Adapter(doc, source) {
             return clusters.length === source.textRange.lines.length ? clusters : null;
         } catch (e) { mark("observe.outline", "failed:" + (e.message || e)); return null; }
         finally {
-            if (outline && outline.parent) try { outline.remove(); } catch (ignore) { mark("observe.outline", "cleanup-failed"); }
-            if (!outlined && duplicate && duplicate.parent) try { duplicate.remove(); } catch (ignoreDuplicate) { mark("observe.outline", "cleanup-failed"); }
+            if (outline && outline.parent) try { outline.remove(); } catch (ignore) { markCleanupFailure("observe.outline", ignore); }
+            if (!outlined && duplicate && duplicate.parent) try { duplicate.remove(); } catch (ignoreDuplicate) { markCleanupFailure("observe.outline", ignoreDuplicate); }
         }
     }
     function observe() {
@@ -82,12 +83,14 @@ function FormalStep2Adapter(doc, source) {
         if (typeof leading !== "number" || !isFinite(leading)) return {status: "unresolved", reasons: ["leading-unavailable"]};
         var visualLines = outlineLines(leading);
         if (!visualLines) return {status: "unresolved", reasons: ["outline-line-geometry-unavailable"]};
+        if (cleanupFailed) return {status: "unresolved", reasons: ["temporary-object-cleanup-failed"]};
         for (i = 0; i < range.lines.length; i++) {
             line = range.lines[i];
             var start = line.start - range.start, end = line.end - range.start;
             if (start < 0 || end <= start || end > total || !line.characters.length) return {status: "unresolved", reasons: ["line-map-unverified"]};
             var first = line.characters[0], measured = measure(String(source.contents).substring(start, end), first);
             if (!measured) return {status: "unresolved", reasons: ["measurement-unavailable"]};
+            if (cleanupFailed) return {status: "unresolved", reasons: ["temporary-object-cleanup-failed"]};
             var gap = first.characterAttributes.size * .15, visual = visualLines[i];
             var rubyTop = visual.top + gap; /* Illustrator document Y increases upward for this horizontal AreaText. */
             mark("observe.measurement", "line=" + i + ",left=" + visual.left + ",glyphTop=" + visual.top + ",rubyTop=" + rubyTop + ",width=" + measured.width + ",baseSize=" + first.characterAttributes.size + ",leading=" + leading + ",gap=" + gap + ",cleanup=required");
@@ -95,11 +98,11 @@ function FormalStep2Adapter(doc, source) {
         }
         mark("observe.line-map", "complete"); return {status: "complete", kind: source.kind, orientation: source.orientation, lines: lines};
     }
-    function reconcile(bundle, decision) {
+    function reconcile(bundle, decision, created) {
         var old = inspect(bundle), wanted = decision.segments || [], i, item, geometry, count, delta, tracking;
         for (i = old.length - 1; i >= wanted.length; i--) old[i].remove();
         for (i = 0; i < wanted.length; i++) {
-            item = old[i] || source.layer.textFrames.add(); geometry = wanted[i].geometry;
+            item = old[i] || source.layer.textFrames.add(); if (!old[i] && created) created.push(item); geometry = wanted[i].geometry;
             if (!geometry) throw Error("segment-geometry-unavailable");
             item.note = "formal-step2-output:v1;" + bundle.sourceFrameId + ";" + bundle.annotation.annotationId + ";" + wanted[i].renderSegmentId;
             item.contents = wanted[i].reading;
@@ -145,9 +148,10 @@ function FormalStep2Adapter(doc, source) {
         return result;
     }
     function removeStaleManaged(sourceFrameId, plans) {
-        var desired = {}, items = managedItems(sourceFrameId), i, j, plan, segment, key, parts;
+        var desired = {}, owned = {}, items = managedItems(sourceFrameId), i, j, plan, segment, key, parts;
         for (i = 0; i < plans.length; i++) {
             plan = plans[i];
+            owned[plan.annotationId] = true;
             for (j = 0; j < (plan.decision.segments || []).length; j++) {
                 segment = plan.decision.segments[j];
                 desired[plan.annotationId + ";" + segment.renderSegmentId] = true;
@@ -156,7 +160,7 @@ function FormalStep2Adapter(doc, source) {
         for (i = items.length - 1; i >= 0; i--) {
             parts = String(items[i].note).split(";");
             key = parts.length === 4 ? parts[2] + ";" + parts[3] : "";
-            if (!desired[key]) items[i].remove();
+            if (owned[parts[2]] && !desired[key]) items[i].remove();
         }
     }
     function restoreManaged(sourceFrameId, saved) {
@@ -173,16 +177,17 @@ function FormalStep2Adapter(doc, source) {
         }
     }
     function transaction(sourceFrameId, plans, commit) {
-        var saved = snapshotManaged(sourceFrameId), savedNote = String(source.note), i, plan, proxy, rollbackErrors = [];
+        var saved = snapshotManaged(sourceFrameId), savedNote = String(source.note), created = [], i, plan, proxy, rollbackErrors = [];
         try {
             for (i = 0; i < plans.length; i++) {
                 plan = plans[i];
                 proxy = {sourceFrameId: sourceFrameId, annotation: {annotationId: plan.annotationId}};
-                reconcile(proxy, plan.decision);
+                reconcile(proxy, plan.decision, created);
             }
             removeStaleManaged(sourceFrameId, plans);
             if (commit) commit();
         } catch (error) {
+            for (i = created.length - 1; i >= 0; i--) try { if (created[i].parent) created[i].remove(); } catch (createdError) { rollbackErrors.push("created=" + (createdError.message || createdError)); }
             try { restoreManaged(sourceFrameId, saved); } catch (rollbackError) { rollbackErrors.push("outputs=" + (rollbackError.message || rollbackError)); }
             try { source.note = savedNote; if (String(source.note) !== savedNote) throw Error("source-note-readback-mismatch"); } catch (rollbackNoteError) { rollbackErrors.push("note=" + (rollbackNoteError.message || rollbackNoteError)); }
             if (rollbackErrors.length) mark("render:rollback-failed", rollbackErrors.join(" | ")); else mark("render:rollback", "complete");

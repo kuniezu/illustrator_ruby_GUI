@@ -10,6 +10,15 @@ var FormalMultiPersistenceAdapter = (function () {
         return identity;
     }
     function removeMessage(bt) { for(var i=activeMessages.length-1;i>=0;i--) if(activeMessages[i]===bt) activeMessages.splice(i,1); }
+    function verifyStagePath(stagePath, requestId) {
+        var stageFile;
+        if (!stagePath) throw Error("stage-path-required");
+        if (typeof File === "undefined") throw Error("stage-file-unavailable");
+        stageFile = File(stagePath);
+        if (!stageFile.open("w")) throw Error("stage-file-not-writable");
+        try { stageFile.write("formal-multi-host:request-" + requestId + ":pre-send"); } finally { stageFile.close(); }
+        return stagePath;
+    }
     function bridgeBody(expectedText, cachedNote, nextNote, identity) {
         return "(function(){" +
             "function fail(m){throw Error(m);}" +
@@ -39,12 +48,15 @@ var FormalMultiPersistenceAdapter = (function () {
         if (value instanceof Array) { parts=[]; for (var i=0;i<value.length;i++) parts.push(scriptLiteral(value[i])); return "["+parts.join(",")+"]"; }
         parts=[]; for (key in value) if (value.hasOwnProperty(key)) parts.push(scriptLiteral(key)+":"+scriptLiteral(value[key])); return "{"+parts.join(",")+"}";
     }
-    function renderedBridgeBody(expectedText, cachedNote, nextNote, identity, bundle, specifications, sources, stagePath) {
-        var specs=scriptLiteral(specifications), step1=encoded(sources.step1), segments=encoded(sources.segments), orchestration=encoded(sources.orchestration), adapter=encoded(sources.adapter), documentPath=encoded(identity.documentPath || ""), uuid=encoded(identity.uuid || ""), stageFilePath=encoded(stagePath || "");
+    function renderedBridgeBody(expectedText, cachedNote, nextNote, renderFailureNote, identity, bundle, specifications, sources, stagePath, requestId) {
+        if (renderFailureNote && typeof renderFailureNote === "object") {
+            stagePath = sources; sources = specifications; specifications = bundle; bundle = identity; identity = renderFailureNote; renderFailureNote = nextNote;
+        }
+        var specs=scriptLiteral(specifications), step1=encoded(sources.step1), segments=encoded(sources.segments), orchestration=encoded(sources.orchestration), adapter=encoded(sources.adapter), documentPath=encoded(identity.documentPath || ""), uuid=encoded(identity.uuid || ""), stageFilePath=encoded(stagePath || ""), stageRequestId=encoded(requestId || "unknown");
         return "(function(){"+
             "function fail(m){throw Error(m);}"+
-            "var stagePath=decodeURIComponent(\""+stageFilePath+"\"),stageFile;"+
-            "function stage(n){try{if(stagePath){stageFile=File(stagePath);if(stageFile.open(\"w\")){stageFile.write(\"formal-multi-host:\"+n);stageFile.close();}}if(typeof $!==\"undefined\"&&$.writeln)$.writeln(\"formal-multi-host:\"+n);}catch(ignore){}}"+
+            "var stagePath=decodeURIComponent(\""+stageFilePath+"\"),requestId=decodeURIComponent(\""+stageRequestId+"\"),stageFile;"+
+            "function stage(n){try{if(stagePath){stageFile=File(stagePath);if(stageFile.open(\"w\")){stageFile.write(\"formal-multi-host:request-\"+requestId+\":\"+n);stageFile.close();}}if(typeof $!==\"undefined\"&&$.writeln)$.writeln(\"formal-multi-host:request-\"+requestId+\":\"+n);}catch(ignore){}}"+
             "stage(\"host-entry\");"+
             "stage(\"step1-eval-start\");"+
             "eval(decodeURIComponent(\""+step1+"\"));"+
@@ -55,32 +67,36 @@ var FormalMultiPersistenceAdapter = (function () {
             "stage(\"orchestration-eval-end\");stage(\"adapter-eval-start\");"+
             "eval(decodeURIComponent(\""+adapter+"\"));"+
             "stage(\"adapter-eval-end\");"+
-            "var expected=decodeURIComponent(\""+encoded(expectedText)+"\"),cached=decodeURIComponent(\""+encoded(cachedNote)+"\"),next=decodeURIComponent(\""+encoded(nextNote)+"\"),documentPath=decodeURIComponent(\""+documentPath+"\"),uuid=decodeURIComponent(\""+uuid+"\"),specs="+specs+",doc,frame,renderAdapter,observation,plans=[],i,spec,one,result;"+
+            "var expected=decodeURIComponent(\""+encoded(expectedText)+"\"),cached=decodeURIComponent(\""+encoded(cachedNote)+"\"),next=decodeURIComponent(\""+encoded(nextNote)+"\"),renderFailure=decodeURIComponent(\""+encoded(renderFailureNote)+"\"),documentPath=decodeURIComponent(\""+documentPath+"\"),uuid=decodeURIComponent(\""+uuid+"\"),specs="+specs+",doc,frame,renderAdapter,observation,plans=[],i,spec,one,result,commitStarted=false,renderError;"+
             "stage(\"host-validation-start\");if(!app.documents.length)fail(\"there is no document\");doc=app.activeDocument;if(!documentPath||!doc.fullName||!doc.fullName.fsName||String(doc.fullName.fsName)!==documentPath)fail(\"origin-document-mismatch\");if(!uuid||typeof doc.getPageItemFromUuid!==\"function\")fail(\"uuid-lookup-unavailable\");frame=doc.getPageItemFromUuid(uuid);if(!frame)fail(\"source-uuid-not-found\");if(String(frame.contents)!==expected)fail(\"source-snapshot-mismatch\");if(String(frame.note)!==cached)fail(\"source-note-target-mismatch\");stage(\"host-validation-end\");renderAdapter=FormalStep2Adapter(doc,frame);stage(\"adapter-constructed\");stage(\"observe-start\");observation=renderAdapter.observe();stage(\"observe-end\");"+
-            "if(observation.status!==\"complete\")fail(\"render-observation-unresolved:\"+(observation.reasons||[]).join(\" | \"));"+
-            "stage(\"plan-start\");for(i=0;i<specs.length;i++){spec=specs[i];stage(\"plan-annotation-\"+i+\"-start\");if(!spec.annotation||!spec.annotation.enabled){plans.push({annotationId:spec.annotationId,decision:{status:\"complete\",segments:[]}});stage(\"plan-annotation-\"+i+\"-end:cleanup\");continue;}one={textSnapshot:expected,revision:"+String(bundle.revision)+",annotations:[spec.annotation]};result=FormalMultiOrchestration.planOne(one,spec.annotationId,expected,observation);if(result.status!==\"complete\")fail(\"render-plan-unresolved:\"+(result.reasons||[]).join(\" | \"));plans.push({annotationId:spec.annotationId,decision:result.decision});stage(\"plan-annotation-\"+i+\"-end\");}stage(\"plan-end\");stage(\"transaction-start\");renderAdapter.renderAndStoreTransaction(\""+encoded(bundle.sourceFrameId)+"\",plans,function(){stage(\"note-commit-start\");frame.note=next;if(String(frame.note)!==next)fail(\"store-readback-mismatch\");stage(\"note-commit-end\");});stage(\"transaction-end\");stage(\"return\");return \"B-render-persist:success\";}());";
+            "if(observation.status!==\"complete\"){stage(\"render-failed\");frame.note=renderFailure;if(String(frame.note)!==renderFailure)fail(\"persistence-after-render-failure-mismatch\");return \"B-render-persist:render-failed\";}"+
+            "stage(\"plan-start\");for(i=0;i<specs.length;i++){spec=specs[i];stage(\"plan-annotation-\"+i+\"-start\");if(!spec.annotation||!spec.annotation.enabled){plans.push({annotationId:spec.annotationId,decision:{status:\"complete\",segments:[]}});stage(\"plan-annotation-\"+i+\"-end:cleanup\");continue;}one={textSnapshot:expected,revision:"+String(bundle.revision)+",annotations:[spec.annotation]};result=FormalMultiOrchestration.planOne(one,spec.annotationId,expected,observation);if(result.status!==\"complete\"){stage(\"render-failed\");frame.note=renderFailure;if(String(frame.note)!==renderFailure)fail(\"persistence-after-render-failure-mismatch\");return \"B-render-persist:render-failed\";}plans.push({annotationId:spec.annotationId,decision:result.decision});stage(\"plan-annotation-\"+i+\"-end\");}stage(\"plan-end\");stage(\"transaction-start\");try{renderAdapter.renderAndStoreTransaction(\""+encoded(bundle.sourceFrameId)+"\",plans,function(){commitStarted=true;stage(\"note-commit-start\");frame.note=next;if(String(frame.note)!==next)fail(\"store-readback-mismatch\");stage(\"note-commit-end\");});}catch(error){if(commitStarted)fail(error.message||error);renderError=error;}if(renderError){stage(\"render-failed\");frame.note=renderFailure;if(String(frame.note)!==renderFailure)fail(\"persistence-after-render-failure-mismatch\");return \"B-render-persist:render-failed\";}stage(\"transaction-end\");stage(\"return\");return \"B-render-persist:success\";}());";
     }
-    function renderedBridge(expectedText, cachedNote, nextNote, identity, bundle, specifications, sources, callbacks, bridgeTalkRef, stagePath) {
+    function renderedBridge(expectedText, cachedNote, nextNote, renderFailureNote, identity, bundle, specifications, sources, callbacks, bridgeTalkRef, stagePath, requestId) {
         var bt, sent, finished=false;
         if(!bridgeTalkRef) throw Error("B-bridge-talk-unavailable");
         if(typeof bridgeTalkRef.getSpecifier!=="function") throw Error("B-bridge-talk-specifier-unavailable");
-        bt=new bridgeTalkRef(); bt.target=bridgeTalkRef.getSpecifier("illustrator"); if(!bt.target) throw Error("B-bridge-talk-target-unavailable"); bt.body=renderedBridgeBody(expectedText,cachedNote,nextNote,identity,bundle,specifications,sources,stagePath); bt.timeout=30;
+        if (stagePath) verifyStagePath(stagePath, requestId || "unknown");
+        bt=new bridgeTalkRef(); bt.target=bridgeTalkRef.getSpecifier("illustrator"); if(!bt.target) throw Error("B-bridge-talk-target-unavailable"); bt.body=renderedBridgeBody(expectedText,cachedNote,nextNote,renderFailureNote,identity,bundle,specifications,sources,stagePath,requestId); bt.timeout=30;
         function finish(callback,value){if(finished)return;finished=true;removeMessage(bt);callback(value);}
-        bt.onResult=function(result){if(result&&result.body==="B-render-persist:success")finish(callbacks.success,{strategy:"B-render-persist",note:nextNote});else finish(callbacks.failure,"B-render-persist: invalid-result:"+(result&&result.body?result.body:"empty"));};
+        bt.onResult=function(result){if(result&&result.body==="B-render-persist:success")finish(callbacks.success,{strategy:"B-render-persist",note:nextNote});else if(result&&result.body==="B-render-persist:render-failed")finish(callbacks.success,{strategy:"B-render-persist",note:renderFailureNote,renderStatus:"failed"});else finish(callbacks.failure,"B-render-persist: invalid-result:"+(result&&result.body?result.body:"empty"));};
         bt.onError=function(result){finish(callbacks.failure,"B-render-persist: "+errorText(result&&result.body?result.body:result));};
         bt.onTimeout=function(result){finish(callbacks.failure,"B-render-persist: timeout:"+errorText(result&&result.body?result.body:result));};
         activeMessages.push(bt); try { sent=bt.send(); } catch(error) { removeMessage(bt); throw error; }
         callbacks.pending(sent===false?"B-render-persist: send=false (queued-or-not-sent)":"B-render-persist: send=true"); return bt;
     }
-    function saveRendered(expectedText, cachedNote, bundle, identity, specifications, sources, callbacks, bridgeTalkRef, stagePath) {
-        var nextNote=FormalMultiStore.write(cachedNote,bundle), diagnostics=[], result;
+    function saveRendered(expectedText, cachedNote, bundle, identity, specifications, sources, callbacks, bridgeTalkRef, stagePath, requestId) {
+        var nextNote=FormalMultiStore.write(cachedNote,bundle), renderFailureBundle={}, renderFailureNote, key, diagnostics=[], result;
         callbacks=callbacks||{};
+        for (key in bundle) if (bundle.hasOwnProperty(key)) renderFailureBundle[key]=bundle[key];
+        renderFailureBundle.renderStatus="failed";
+        renderFailureNote=FormalMultiStore.write(cachedNote,renderFailureBundle);
         try {
-            result=renderedBridge(expectedText,cachedNote,nextNote,identity||{},bundle,specifications,sources,{
+            result=renderedBridge(expectedText,cachedNote,nextNote,renderFailureNote,identity||{},bundle,specifications,sources,{
                 pending:function(message){diagnostics.push(message);if(callbacks.pending)callbacks.pending(diagnostics.slice(0));},
                 success:function(value){value.diagnostics=diagnostics.concat(["B-render-persist: success"]);if(callbacks.success)callbacks.success(value);},
                 failure:function(message){diagnostics.push(message);if(callbacks.failure)callbacks.failure(diagnostics.slice(0));}
-            },bridgeTalkRef||(typeof BridgeTalk!=="undefined"?BridgeTalk:null),stagePath);
+            },bridgeTalkRef||(typeof BridgeTalk!=="undefined"?BridgeTalk:null),stagePath,requestId);
             return {status:"pending",strategy:"B-render-persist",note:nextNote,diagnostics:diagnostics,bridge:result};
         } catch(error) { diagnostics.push("B-render-persist: "+errorText(error)); return {status:"failed",diagnostics:diagnostics}; }
     }
