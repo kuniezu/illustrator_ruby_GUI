@@ -2,6 +2,7 @@
 #targetengine "formal-multi-step2"
 #include "../formal-step1/core.js"
 #include "../formal-step1/store.js"
+#include "appearance.js"
 #include "multi.js"
 #include "occurrences.js"
 #include "split-boundaries.js"
@@ -30,6 +31,7 @@
             step1: File(here.parent + "/formal-step1/core.js").fsName,
             segments: File(here + "/segments.js").fsName,
             orchestration: File(here + "/orchestration.js").fsName,
+            appearance: File(here + "/appearance.js").fsName,
             adapter: File(here + "/adapter.jsx").fsName
         };
     }

@@ -20,7 +20,7 @@ var FormalMultiPersistenceAdapter = (function () {
         return stagePath;
     }
     function verifyRuntimeSources(sources) {
-        var names=["step1","segments","orchestration","adapter"],i,file;
+        var names=["step1","segments","orchestration","appearance","adapter"],i,file;
         if(!sources) throw Error("runtime-sources-required");
         if(typeof File === "undefined") throw Error("runtime-source-file-unavailable");
         for(i=0;i<names.length;i++) { if(!sources[names[i]]) throw Error("runtime-source-path-missing:"+names[i]); file=File(sources[names[i]]); if(!file.exists) throw Error("runtime-source-not-found:"+names[i]); }
@@ -59,12 +59,13 @@ var FormalMultiPersistenceAdapter = (function () {
         if (renderFailureNote && typeof renderFailureNote === "object") {
             stagePath = sources; sources = specifications; specifications = bundle; bundle = identity; identity = renderFailureNote; renderFailureNote = nextNote;
         }
-        var specs=scriptLiteral(specifications), step1Path=encoded(sources.step1), segmentsPath=encoded(sources.segments), orchestrationPath=encoded(sources.orchestration), adapterPath=encoded(sources.adapter), documentPath=encoded(identity.documentPath || ""), uuid=encoded(identity.uuid || "");
+        var specs=scriptLiteral(specifications), step1Path=encoded(sources.step1), segmentsPath=encoded(sources.segments), orchestrationPath=encoded(sources.orchestration), appearancePath=encoded(sources.appearance), adapterPath=encoded(sources.adapter), documentPath=encoded(identity.documentPath || ""), uuid=encoded(identity.uuid || "");
         return "(function(){"+
             "function fail(m){throw Error(m);}"+
             "$.evalFile(File(decodeURIComponent(\""+step1Path+"\")));"+
             "$.evalFile(File(decodeURIComponent(\""+segmentsPath+"\")));"+
             "$.evalFile(File(decodeURIComponent(\""+orchestrationPath+"\")));"+
+            "$.evalFile(File(decodeURIComponent(\""+appearancePath+"\")));"+
             "$.evalFile(File(decodeURIComponent(\""+adapterPath+"\")));"+
             "if(typeof FormalStep1===\"undefined\"||typeof FormalSegments===\"undefined\"||typeof FormalMultiOrchestration===\"undefined\"||typeof FormalStep2Adapter===\"undefined\")fail(\"runtime-symbol-missing\");"+
             "var expected=decodeURIComponent(\""+encoded(expectedText)+"\"),cached=decodeURIComponent(\""+encoded(cachedNote)+"\"),next=decodeURIComponent(\""+encoded(nextNote)+"\"),renderFailure=decodeURIComponent(\""+encoded(renderFailureNote)+"\"),documentPath=decodeURIComponent(\""+documentPath+"\"),uuid=decodeURIComponent(\""+uuid+"\"),specs="+specs+",doc,frame,renderAdapter,observation,plans=[],i,spec,one,result,commitStarted=false,renderError,persistenceError;"+

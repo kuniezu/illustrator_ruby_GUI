@@ -4,6 +4,10 @@ function FormalStep2Adapter(doc, source) {
     var trace = [], cleanupFailed = false;
     function mark(stage, detail) { trace.push(stage + (detail ? ":" + detail : "")); }
     function markCleanupFailure(stage, error) { cleanupFailed = true; mark(stage, "cleanup-failed" + (error ? ":" + (error.message || error) : "")); }
+    function sourceFontName() { try { return source.textRange.characterAttributes.textFont.name; } catch (ignore) { return ""; } }
+    function appearanceDefaults(baseSize, fontName) { return {fontName:fontName || "",fontSize:typeof baseSize === "number" && baseSize > 0 ? baseSize * .5 : null,manualDeltaX:0,widthScale:1,gapEm:.15}; }
+    function normalizedAppearance(state, baseSize, fontName) { return typeof FormalAppearance !== "undefined" ? FormalAppearance.normalize(state, baseSize, fontName) : appearanceDefaults(baseSize, fontName); }
+    function reappliedAppearance(left, width, state, baseSize, fontName) { var a=normalizedAppearance(state,baseSize,fontName); return {left:left+a.manualDeltaX,width:width*a.widthScale,appearance:a}; }
     function snapshot() { if (app.activeDocument !== doc) throw Error("document-changed"); return {text: String(source.contents), note: String(source.note)}; }
     function inspect(bundle) {
         var out = [], seen = {}, i, item, parts, note;
@@ -108,21 +112,25 @@ function FormalStep2Adapter(doc, source) {
         mark("observe.line-map", visualLines.length < range.lines.length ? (suffixHasText ? "complete-overflow-suffix" : "complete-line-count-mismatch") : "complete"); return {status: "complete", kind: source.kind, orientation: source.orientation, overflow: suffixHasText, overflowEvidence: suffixHasText ? {visibleEnd:visibleEnd, sourceEnd:sourceEnd, suffixHasText:true} : null, overflowReason: suffixHasText ? "visible-end-before-renderable-suffix" : "no-confirmed-hidden-text-suffix", lines: lines};
     }
     function reconcile(bundle, decision, created) {
-        var old = inspect(bundle), wanted = decision.segments || [], i, item, geometry, count, delta, tracking;
+        var old = inspect(bundle), wanted = decision.segments || [], i, item, geometry, count, delta, tracking, appearance, layout, sourceFont;
         for (i = old.length - 1; i >= wanted.length; i--) old[i].remove();
         for (i = 0; i < wanted.length; i++) {
             item = old[i] || source.layer.textFrames.add(); if (!old[i] && created) created.push(item); geometry = wanted[i].geometry;
             if (!geometry) throw Error("segment-geometry-unavailable");
             item.note = "formal-step2-output:v1;" + bundle.sourceFrameId + ";" + bundle.annotation.annotationId + ";" + wanted[i].renderSegmentId;
+            appearance = normalizedAppearance(bundle.annotation.appearance, geometry.baseSize, sourceFontName());
+            layout = reappliedAppearance(geometry.left, geometry.width, appearance, geometry.baseSize, sourceFontName());
+            try { item.kind = TextType.AREATEXT; } catch (kindError) { mark("render.appearance", "area-text-kind-unavailable"); }
             item.contents = wanted[i].reading;
-            item.textRange.characterAttributes.size = geometry.baseSize * .5;
+            item.textRange.characterAttributes.size = appearance.fontSize || geometry.baseSize * .5;
+            if (appearance.fontName) try { item.textRange.characterAttributes.textFont = app.textFonts.getByName(appearance.fontName); } catch (fontError) { mark("render.appearance", "font-fallback:" + (fontError.message || fontError)); }
+            try { item.textRange.paragraphAttributes.justification = Justification.FULLJUSTIFY; } catch (justificationError) { mark("render.appearance", "full-justify-unavailable"); }
             item.textRange.characterAttributes.tracking = 0;
+            try { item.width = layout.width; if (typeof geometry.height === "number" && geometry.height > 0) item.height = geometry.height; } catch (boxError) { mark("render.appearance", "area-box-unavailable"); }
+            item.left = layout.left; item.top = geometry.top;
             count = String(wanted[i].reading).length; delta = geometry.width - item.width;
             tracking = count > 1 && geometry.baseSize > 0 ? delta / (geometry.baseSize * .5 * (count - 1)) * 1000 : 0;
-            if (tracking < FORMAL_STEP2_TRACKING_FLOOR) tracking = FORMAL_STEP2_TRACKING_FLOOR; if (tracking > 400) tracking = 400;
-            item.textRange.characterAttributes.tracking = tracking;
-            if (tracking) mark("render.width-fit", "tracking=" + tracking);
-            item.left = geometry.left + (geometry.width - item.width) / 2; item.top = geometry.top;
+            if (appearance.widthScale === 1 && appearance.manualDeltaX === 0) { if (tracking < FORMAL_STEP2_TRACKING_FLOOR) tracking = FORMAL_STEP2_TRACKING_FLOOR; if (tracking > 400) tracking = 400; item.textRange.characterAttributes.tracking = tracking; if (tracking) mark("render.width-fit", "tracking=" + tracking); }
             var rubyBounds = item.visibleBounds;
             if (!rubyBounds || rubyBounds.length < 4) rubyBounds = item.geometricBounds;
             if (!rubyBounds || rubyBounds.length < 4 || typeof geometry.measuredTop !== "number") throw Error("ruby-bounds-unavailable");
@@ -155,7 +163,7 @@ function FormalStep2Adapter(doc, source) {
             item = items[i];
             parts = String(item.note).split(";");
             if (owned && !owned[parts[2]]) continue;
-            result.push({note: String(item.note), contents: String(item.contents), size: item.textRange.characterAttributes.size, tracking: item.textRange.characterAttributes.tracking, left: item.left, top: item.top});
+            result.push({note: String(item.note), contents: String(item.contents), kind: item.kind, size: item.textRange.characterAttributes.size, tracking: item.textRange.characterAttributes.tracking, fontName: (item.textRange.characterAttributes.textFont ? item.textRange.characterAttributes.textFont.name : ""), justification: (item.textRange.paragraphAttributes ? item.textRange.paragraphAttributes.justification : null), width: item.width, height: item.height, left: item.left, top: item.top});
         }
         return result;
     }
@@ -181,9 +189,13 @@ function FormalStep2Adapter(doc, source) {
         for (i = 0; i < saved.length; i++) {
             restored = source.layer.textFrames.add();
             restored.note = saved[i].note;
+            try { restored.kind = saved[i].kind; } catch (kindError) {}
             restored.contents = saved[i].contents;
             restored.textRange.characterAttributes.size = saved[i].size;
             restored.textRange.characterAttributes.tracking = saved[i].tracking;
+            if (saved[i].fontName) try { restored.textRange.characterAttributes.textFont = app.textFonts.getByName(saved[i].fontName); } catch (fontError) {}
+            if (restored.textRange.paragraphAttributes && saved[i].justification !== null) try { restored.textRange.paragraphAttributes.justification = saved[i].justification; } catch (justificationError) {}
+            try { restored.width = saved[i].width; restored.height = saved[i].height; } catch (boxError) {}
             restored.left = saved[i].left;
             restored.top = saved[i].top;
         }

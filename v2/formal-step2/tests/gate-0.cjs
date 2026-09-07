@@ -80,6 +80,7 @@ test('production generated BridgeTalk body parses as a script', () => {
     step1: path.join(repoRoot, 'v2', 'formal-step1', 'core.js'),
     segments: path.join(repoRoot, 'v2', 'formal-step2', 'segments.js'),
     orchestration: path.join(repoRoot, 'v2', 'formal-step2', 'orchestration.js'),
+    appearance: path.join(repoRoot, 'v2', 'formal-step2', 'appearance.js'),
     adapter: path.join(repoRoot, 'v2', 'formal-step2', 'adapter.jsx')
   };
   const body = adapter.renderedBridgeBody(
@@ -109,6 +110,7 @@ test('production generated BridgeTalk body parses as a script', () => {
   assert.doesNotMatch(body, /eval\(decodeURIComponent\(/);
   assert.ok(body.indexOf('core.js') < body.indexOf('segments.js'));
   assert.ok(body.indexOf('segments.js') < body.indexOf('orchestration.js'));
+  assert.ok(body.indexOf('orchestration.js') < body.indexOf('appearance.js'));
   assert.ok(body.indexOf('orchestration.js') < body.indexOf('adapter.jsx'));
 });
 

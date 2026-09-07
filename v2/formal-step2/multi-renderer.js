@@ -8,10 +8,10 @@ var FormalMultiRenderer = (function () {
         return null;
     }
 
-    function proxyBundle(bundle, annotationId) {
+    function proxyBundle(bundle, annotationId, appearance) {
         return {
             sourceFrameId: bundle.sourceFrameId,
-            annotation: { annotationId: annotationId }
+            annotation: { annotationId: annotationId, appearance: appearance }
         };
     }
 
@@ -25,6 +25,7 @@ var FormalMultiRenderer = (function () {
                 continue;
             }
             result = FormalMultiOrchestration.planOne(bundle, annotation.annotationId, sourceText, observation);
+            result.appearance = annotation.appearance;
             plans.push(result);
             if (result.status !== "complete") return { status: result.status, plans: plans };
         }
@@ -36,7 +37,7 @@ var FormalMultiRenderer = (function () {
         if (planned.status !== "complete") return planned;
         for (i = 0; i < planned.plans.length; i++) {
             item = planned.plans[i];
-            adapter.reconcile(proxyBundle(bundle, item.annotationId), item.decision);
+            adapter.reconcile(proxyBundle(bundle, item.annotationId, item.appearance), item.decision);
         }
         return planned;
     }
@@ -59,6 +60,7 @@ var FormalMultiRenderer = (function () {
                     readingConfirmed: annotation.readingConfirmed,
                     enabled: annotation.enabled,
                     placementMode: annotation.placementMode,
+                    appearance: typeof FormalAppearance!=="undefined" ? FormalAppearance.normalize(annotation.appearance, null, "") : (annotation.appearance || {fontName:"",fontSize:null,manualDeltaX:0,widthScale:1,gapEm:.15}),
                     splitHints: annotation.splitHints || []
                 } : null
             });

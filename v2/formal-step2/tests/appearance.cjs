@@ -1,0 +1,12 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const A=require('../appearance.js'); global.FormalAppearance=A;
+const F=require('../../formal-step1/core.js'); global.FormalStep1=F; global.FormalStore=require('../../formal-step1/store.js');
+const M=require('../multi.js'); global.FormalMulti=M; const Store=require('../multi-store.js');
+
+test('appearance defaults use half base size and em gap',()=>{assert.deepEqual(A.defaults(20,'Mincho'),{fontName:'Mincho',fontSize:10,manualDeltaX:0,widthScale:1,gapEm:.15});});
+test('explicit size and font survive normalization and reapply',()=>{let state=A.normalize({fontName:'RubyFont',fontSize:8,manualDeltaX:3,widthScale:1.1},20,'SourceFont'),r=A.reapply(40,50,state,20,'SourceFont');assert.equal(state.fontName,'RubyFont');assert.equal(state.fontSize,8);assert.equal(r.left,43);assert.ok(Math.abs(r.width-55)<0.000001);});
+test('reading-driven auto width still reapplies saved width scale',()=>{let state={manualDeltaX:-2,widthScale:1.1},first=A.reapply(10,40,state,20,''),second=A.reapply(10,50,state,20,'');assert.equal(first.width,44);assert.ok(Math.abs(second.width-55)<0.000001);assert.equal(second.left,8);});
+test('invalid delta and scale safely fall back',()=>{let r=A.normalize({manualDeltaX:'bad',widthScale:0,fontSize:-1},20,'SourceFont');assert.equal(r.manualDeltaX,0);assert.equal(r.widthScale,1);assert.equal(r.fontSize,10);});
+test('manual adjustment capture stores delta and width scale',()=>{let r=A.captureAdjustment(14,44,10,40,null,20,'');assert.equal(r.manualDeltaX,4);assert.equal(r.widthScale,1.1);});
+test('appearance state round trips and old annotations receive defaults',()=>{let b=M.create('甲'),a=b.annotations[0];a.appearance={fontName:'RubyFont',fontSize:7,manualDeltaX:2,widthScale:1.1,gapEm:.15};let note=Store.write('',b),r=Store.read(note);assert.equal(r.annotations[0].appearance.fontName,'RubyFont');assert.equal(r.annotations[0].appearance.widthScale,1.1);let old=note.replace('%02RubyFont%027%022%021.1%020.15','');assert.doesNotThrow(()=>Store.read(old));});
+test('multi clone/update snapshot appearance without aliasing',()=>{let b=M.create('甲'),a=b.annotations[0],state={fontName:'RubyFont',fontSize:8,manualDeltaX:1,widthScale:1.2,gapEm:.15};b=M.update(b,a.annotationId,{appearance:state});state.fontName='Changed';assert.equal(b.annotations[0].appearance.fontName,'RubyFont');let c=M.clone(b);assert.equal(c.annotations[0].appearance.widthScale,1.2);});
