@@ -40,6 +40,15 @@ test('Formal Multi Step2 entrypoint parses after faithful include expansion', ()
   assert.doesNotThrow(() => parseExtendScriptSubset(expanded, entry));
 });
 
+test('production ExtendScript include path avoids unsupported modern collection APIs', () => {
+  const entry = path.join(repoRoot, 'v2', 'formal-step2', 'Formal Multi Step2.jsx');
+  const expanded = expandIncludes(entry);
+  assert.doesNotMatch(expanded, /\b(?:history|expanded)\.indexOf\s*\(/);
+  assert.doesNotMatch(expanded, /\.(?:forEach|map|filter|some|every)\s*\(/);
+  assert.doesNotMatch(expanded, /new\s+Set\s*\(/);
+  assert.doesNotMatch(expanded, /Object\.keys\s*\(/);
+});
+
 test('production generated BridgeTalk body parses as a script', () => {
   const adapter = loadPersistenceAdapter();
   const sources = {

@@ -6,6 +6,7 @@ var FormalMultiProjection = (function () {
     function id(bundle, occurrence) { return idForKey(bundle.sourceFrameId, occurrence.occurrenceId); }
     function eligible(occurrence) { return !occurrence.unsupported && occurrence.enabled && occurrence.readingConfirmed && occurrence.reading.length > 0; }
     function find(annotations, annotationId) { var i; for(i=0;i<annotations.length;i++) if(annotations[i].annotationId===annotationId) return annotations[i]; return null; }
+    function contains(values, value) { var i; for(i=0;i<values.length;i++) if(values[i]===value) return true; return false; }
     function create(bundle, occurrence) { var a=FormalStep1.create(bundle.textSnapshot).annotation, c=context(bundle.textSnapshot,occurrence.start,occurrence.end); a.annotationId=id(bundle,occurrence); a.sourceFrameId=bundle.sourceFrameId; a.anchor={baseText:occurrence.surface,startHint:occurrence.start,beforeContext:c.beforeContext,afterContext:c.afterContext}; a.reading=occurrence.reading; a.readingConfirmed=true; a.enabled=true; a.reviewReasons=[]; a.splitHints=[]; return a; }
     function project(bundle) {
         var next=FormalMulti.clone(bundle), annotations=[], occurrence, existing, generated={}, currentIds={}, ancestorIds={}, history=next.managedAnnotationIds||[], retired=[], retiredSeen={}, i, j, c;
@@ -13,7 +14,7 @@ var FormalMultiProjection = (function () {
         for(i=0;i<bundle.occurrences.length;i++) {
             occurrence=bundle.occurrences[i];
             currentIds[id(bundle,occurrence)]=true;
-            if (history.indexOf(id(bundle,occurrence)) < 0) history.push(id(bundle,occurrence));
+            if (!contains(history,id(bundle,occurrence))) history.push(id(bundle,occurrence));
             for(j=0;j<occurrence.lineage.length;j++) ancestorIds[idForKey(bundle.sourceFrameId,occurrence.lineage[j])]=true;
             if(!eligible(occurrence)) continue;
             existing=find(next.annotations,id(bundle,occurrence));

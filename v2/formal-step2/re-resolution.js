@@ -40,6 +40,7 @@ var FormalLongTextReResolution = (function () {
         return contextMatches;
     }
     function sameRoot(first,second) { return first.lineage && second.lineage && first.lineage.length && second.lineage.length && first.lineage[0]===second.lineage[0]; }
+    function positionOf(values, value) { var i; for(i=0;i<values.length;i++) if(values[i]===value) return i; return -1; }
     function compatibleBefore(expected,actual) { return expected.length>0 && (expected===actual || (actual.length>=expected.length && actual.substring(actual.length-expected.length)===expected)); }
     function compatibleAfter(expected,actual) { return expected.length>0 && (expected===actual || (actual.length>=expected.length && actual.substring(0,expected.length)===expected)); }
     function localRunScore(bundle,group,raw,currentText) {
@@ -62,8 +63,8 @@ var FormalLongTextReResolution = (function () {
                 for(r=0;r<rawMatches.length;r++) { score=localRunScore(bundle,group,rawMatches[r],current.textSnapshot); if(score.context>bestScore || (score.context===bestScore && score.position>bestPosition)) { best=rawMatches[r]; bestScore=score.context; bestPosition=score.position; tied=false; } else if(score.context===bestScore && score.position===bestPosition) tied=true; }
                 if(best && bestScore>0 && !tied) {
                     raw=best; offset=0;
-                    for(var k=0;k<group.length;k++) { source=group[k]; child={occurrenceId:raw.occurrenceId+"-local-"+k,start:raw.start+offset,end:raw.start+offset+source.surface.length,surface:source.surface,groupId:source.groupId,visible:true,enabled:true,reading:"",readingConfirmed:false,lineage:source.lineage.slice(0),localRun:true,localEvidence:true}; expanded.splice(expanded.indexOf(raw)+k,0,child); offset+=source.surface.length; }
-                    expanded.splice(expanded.indexOf(raw),1);
+                    for(var k=0;k<group.length;k++) { source=group[k]; child={occurrenceId:raw.occurrenceId+"-local-"+k,start:raw.start+offset,end:raw.start+offset+source.surface.length,surface:source.surface,groupId:source.groupId,visible:true,enabled:true,reading:"",readingConfirmed:false,lineage:source.lineage.slice(0),localRun:true,localEvidence:true}; expanded.splice(positionOf(expanded,raw)+k,0,child); offset+=source.surface.length; }
+                    expanded.splice(positionOf(expanded,raw),1);
                 }
             }
             i=j;
