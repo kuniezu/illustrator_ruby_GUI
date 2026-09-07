@@ -104,7 +104,7 @@ test('native capability probe is isolated in a disposable document',()=>{
   assert.ok(source.includes('app.documents.add()'));
   assert.ok(source.includes('SaveOptions.DONOTSAVECHANGES'));
   assert.ok(source.includes('layer.pathItems.rectangle'));
-  assert.ok(source.includes('probeDoc.textFrames.areaText(path)'));
+  assert.ok(source.includes('doc.textFrames.areaText(path)'));
   assert.ok(source.includes('Justification.FULLJUSTIFY'));
   assert.ok(source.includes('[0, -25, -50, -75, -100]'));
   assert.ok(source.includes('frame.remove()'));
@@ -114,8 +114,21 @@ test('native capability probe is isolated in a disposable document',()=>{
 
 test('native probe compares fresh geometry instead of resizing an existing frame',()=>{
   const source=fs.readFileSync(path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Probe.jsx'),'utf8');
-  assert.ok(source.includes('createCandidate("B1"'));
-  assert.ok(source.includes('createCandidate("B2"'));
+  assert.ok(source.includes('create("B1"'));
+  assert.ok(source.includes('create("B2"'));
   assert.ok(!source.includes('.width ='));
   assert.ok(!source.includes('textPath.width ='));
+});
+
+test('A-H one-shot diagnostic is disposable, aggregated, and not production wiring',()=>{
+  const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Probe.jsx');
+  const source=fs.readFileSync(file,'utf8');
+  for(const id of ['A1','B1','B2','C1','C2','D1','D2','D3','D4','F1','F2','F3','F4','G1','G2','G3','G4','H']) assert.ok(source.includes('"'+id+'"'),id);
+  assert.ok(source.includes('"E" + i'));
+  assert.ok(source.includes('areaText(path)'));assert.ok(source.includes('BridgeTalk'));assert.ok(source.includes('bt.send(30)'));
+  assert.ok(source.includes('Window("dialog"'));assert.ok(source.includes('report.join("\\n")'));
+  assert.ok(source.includes('app.documents.add()'));assert.ok(source.includes('DONOTSAVECHANGES'));
+  assert.ok(source.includes('var TRACKING = [0, -25, -50, -75, -100]'));
+  assert.ok(!source.includes('source.note'));assert.ok(!source.includes('kind = TextType.AREATEXT'));
+  assert.ok(!source.includes('TextType.POINTTEXT'));assert.ok(!source.includes('app.activeDocument'));
 });

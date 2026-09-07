@@ -310,3 +310,31 @@ The probe should end with explicit decisions, not only raw logs:
 - `cleanup`: PASS/FAIL
 
 Production implementation starts only after required native capabilities are PASS and every unresolved item has an explicit fail-closed behavior.
+
+## A-H one-shot implementation status
+
+The companion diagnostic `../diagnostics/Formal Step2 AreaText Native Probe.jsx`
+now runs A-H in one disposable-document session and aggregates the result into
+one copyable ScriptUI text area. A-E observe fresh AreaText candidates and
+record compact geometry, contents, line, typography, composer, and bounded
+tracking evidence. F is an isolated copy-on-write mock transaction. G records
+the pure manual-baseline calculation. H attempts an actual BridgeTalk request
+to a disposable receiver document and reports delivery/readback separately.
+
+The implementation is diagnostic-only, not production-ready. `PASS` in the
+static test suite means only that the diagnostic structure is present and
+parseable. Illustrator-dependent results remain `MANUAL_REQUIRED` or
+`CAPABILITY_UNAVAILABLE` until the user runs the single probe and reviews the
+report. No source document, source note, production manifest, or unmanaged
+object is used by the diagnostic.
+
+| Case | STATIC/PURE PROVEN | RUNTIME TO VERIFY | MANUAL VISUAL CHECK | CAPABILITY DEPENDENT |
+|---|---|---|---|---|
+| A | disposable creation/cleanup path | path/frame lifecycle | none | areaText path ownership |
+| B | fresh geometry comparison fixtures | frame/textPath readback authority | geometry placement | writable/readback surfaces |
+| C | explicit enum policy path | composer readback | Japanese justification | composer behavior |
+| D | coverage cases and line capture | overflow/height evidence | visible overflow | documented API capability |
+| E | bounded tracking sequence | trial readback and fit | typography appearance | tracking necessity |
+| F | copy-on-write mock | none | none | none |
+| G | baseline formulas | actual width/left authority | manual edit behavior | DOM geometry surface |
+| H | generated disposable receiver body | BridgeTalk delivery/readback | none | BridgeTalk target/session |

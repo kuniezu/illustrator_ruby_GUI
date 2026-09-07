@@ -167,6 +167,43 @@ missing or malformed nested geometry, tampered derived left/width values, and
 normal `create()` output acceptance. No Illustrator runtime or production
 wiring was performed.
 
+## One-shot A-H diagnostic branch handoff
+
+The diagnostic branch `v2/area-text-native-one-shot-diagnostic` is based on
+main at `97803c1dd1c4a752697d13bc66370fcc234923b8` and extends the disposable
+AreaText probe into one aggregated A-H report. It remains completely separate
+from production wiring and source persistence. A-E cover fresh creation,
+geometry, composer, fit/overflow, and bounded tracking; F uses an isolated
+copy-on-write mock; G records manual baseline formulas; H attempts an actual
+BridgeTalk request to a disposable receiver and reports delivery/readback.
+
+All runtime-dependent outcomes are deliberately reported as
+`MANUAL_REQUIRED` or `CAPABILITY_UNAVAILABLE` until a user-owned Illustrator
+run. The probe never uses `app.activeDocument`, production notes, production
+manifest state, PointText fallback, or `kind = TextType.AREATEXT` assignment.
+
+## A-H one-shot diagnostic implementation results
+
+On branch `v2/area-text-native-one-shot-diagnostic`, based on main
+`97803c1dd1c4a752697d13bc66370fcc234923b8`, the probe was completed as one
+readable, non-minified `.jsx` report. It creates only a disposable document,
+aggregates A-H records into one copyable ScriptUI text area, and closes the
+document with `DONOTSAVECHANGES`. F remains a pure/mock copy-on-write
+transaction case; H attempts BridgeTalk delivery to a disposable receiver
+and includes candidate creation, readback, and cleanup in that receiver body.
+
+Exact validation commands and results for this branch:
+
+- `node --test v2/formal-step2/tests/*.cjs`: **226/226 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **10/10 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (29 production files)**
+- `node --test v2/formal-step2/tests/gate-0.cjs`: **6/6 PASS**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, production wiring, source persistence, activation, or
+PR/Issue operation was performed. Runtime-dependent results remain explicitly
+`MANUAL_REQUIRED` or `CAPABILITY_UNAVAILABLE` in the report.
+
 ## Final generated BridgeTalk parse validation at c967cb9
 
 Executed at the unchanged review HEAD:
