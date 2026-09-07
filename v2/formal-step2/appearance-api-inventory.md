@@ -5,6 +5,7 @@ This pass is exploratory and is not runtime-proven. The table records APIs actua
 Official references used:
 
 - [TextFrameItem](https://ai-scripting.docsforadobe.dev/jsobjref/TextFrameItem/)
+- [PageItem](https://ai-scripting.docsforadobe.dev/jsobjref/PageItem/)
 - [TextFrameItems.areaText](https://ai-scripting.docsforadobe.dev/jsobjref/TextFrameItems/)
 - [Working with text frames](https://ai-scripting.docsforadobe.dev/scriptingJavascript/workingWithTextFrames/)
 - [TextPath](https://ai-scripting.docsforadobe.dev/jsobjref/TextPath/)
@@ -17,11 +18,12 @@ Official references used:
 |---|---|---|---|---|---|---|---|---|---|
 | `textFrames.add()` | `adapter.jsx` / `measure`, `reconcile`, `restoreManaged` | R/W | Temporary measurement and current rough ruby creation | both; official docs show generic add, not conversion contract | documented method; does not establish AreaText kind | parsed/linted | yes | creates/removes text frames | failure becomes unresolved/rollback |
 | `TextFrameItem.kind` / `TextType.AREATEXT`, `TextType.POINTTEXT` | `adapter.jsx` / `observe`, `reconcile`, `measure` | R/W in code; official property is read-only | Entry guard, current rough kind assignment, point probe | AreaText boundary; PointText probe only | **officially read-only**; `kind=AREATEXT` is rejected as a supported conversion design | parsed/linted only | yes | wrong kind or failed assignment can abort render | do not rely on assignment; use fresh `areaText()` replacement after design review |
+| `TextFrameItem.convertPointObjectToAreaObject()` | future alternative; not production-used | method returns `TextFrameItem` | PointText → AreaText conversion | PointText input; AreaText result | **documented conversion method; official support high** | not wired | yes | mutates existing object; identity, path ownership, and rollback semantics are unknown | keep old object until conversion/readback is proven; fresh replacement remains safer |
 | `textFrames.areaText(pathItem[, orientation...])` | not yet production-used; recommended replacement path | create | Official AreaText construction | AreaText only | **documented and preferred** | not yet wired | yes | path/frame ownership and orphan cleanup | create new path/frame; remove new objects only after failure |
 | `pathItems.rectangle(top,left,width,height[,reversed])` | not yet production-used; recommended replacement path | create | Fresh rectangular text path | AreaText only | documented | not yet wired | yes | orphan PathItem if areaText fails | retain old ruby; cleanup only newly created path/frame |
 | `textPath` | diagnostics and Gate C probes; future replacement | R/W properties vary | Path geometry and reflow evidence | AreaText/path text; invalid for PointText | documented as associated path; ownership lifecycle not specified in cited page | static probe present | yes | deleting path may affect associated text | do not delete until new frame/readback ownership is proven |
 | `TextPath.width`, `TextPath.height`, `TextPath.left`, `TextPath.top` | current adapter uses frame width/height; future replacement candidate | R/W in inventory candidate | Box geometry and position through associated path | AreaText/path text | properties documented as Number; write/reflow effect still runtime-only | static references only | yes | wrong path dimensions can reflow/clip | new path only; rollback removes new frame/path |
-| `TextFrameItem.width`, `TextFrameItem.height` | `adapter.jsx` / `reconcile`, rollback restore | R/W in current code | Current rough box sizing | AreaText target | **not listed on TextFrameItem reference page; unsupported/unknown for this use** | parsed/linted only | yes | silent no-op or exception can misplace ruby | prefer `textPath`/rectangle path after runtime proof |
+| `TextFrameItem.width`, `TextFrameItem.height` (inherited `PageItem`) | `adapter.jsx` / `reconcile`, rollback restore | R/W in current code | Current rough box sizing | AreaText target | **documented inherited `PageItem` properties; API existence and read/write surface are documented. Whether they control AreaText box/reflow, and their priority versus `textPath.width`/`height`, is runtime-only** | parsed/linted only | yes | wrong authority or geometry write can misplace ruby | compare frame and textPath readback; use only the authority proven on target Illustrator |
 | `left`, `top`, `position` | `adapter.jsx` / `reconcile`, rollback; `measure` probe | R/W | Auto placement, vertical reset, manual delta basis | both; source position is not geometry anchor | documented-looking, semantics need runtime | parsed/linted | yes | stale output placement | rollback and no guessed geometry |
 | `contents` | `adapter.jsx` / `observe`, `measure`, `reconcile`, rollback | R/W | Source snapshot, reading text, measurement | both | documented | parsed/linted | yes | source/output mutation | snapshot/readback and rollback |
 | `textRange` | `adapter.jsx` / `observe`, `measure`, `reconcile` | R | Character and line access | both | documented-looking | parsed/linted | yes | missing range blocks render | unresolved |
@@ -48,18 +50,20 @@ The adapter snapshot now records managed item `kind`, `contents`, font name, siz
 1. `TextFrameItem.kind` is documented as read-only and its type is `TextType`; the current `item.kind = TextType.AREATEXT` line is therefore an unsupported conversion assumption. It must not be treated as an official conversion API.
 2. Adobe's official creation examples use `pathItems.rectangle(...)` followed by `textFrames.areaText(pathItem)`. This is the first-choice construction for a fresh ruby AreaText.
 3. `TextFrameItem.textPath` is the associated path for area/path text. The cited documentation does not state that `areaText()` consumes, transfers, or permits independently deleting the PathItem. Path ownership is therefore unknown and cleanup must be transactional.
-4. `TextPath.width` and `TextPath.height` are documented numeric properties. The TextFrameItem page does not expose corresponding width/height properties in its documented property list. Reflow authority should therefore be designed around the new frame's associated textPath, pending runtime proof.
+4. `TextPath.width` and `TextPath.height` are documented numeric properties. Separately, `TextFrameItem` inherits the documented read/write `PageItem.width` and `PageItem.height` surface; this establishes API existence, not AreaText reflow authority. Which surface actually controls the AreaText box, and its priority versus `textPath.width`/`height`, remains runtime-only.
 5. `ParagraphAttributes.justification` is documented and typed as `Justification`. `FULLJUSTIFY` is a documented enum family member in the scripting constants, but one-line and last-line behavior is not established by the docs.
 6. `TextFonts.getByName(name)` returns a `TextFont`; `TextFont.name`, `family`, and `style` are read-only. Assignment to `characterAttributes.textFont` is shown in official examples. Missing-font exception/fallback remains runtime-only.
+7. `TextFrameItem.convertPointObjectToAreaObject()` is a documented PointText-to-AreaText conversion method returning a `TextFrameItem`. Its official support and low path-construction complexity make it a valid independent alternative, but mutation, object identity, path ownership, and rollback semantics remain runtime-unknown; its destructive transaction safety is therefore worse than fresh replacement. No precedence over fresh replacement is concluded here.
 
 ## Replacement alternative matrix
 
 | Option | Official support | Rollback safety | Ownership complexity | Reflow reliability | ExtendScript | Complexity | Decision |
 |---|---|---|---|---|---|---|---|
 | A. `add()` then `kind=AREATEXT` | contradicted by read-only `kind` docs | low | low initially, unsafe semantics | unknown | syntax-compatible | low | rejected |
-| B. fresh PathItem + `textFrames.areaText()` | documented creation path | high if new objects are tracked | medium; path lifecycle must be proven | strongest documented candidate | compatible API surface | medium | preferred construction |
-| C. reuse existing AreaText | kind/path are already valid | medium | high for stale ownership and reflow | may preserve hidden state, not yet proven | compatible | medium | investigate only after C runtime evidence |
-| D. fresh AreaText replacement + old retire | uses B and isolates old object | highest | medium/high, explicit new path/frame ownership | strongest transaction boundary | compatible | high | preferred overall lifecycle |
+| B. `convertPointObjectToAreaObject()` | documented conversion method; official support high | lower than fresh replacement until mutation/rollback is proven | low path-construction complexity; identity/path semantics unknown | potentially strong, runtime-only | compatible API surface | medium | valid alternative; no precedence decision |
+| C. fresh PathItem + `textFrames.areaText()` | documented creation path | high if new objects are tracked | medium; path lifecycle must be proven | strongest documented construction candidate | compatible API surface | medium | preferred construction |
+| D. reuse existing AreaText | kind/path are already valid | medium | high for stale ownership and reflow | may preserve hidden state, not yet proven | compatible | medium | investigate only after runtime evidence |
+| E. fresh AreaText replacement + old retire | uses C and isolates old object | highest | medium/high, explicit new path/frame ownership | strongest transaction boundary | compatible | high | preferred overall lifecycle |
 
 ## Recommended replacement transaction
 
@@ -68,6 +72,7 @@ Keep old managed output untouched; create a fresh rectangular PathItem and AreaT
 ## Research TODO / explicit unknowns
 
 - Verify target-version runtime behavior for fresh `areaText()` creation, associated PathItem parent/ownership, and whether the path remains addressable after creation.
+- Verify target-version runtime behavior for `convertPointObjectToAreaObject()`, including returned kind, object identity, associated path ownership, and rollback after partial failure.
 - Verify target-version runtime behavior for `TextPath.width`/`height` and whether they are the actual reflow authority after contents changes.
 - Verify target-version runtime behavior for AreaText `kind` readback; do not attempt a write as a probe.
 - Confirm that changing `contents` does not reset AreaText paragraph justification or box geometry.
