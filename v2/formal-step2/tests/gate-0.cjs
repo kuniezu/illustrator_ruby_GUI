@@ -64,6 +64,9 @@ test('production source passes the explicit ES3 grammar gate', () => {
 });
 
 test('ES3 grammar fixtures reject modern and reserved constructs', () => {
+  assert.equal(grammarGate.parserName, 'Acorn');
+  assert.equal(grammarGate.parserVersion, '8.15.0');
+  assert.deepEqual(grammarGate.parserConfig, { ecmaVersion: 3, sourceType: 'script', allowReserved: 'never' });
   const failures = [
     '{new:1}', '{delete:1}', '{default:1}', '{class:1}', '{enum:1}',
     '{extends:1}', '{super:1}', '{import:1}', '{export:1}', '{a:1,}',

@@ -259,6 +259,41 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## Real ES3 parser authority at 7d6206b follow-up
+
+The ES3 grammar gate now uses the fixed development dependency Acorn 8.15.0
+as its parse authority with the verified configuration
+`ecmaVersion: 3`, `sourceType: "script"`, and `allowReserved: "never"`.
+Node `vm.Script` is no longer used as ES3 grammar evidence. The existing
+conservative ExtendScript checks remain supplementary. `package.json` and
+`package-lock.json` pin Acorn 8.15.0 with registry integrity metadata.
+
+Acorn behavior was executed before adoption: unquoted reserved properties and
+object trailing commas fail, while quoted reserved properties, bracket access,
+`new Foo()`, `delete obj.foo`, ordinary ES3 objects, and array trailing commas
+pass. Production sources, faithful expanded diagnostic includes, the
+production generated BridgeTalk body, and the generated H receiver body all
+use the real parser gate. The normal CLI continues to report the denylist
+separately as `ExtendScript API/syntax denylist`.
+
+Because this desktop runtime has no npm executable, tests used the isolated
+Acorn 8.15.0 package with `NODE_PATH=D:\\data\\codex\\acorn-runtime\\node_modules`;
+the committed package and lockfile make the dependency reproducible through
+the normal Node package workflow.
+
+Exact validation commands and results for this follow-up:
+
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/*.cjs`: **239/239 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/area-text-native-static.cjs`: **11/11 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files; diagnostic entrypoint PASS)**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **matching production BridgeTalk ES3 test PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/area-text-native-diagnostic.cjs`: **H generated receiver ES3 test PASS**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
+operation was performed.
+
 ## ES3 grammar gate hardening at bd69731 follow-up
 
 The diagnostic JSX reserved-word parse regression is now covered by an
