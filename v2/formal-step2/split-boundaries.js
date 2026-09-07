@@ -11,13 +11,14 @@ var FormalSplitBoundaryUi = (function () {
         return (leftStart > 0 ? "…" : "") + left + "｜" + right + (rightEnd < source.length ? "…" : "");
     }
     function boundaryItems(text) {
-        var source = String(text), result = [], i = 0, next, character;
+        var source = String(text), result = [], i = 0, next, character, labelIndex;
         while (i < source.length) {
             next = i + 1 < source.length ? source.charCodeAt(i + 1) : 0;
             character = source.charCodeAt(i) >= 0xd800 && source.charCodeAt(i) <= 0xdbff && next >= 0xdc00 && next <= 0xdfff ? source.substring(i, i + 2) : source.charAt(i);
             i += character.length;
             if (i < source.length) result.push({character: character, offset: i, label: boundaryLabel(source, i)});
         }
+        for (labelIndex = 0; labelIndex < result.length; labelIndex++) result[labelIndex].label = "[" + (labelIndex + 1) + "] " + result[labelIndex].label;
         return result;
     }
     function choose(text) {
