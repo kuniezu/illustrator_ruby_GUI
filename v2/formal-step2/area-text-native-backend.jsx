@@ -10,6 +10,7 @@ function FormalAreaTextNativeBackend(doc, layer) {
         return value;
     }
     function text(value) { return String(value == null ? "" : value); }
+    function readOptional(fn) { try { return fn(); } catch (ignore) { return null; } }
 
     function createCandidate(spec) {
         var path = null, frame = null;
@@ -31,6 +32,21 @@ function FormalAreaTextNativeBackend(doc, layer) {
         }
     }
 
+    function applyComposerPolicy(range, policy) {
+        policy = policy || {};
+        try { range.characterAttributes.horizontalScale = 100; } catch (ignoreHorizontalScale) {}
+        try { range.characterAttributes.verticalScale = 100; } catch (ignoreVerticalScale) {}
+        if (finite(policy.minimumGlyphScaling)) range.paragraphAttributes.minimumGlyphScaling = policy.minimumGlyphScaling;
+        if (finite(policy.desiredGlyphScaling)) range.paragraphAttributes.desiredGlyphScaling = policy.desiredGlyphScaling;
+        if (finite(policy.maximumGlyphScaling)) range.paragraphAttributes.maximumGlyphScaling = policy.maximumGlyphScaling;
+        if (finite(policy.minimumLetterSpacing)) range.paragraphAttributes.minimumLetterSpacing = policy.minimumLetterSpacing;
+        if (finite(policy.desiredLetterSpacing)) range.paragraphAttributes.desiredLetterSpacing = policy.desiredLetterSpacing;
+        if (finite(policy.maximumLetterSpacing)) range.paragraphAttributes.maximumLetterSpacing = policy.maximumLetterSpacing;
+        if (finite(policy.minimumWordSpacing)) range.paragraphAttributes.minimumWordSpacing = policy.minimumWordSpacing;
+        if (finite(policy.desiredWordSpacing)) range.paragraphAttributes.desiredWordSpacing = policy.desiredWordSpacing;
+        if (finite(policy.maximumWordSpacing)) range.paragraphAttributes.maximumWordSpacing = policy.maximumWordSpacing;
+    }
+
     function applyTypography(candidate, spec) {
         var frame = candidate.frame, range, appearance = spec.appearance || {}, size;
         frame.contents = text(spec.reading);
@@ -39,8 +55,7 @@ function FormalAreaTextNativeBackend(doc, layer) {
         range.characterAttributes.size = size;
         if (appearance.fontName) range.characterAttributes.textFont = app.textFonts.getByName(appearance.fontName);
         range.characterAttributes.tracking = 0;
-        try { range.characterAttributes.horizontalScale = 100; } catch (ignoreHorizontalScale) {}
-        try { range.characterAttributes.verticalScale = 100; } catch (ignoreVerticalScale) {}
+        applyComposerPolicy(range, spec.composerPolicy);
         range.paragraphAttributes.justification = spec.singleCharacter ? Justification.CENTER : Justification.FULLJUSTIFY;
         try { range.paragraphAttributes.singleWordJustification = spec.singleCharacter ? Justification.CENTER : Justification.FULLJUSTIFY; } catch (ignoreSingleWord) {}
         try { range.paragraphAttributes.leftIndent = 0; range.paragraphAttributes.rightIndent = 0; range.paragraphAttributes.firstLineIndent = 0; } catch (ignoreIndent) {}
@@ -63,37 +78,28 @@ function FormalAreaTextNativeBackend(doc, layer) {
             rangeStart: range.start,
             rangeEnd: range.end,
             lines: lines,
-            frameLeft: frame.left,
-            frameTop: frame.top,
-            frameWidth: frame.width,
-            frameHeight: frame.height,
-            textPathLeft: frame.textPath.left,
-            textPathTop: frame.textPath.top,
-            textPathWidth: frame.textPath.width,
-            textPathHeight: frame.textPath.height,
-            fontName: range.characterAttributes.textFont ? range.characterAttributes.textFont.name : "",
-            fontSize: range.characterAttributes.size,
-            tracking: range.characterAttributes.tracking,
-            horizontalScale: range.characterAttributes.horizontalScale,
-            verticalScale: range.characterAttributes.verticalScale,
-            justification: range.paragraphAttributes.justification,
-            singleWordJustification: range.paragraphAttributes.singleWordJustification
+            frameLeft: readOptional(function () { return frame.left; }),
+            frameTop: readOptional(function () { return frame.top; }),
+            frameWidth: readOptional(function () { return frame.width; }),
+            frameHeight: readOptional(function () { return frame.height; }),
+            textPathLeft: readOptional(function () { return frame.textPath.left; }),
+            textPathTop: readOptional(function () { return frame.textPath.top; }),
+            textPathWidth: readOptional(function () { return frame.textPath.width; }),
+            textPathHeight: readOptional(function () { return frame.textPath.height; }),
+            fontName: readOptional(function () { return range.characterAttributes.textFont ? range.characterAttributes.textFont.name : ""; }),
+            fontSize: readOptional(function () { return range.characterAttributes.size; }),
+            tracking: readOptional(function () { return range.characterAttributes.tracking; }),
+            horizontalScale: readOptional(function () { return range.characterAttributes.horizontalScale; }),
+            verticalScale: readOptional(function () { return range.characterAttributes.verticalScale; }),
+            justification: readOptional(function () { return range.paragraphAttributes.justification; }),
+            singleWordJustification: readOptional(function () { return range.paragraphAttributes.singleWordJustification; }),
+            minimumGlyphScaling: readOptional(function () { return range.paragraphAttributes.minimumGlyphScaling; }),
+            desiredGlyphScaling: readOptional(function () { return range.paragraphAttributes.desiredGlyphScaling; }),
+            maximumGlyphScaling: readOptional(function () { return range.paragraphAttributes.maximumGlyphScaling; }),
+            minimumLetterSpacing: readOptional(function () { return range.paragraphAttributes.minimumLetterSpacing; }),
+            desiredLetterSpacing: readOptional(function () { return range.paragraphAttributes.desiredLetterSpacing; }),
+            maximumLetterSpacing: readOptional(function () { return range.paragraphAttributes.maximumLetterSpacing; })
         };
-    }
-
-    function stableObservation(candidate) {
-        var first, second;
-        app.redraw();
-        first = observeCandidate(candidate);
-        app.redraw();
-        second = observeCandidate(candidate);
-        second.stable = first.frameContents === second.frameContents &&
-            first.rangeContents === second.rangeContents &&
-            first.rangeStart === second.rangeStart &&
-            first.rangeEnd === second.rangeEnd &&
-            first.lines.length === second.lines.length &&
-            lineSetEqual(first.lines, second.lines);
-        return second;
     }
 
     function lineSetEqual(a, b) {
@@ -103,6 +109,45 @@ function FormalAreaTextNativeBackend(doc, layer) {
             if (a[i].start !== b[i].start || a[i].end !== b[i].end || a[i].contents !== b[i].contents) return false;
         }
         return true;
+    }
+
+    function sameOptionalNumber(a, b) {
+        if (a === null || b === null) return a === b;
+        return finite(a) && finite(b) && Math.abs(a - b) <= 0.01;
+    }
+
+    function sameObservation(a, b) {
+        return a.frameContents === b.frameContents &&
+            a.rangeContents === b.rangeContents &&
+            a.rangeStart === b.rangeStart &&
+            a.rangeEnd === b.rangeEnd &&
+            a.lines.length === b.lines.length &&
+            lineSetEqual(a.lines, b.lines) &&
+            sameOptionalNumber(a.frameLeft, b.frameLeft) &&
+            sameOptionalNumber(a.frameTop, b.frameTop) &&
+            sameOptionalNumber(a.frameWidth, b.frameWidth) &&
+            sameOptionalNumber(a.frameHeight, b.frameHeight) &&
+            sameOptionalNumber(a.textPathLeft, b.textPathLeft) &&
+            sameOptionalNumber(a.textPathTop, b.textPathTop) &&
+            sameOptionalNumber(a.textPathWidth, b.textPathWidth) &&
+            sameOptionalNumber(a.textPathHeight, b.textPathHeight) &&
+            a.fontName === b.fontName &&
+            sameOptionalNumber(a.fontSize, b.fontSize) &&
+            sameOptionalNumber(a.tracking, b.tracking) &&
+            sameOptionalNumber(a.horizontalScale, b.horizontalScale) &&
+            sameOptionalNumber(a.verticalScale, b.verticalScale) &&
+            a.justification === b.justification &&
+            a.singleWordJustification === b.singleWordJustification;
+    }
+
+    function stableObservation(candidate) {
+        var first, second;
+        app.redraw();
+        first = observeCandidate(candidate);
+        app.redraw();
+        second = observeCandidate(candidate);
+        second.stable = sameObservation(first, second);
+        return second;
     }
 
     function verifyCandidate(candidate, spec) {
@@ -149,6 +194,7 @@ function FormalAreaTextNativeBackend(doc, layer) {
     return {
         prepareCandidate: prepareCandidate,
         applyTypography: applyTypography,
+        applyComposerPolicy: applyComposerPolicy,
         observeCandidate: observeCandidate,
         verifyCandidate: verifyCandidate,
         tryTracking: tryTracking,
