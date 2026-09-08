@@ -103,6 +103,13 @@ test('diagnostic expanded entrypoint passes the explicit ES3 grammar gate', () =
   assert.doesNotThrow(() => grammarGate.parseES3(expanded, 'expanded AreaText Native Probe.jsx'));
 });
 
+test('native persistence checkpoint expands and passes ES3/compatibility gates', () => {
+  const entry = path.join(repoRoot, 'v2', 'diagnostics', 'Formal Step2 AreaText Native Persistence Check.jsx');
+  const expanded = expandIncludes(entry);
+  assert.doesNotThrow(() => grammarGate.parseES3(expanded, 'expanded AreaText Native Persistence Check.jsx'));
+  assertExtendScriptCompatible(expanded, 'expanded AreaText Native Persistence Check.jsx');
+});
+
 test('production generated BridgeTalk body parses as a script', () => {
   const adapter = loadPersistenceAdapter();
   const sources = {

@@ -30,6 +30,22 @@ test('isolated native note store and adapter parse without executable payload su
   assert.ok(!adapter.includes('source.note'));
 });
 
+test('native persistence runtime checkpoint is diagnostic-only and includes the isolated store',()=>{
+  const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Persistence Check.jsx');
+  const source=fs.readFileSync(file,'utf8');
+  const parseable=source.replace(/^\s*#target.*$/gm,'').replace(/^\s*#include.*$/gm,'');
+  assert.doesNotThrow(()=>new vm.Script(parseable,{filename:file}));
+  assert.ok(source.includes('#include "../formal-step2/area-text-native-store.js"'));
+  assert.ok(source.includes('#include "../formal-step2/area-text-native-note-adapter.js"'));
+  assert.ok(source.includes('FormalAreaTextNativeNoteAdapter.update'));
+  assert.ok(source.includes('FormalAreaTextNativeStore.restartPlan'));
+  assert.ok(source.includes('SaveOptions.DONOTSAVECHANGES'));
+  assert.ok(source.includes('Folder.temp'));
+  assert.ok(source.includes('app.open(tempFile)'));
+  assert.ok(!source.includes('persistence-adapter.jsx'));
+  assert.ok(!source.includes('Formal Multi Step2.jsx'));
+});
+
 test('native backend scaffold parses and only creates fresh area text candidates',()=>{
   const source=parse(path.join('v2','formal-step2','area-text-native-backend.jsx'));
   assert.ok(source.includes('layer.pathItems.rectangle'));

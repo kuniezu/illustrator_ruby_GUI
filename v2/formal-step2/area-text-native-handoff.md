@@ -326,6 +326,42 @@ Exact validation for this dispatch (2026-09-08):
 No Illustrator runtime, production wiring, main-branch merge, PR, or Issue
 operation was performed.
 
+## Isolated save-close-reopen checkpoint preparation at comment 5589690815
+
+Added the diagnostic-only entrypoint
+`v2/diagnostics/Formal Step2 AreaText Native Persistence Check.jsx`.
+It refuses to run when any existing document is open, creates a disposable
+document, creates two uniquely named source TextFrames plus an unmanaged
+foreign TextFrame, and writes the native manifest only through
+`FormalAreaTextNativeNoteAdapter.update()` and
+`FormalAreaTextNativeStore`. The fixtures contain exact unrelated prefix,
+FormalMulti fixture bytes, and suffix bytes.
+
+The primary fixture persists an `activated` manifest with a non-empty
+`retirementQueue` and must report `cleanup-retirement` after reopen. The second
+fixture persists a `verified` manifest and must report
+`reprepare-reverify` with the same request and candidate plan. The entrypoint
+saves under a uniquely named `Folder.temp` AI path, closes, reopens that exact
+file, reacquires fixtures by deterministic names, validates note coexistence,
+manifest fields, source contents, restart actions, and foreign-frame presence,
+then closes and deletes only that temporary file. Cleanup failures report the
+exact path; no user document is touched.
+
+The entrypoint is intentionally not included by any production entrypoint and
+does not modify `persistence-adapter.jsx`, renderer/orchestration, normal UI,
+or activation. Illustrator runtime was **not run** in this preparation cycle.
+
+Exact validation for comment `5589690815`:
+
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/*.cjs`: **270/270 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **14/14 PASS**
+- `node --test v2/formal-step2/tests/gate-0.cjs`: **10/10 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (32 production files; diagnostic entrypoint PASS)**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, production wiring, main-branch merge, PR, or Issue
+operation was performed.
+
 ## Source-manifest transaction hardening at 5583881276
 
 Dispatch source: Issue #14 comment
