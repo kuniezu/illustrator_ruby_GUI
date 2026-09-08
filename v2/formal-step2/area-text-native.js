@@ -34,6 +34,35 @@ var FormalAreaTextNative = (function () {
         return out;
     }
 
+    function hasDuplicate(items) {
+        var seen = {}, i, key;
+        items = items || [];
+        for (i = 0; i < items.length; i++) {
+            key = String(items[i]);
+            if (own(seen, key)) return true;
+            seen[key] = true;
+        }
+        return false;
+    }
+
+    function sameSet(left, right) {
+        var i;
+        if (left.length !== right.length) return false;
+        for (i = 0; i < left.length; i++) if (!contains(right, left[i])) return false;
+        return true;
+    }
+
+    function assertNoActiveRetirementIntersection(state) {
+        var key, active, queue, i, seen = {};
+        active = state.activeBindings || {};
+        queue = state.retirementQueue || [];
+        for (key in active) if (own(active, key)) {
+            if (own(seen, active[key])) throw Error("activation-physical-duplicate");
+            seen[active[key]] = true;
+            for (i = 0; i < queue.length; i++) if (active[key] === queue[i]) throw Error("active-retirement-intersection");
+        }
+    }
+
     function createManifest() {
         return {
             rendererMode: MODE,
@@ -63,30 +92,43 @@ var FormalAreaTextNative = (function () {
     }
 
     function beginOperation(state, requestId, candidateIds) {
-        var out = cloneManifest(state), id = String(requestId || "");
+        var out = cloneManifest(state), id = String(requestId || ""), requested = copyArray(candidateIds || []);
         if (!id) throw Error("request-id-required");
+        if (hasDuplicate(requested)) throw Error("candidate-plan-duplicate");
         if (out.operation && out.operation.requestId !== id) throw Error("operation-already-active");
+        if (out.operation && !sameSet(out.operation.candidateIds || [], requested)) throw Error("request-plan-mismatch");
         if (!out.operation) {
             out.operation = {
                 requestId: id,
                 baseRevision: out.manifestRevision,
                 phase: "prepare",
-                candidateIds: unique(candidateIds || [])
+                candidateIds: requested
             };
         }
         return out;
     }
 
-    function activate(state, requestId, bindings, records, retireIds) {
-        var out = cloneManifest(state), id = String(requestId || ""), key, i, physical, record, current, seen = {}, retire = unique(retireIds || []);
+    function activate(state, requestId, bindings, records, retireIds, discardedIds) {
+        var out = cloneManifest(state), id = String(requestId || ""), key, i, physical, record, current, seen = {},
+            retire = unique(retireIds || []), discarded = copyArray(discardedIds || []), removed = [], nextBindings;
+        assertNoActiveRetirementIntersection(state);
         if (!out.operation || out.operation.requestId !== id) throw Error("operation-request-mismatch");
         if (out.operation.phase !== "verified") throw Error("operation-not-verified");
+        if (state.manifestRevision !== out.operation.baseRevision) throw Error("operation-base-revision-stale");
+        if (hasDuplicate(discarded) || discarded.length > out.operation.candidateIds.length) throw Error("activation-discarded-invalid");
+        for (i = 0; i < discarded.length; i++) if (!contains(out.operation.candidateIds, discarded[i])) throw Error("activation-discarded-not-owned");
         bindings = bindings || {};
         records = records || {};
         for (key in records) if (own(records, key) && !contains(out.operation.candidateIds, key)) throw Error("activation-record-not-owned");
         for (key in bindings) if (own(bindings, key)) {
             physical = bindings[key];
             current = state.activeBindings && state.activeBindings[key];
+            if (physical === null) {
+                if (!own(state.activeBindings || {}, key)) throw Error("activation-removal-not-active");
+                removed.push(current);
+                continue;
+            }
+            if (current && current !== physical) removed.push(current);
             if (!physical || (current !== physical && !contains(out.operation.candidateIds, physical))) throw Error("activation-binding-not-owned");
             if (own(seen, physical)) throw Error("activation-physical-duplicate");
             seen[physical] = true;
@@ -96,20 +138,36 @@ var FormalAreaTextNative = (function () {
                 if (!record || record.physicalId !== physical || record.requestId !== id || record.logicalSegmentId !== key) throw Error("activation-record-mismatch");
             }
         }
-        for (key in state.activeBindings) if (own(state.activeBindings, key) && !own(bindings, key)) {
-            physical = state.activeBindings[key];
-            if (own(seen, physical)) throw Error("activation-physical-duplicate");
-            seen[physical] = true;
-        }
         for (key in records) if (own(records, key)) {
             if (!contains(out.operation.candidateIds, key)) throw Error("activation-record-not-owned");
             record = records[key];
             if (!record || record.physicalId !== key || record.requestId !== id || !record.logicalSegmentId) throw Error("activation-record-mismatch");
             if (!own(bindings, record.logicalSegmentId) || bindings[record.logicalSegmentId] !== key) throw Error("activation-binding-record-mismatch");
         }
-        for (key in out.activeBindings) if (own(out.activeBindings, key) && contains(out.operation.candidateIds, out.activeBindings[key]) && !own(records, out.activeBindings[key]) && (!state.activeBindings || state.activeBindings[key] !== out.activeBindings[key])) throw Error("activation-binding-record-missing");
-        for (key in bindings) if (own(bindings, key)) out.activeBindings[key] = bindings[key];
+        for (i = 0; i < out.operation.candidateIds.length; i++) {
+            physical = out.operation.candidateIds[i];
+            if (contains(discarded, physical)) {
+                if (own(records, physical)) throw Error("activation-discarded-record");
+                continue;
+            }
+            if (!own(records, physical)) throw Error("activation-candidate-record-missing");
+            record = records[physical];
+            if (!record || !own(bindings, record.logicalSegmentId) || bindings[record.logicalSegmentId] !== physical) throw Error("activation-candidate-unconsumed");
+        }
+        nextBindings = copyMap(state.activeBindings);
+        for (i = 0; i < removed.length; i++) {
+            for (key in nextBindings) if (own(nextBindings, key) && nextBindings[key] === removed[i]) delete nextBindings[key];
+        }
+        for (key in bindings) if (own(bindings, key) && bindings[key] !== null) nextBindings[key] = bindings[key];
+        seen = {};
+        for (key in nextBindings) if (own(nextBindings, key)) {
+            physical = nextBindings[key];
+            if (!physical || own(seen, physical)) throw Error("activation-physical-duplicate");
+            seen[physical] = true;
+        }
+        out.activeBindings = nextBindings;
         for (key in records) if (own(records, key)) out.renderRecords[key] = records[key];
+        retire = unique(retire.concat(removed));
         for (i = 0; i < retire.length; i++) {
             for (key in out.activeBindings) if (own(out.activeBindings, key) && out.activeBindings[key] === retire[i]) throw Error("cannot-activate-retired-physical");
         }

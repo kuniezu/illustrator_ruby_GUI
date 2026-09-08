@@ -1,6 +1,10 @@
 # AreaText-native implementation handoff
 
-Working branch: `v2/area-text-native-convergence-docs`
+Working branch: `v2/area-text-native-one-shot-diagnostic`
+
+Current runtime status: Gate D batch and AreaText-native A-H diagnostic
+checkpoints are complete; this branch remains scaffold/diagnostic-only and
+is not wired into production.
 
 Base branch/head at split: `v2/formal-step2-render-segments` @ `be51232b24e437af33c8566c6f0797a6b24e4aa2`.
 
@@ -258,6 +262,87 @@ Exact validation commands and results for this follow-up:
 
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
+
+## Source-manifest transaction hardening at 5583881276
+
+Dispatch source: Issue #14 comment
+https://github.com/kuniezu/illustrator_ruby_GUI/issues/14#issuecomment-5583881276
+
+Pure/static changes on `v2/area-text-native-one-shot-diagnostic` now enforce
+the operation `baseRevision` at activation and reject stale activation without
+mutating the input manifest. `beginOperation()` rejects duplicate candidate
+IDs and a changed candidate plan for an already-active request; repeating the
+same request with the same candidate set is idempotent.
+
+Activation now accepts explicit `null` binding values for logical removal and
+automatically queues replaced/removed physical IDs for retirement. It rebuilds
+the complete intended active map, verifies one-to-one physical ownership, and
+rejects pre-existing active duplicates or active/retirement intersections.
+Every candidate must be consumed by a matching owned record/binding, or be
+explicitly listed in the discarded-candidate argument. Existing active
+bindings may remain omitted when intentionally unchanged. All validation is
+performed on a cloned state, preserving the original manifest on failure.
+
+The pure recovery model is documented as `prepare` -> `verified` ->
+`activated`, with retirement represented as cleanup-pending until successful
+cleanup permits `finished/recoverable`. Cleanup failure never rolls active
+state back. The manual-baseline design records the required
+generation/version guards and auto/applied geometry fields for safe
+`manualDeltaX` / `widthScale` persistence; no persistence wiring was added.
+
+Exact validation for this dispatch:
+
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/*.cjs`: **257/257 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/area-text-native.cjs v2/formal-step2/tests/area-text-native-static.cjs`: **36/36 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files; diagnostic entrypoint PASS)**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `git diff --check`: **PASS** (only Git line-ending normalization warnings)
+
+No Illustrator runtime, production wiring, merge, PR, or Issue operation was
+performed in this cycle.
+
+## Source-manifest transaction hardening at 09ec083 follow-up
+
+The pure manifest state now enforces the operation base revision at activation,
+rejects duplicate candidate plans, and rejects a changed plan for an existing
+request instead of silently retaining the old operation. Activation validates
+the complete candidate plan: every candidate must have a matching owned
+record/binding, or must be explicitly listed in the new discarded-candidate
+argument. Existing active bindings may be omitted for unchanged retention.
+
+Binding values of `null` explicitly express logical removal. Replaced and
+removed physical IDs are added to the retirement queue; the final active map
+is rebuilt and checked for one-to-one physical identity. Pre-existing active /
+retirement intersections and active physical duplicates are rejected before
+state changes. All failures operate on a clone, so the input manifest remains
+unchanged.
+
+The recovery model is intentionally pure/static in this cycle:
+
+- `prepare`: operation exists, candidates are owned, and no activation has
+  occurred; retrying the same request is allowed only with the same candidate
+  set.
+- `verified`: all candidate verification has completed; activation is the only
+  path that can change active bindings.
+- `activated`: the new active map is authoritative and old physical IDs are
+  cleanup-pending; cleanup failure must not roll active state back.
+- `finished/recoverable`: after cleanup succeeds, retirement records may be
+  removed and the operation can be finished. A restart may safely retry
+  preparation before activation or cleanup after activation, but must not
+  infer a new plan from a stale request.
+
+The manual-baseline persistence contract remains design-only. An annotation
+baseline must carry `generationId`, `rendererVersion`, `geometryVersion`,
+`autoLeft`, `autoWidth`, `appliedLeft`, and `appliedWidth`; captured
+`manualDeltaX` and `widthScale` are reused only when all identity/version
+guards match. Invalid or missing optional fields use safe defaults, and
+Split/Merge do not guess inheritance without proven correspondence.
+
+Runtime convergence recorded from the prior checkpoint: A/B/C/D/H passed;
+C1/C2/D1-D4 visual checks passed; E exhausted the bounded tracking candidates
+without a verified fit; AreaText construction/path lifecycle and self-next
+unthreaded semantics were confirmed; manual baseline persistence remains
+deferred to a later production/runtime cycle.
 
 ## C/D visual checkpoint and RenderSpec separator escaping at d55ef1e follow-up
 

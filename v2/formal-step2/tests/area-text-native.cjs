@@ -80,6 +80,55 @@ test('one-line fit requires stable full range and line coverage',()=>{
   assert.equal(N.verifyOneLineFit({...obs,lines:[{start:10,end:11,contents:'か'}]},'かな').reason,'fit-line-coverage-mismatch');
   assert.equal(N.verifyOneLineFit({...obs,lines:[{start:10,end:11,contents:'か'},{start:11,end:12,contents:'な'}]},'かな').reason,'fit-line-count');
 });
+
+test('activation rejects a stale base revision without mutating state',()=>{
+  let s=N.beginOperation(N.createManifest(),'r1',['p1']);s=N.markVerified(s,'r1');s.manifestRevision=1;
+  const before=JSON.stringify(s);
+  assert.throws(()=>N.activate(s,'r1',{s1:'p1'},{p1:{physicalId:'p1',requestId:'r1',logicalSegmentId:'s1'}},[]),/operation-base-revision-stale/);
+  assert.equal(JSON.stringify(s),before);
+});
+
+test('activation supports explicit 1-to-0 removal and retires the old physical id',()=>{
+  let s=N.createManifest();s.activeBindings.s1='old';s.renderRecords.old={generationId:'g0'};
+  s=N.beginOperation(s,'r1',[]);s=N.markVerified(s,'r1');s=N.activate(s,'r1',{s1:null},{},[]);
+  assert.equal(N.activePhysicalId(s,'s1'),null);assert.deepEqual(s.retirementQueue,['old']);
+});
+
+test('activation supports explicit 2-to-1 replacement and removal',()=>{
+  let s=N.createManifest();s.activeBindings.s1='old-1';s.activeBindings.s2='old-2';
+  s=N.beginOperation(s,'r1',['new-1']);s=N.markVerified(s,'r1');
+  s=N.activate(s,'r1',{s1:'new-1',s2:null},{'new-1':{physicalId:'new-1',requestId:'r1',logicalSegmentId:'s1'}},[]);
+  assert.equal(s.activeBindings.s1,'new-1');assert.equal(s.activeBindings.s2,undefined);assert.equal(s.retirementQueue.length,2);assert.ok(s.retirementQueue.includes('old-1'));assert.ok(s.retirementQueue.includes('old-2'));
+});
+
+test('activation rejects active and cleanup-pending intersection before changes',()=>{
+  let s=N.createManifest();s.activeBindings.s1='old';s.retirementQueue=['old'];
+  s=N.beginOperation(s,'r1',['new']);s=N.markVerified(s,'r1');
+  assert.throws(()=>N.activate(s,'r1',{s1:'new'},{new:{physicalId:'new',requestId:'r1',logicalSegmentId:'s1'}},[]),/active-retirement-intersection/);
+});
+
+test('activation rejects pre-existing active physical duplication conservatively',()=>{
+  let s=N.createManifest();s.activeBindings.s1='same';s.activeBindings.s2='same';
+  s=N.beginOperation(s,'r1',['new']);s=N.markVerified(s,'r1');
+  assert.throws(()=>N.activate(s,'r1',{s1:'new'},{new:{physicalId:'new',requestId:'r1',logicalSegmentId:'s1'}},[]),/activation-physical-duplicate/);
+});
+
+test('activation rejects an unconsumed candidate unless explicitly discarded',()=>{
+  let s=N.beginOperation(N.createManifest(),'r1',['p1','p2']);s=N.markVerified(s,'r1');
+  assert.throws(()=>N.activate(s,'r1',{s1:'p1'},{p1:{physicalId:'p1',requestId:'r1',logicalSegmentId:'s1'}},[]),/activation-candidate-record-missing|activation-candidate-unconsumed/);
+  s=N.activate(s,'r1',{s1:'p1'},{p1:{physicalId:'p1',requestId:'r1',logicalSegmentId:'s1'}},[],['p2']);
+  assert.equal(s.activeBindings.s1,'p1');
+});
+
+test('same request is idempotent only for the same candidate plan',()=>{
+  let s=N.beginOperation(N.createManifest(),'r1',['p1']);
+  assert.doesNotThrow(()=>N.beginOperation(s,'r1',['p1']));
+  assert.throws(()=>N.beginOperation(s,'r1',['p2']),/request-plan-mismatch/);
+});
+
+test('candidate plan rejects duplicate ids instead of silently normalizing them',()=>{
+  assert.throws(()=>N.beginOperation(N.createManifest(),'r1',['p1','p1']),/candidate-plan-duplicate/);
+});
 test('threading identity classification distinguishes unthreaded, self, and external links',()=>{
   const frame={};
   assert.equal(N.classifyThreading(frame).nonThreaded,true);
