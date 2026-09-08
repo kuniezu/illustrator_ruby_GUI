@@ -335,6 +335,31 @@ No Illustrator runtime, production persistence/renderer wiring, merge, PR, or
 Issue operation was performed in this cycle. Deferred work remains real
 persistence/restart wiring and production renderer integration.
 
+## Retirement authority tightening at 5584132304
+
+Dispatch source: Issue #14 comment
+https://github.com/kuniezu/illustrator_ruby_GUI/issues/14#issuecomment-5584132304
+
+`renderRecords` is inventory/history only; its presence does not authorize
+retirement. Compatibility `retireIds` supplied to activation are now accepted
+only when they are among the old active physical IDs displaced or removed by
+the submitted binding transition. Replaced and removed IDs remain derived
+automatically from that transition. Unrelated known historical records,
+unknown IDs, and unchanged active bindings cannot be made cleanup-pending by
+caller input. Rejections preserve the input manifest.
+
+Exact validation for dispatch `5584132304`:
+
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/*.cjs`: **261/261 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/area-text-native.cjs`: **28/28 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/area-text-native-static.cjs`: **12/12 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files; diagnostic entrypoint PASS)**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `git diff --check`: **PASS** (only Git line-ending normalization warnings)
+
+No Illustrator runtime, persistence wiring, production renderer wiring, merge,
+PR, or Issue operation was performed in this cycle.
+
 ## Source-manifest transaction hardening at 09ec083 follow-up
 
 The pure manifest state now enforces the operation base revision at activation,

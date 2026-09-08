@@ -117,7 +117,6 @@ var FormalAreaTextNative = (function () {
         if (state.manifestRevision !== out.operation.baseRevision) throw Error("operation-base-revision-stale");
         if (hasDuplicate(discarded) || discarded.length > out.operation.candidateIds.length) throw Error("activation-discarded-invalid");
         for (i = 0; i < discarded.length; i++) if (!contains(out.operation.candidateIds, discarded[i])) throw Error("activation-discarded-not-owned");
-        for (i = 0; i < retire.length; i++) if (!own(out.renderRecords, retire[i])) throw Error("retirement-not-owned");
         bindings = bindings || {};
         records = records || {};
         for (key in records) if (own(records, key) && !contains(out.operation.candidateIds, key)) throw Error("activation-record-not-owned");
@@ -139,6 +138,7 @@ var FormalAreaTextNative = (function () {
                 if (!record || record.physicalId !== physical || record.requestId !== id || record.logicalSegmentId !== key) throw Error("activation-record-mismatch");
             }
         }
+        for (i = 0; i < retire.length; i++) if (!contains(removed, retire[i])) throw Error("retirement-not-eligible");
         for (key in records) if (own(records, key)) {
             if (!contains(out.operation.candidateIds, key)) throw Error("activation-record-not-owned");
             record = records[key];
