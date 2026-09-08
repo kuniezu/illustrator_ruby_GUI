@@ -131,13 +131,13 @@ test('A-H one-shot diagnostic is disposable, aggregated, and not production wiri
   const source=fs.readFileSync(file,'utf8');
   for(const id of ['A1','B1','B2','C1','C2','D1','D2','D3','D4','F1','F2','F3','F4','G1','G2','G3','G4','H']) assert.ok(source.includes('"'+id+'"'),id);
   assert.ok(source.includes('"E" + i'));
-  assert.ok(source.includes('areaText(path)'));assert.ok(source.includes('BridgeTalk'));assert.ok(source.includes('bt.send(30)'));
+  assert.ok(source.includes('areaText(path)'));assert.ok(source.includes('BridgeTalk'));assert.ok(source.includes('sendWithTimeout'));
   assert.ok(source.includes('FormalAreaTextRenderSpec.create'));assert.ok(source.includes('FormalAreaTextRenderSpec.validate'));assert.ok(source.includes('FormalAreaTextNativeDiagnostic.buildReceiverBody'));assert.ok(source.includes('FormalAreaTextNativeDiagnostic.parseReceiverResult'));
   assert.ok(source.includes('FormalAreaTextNative.createManifest'));assert.ok(source.includes('FormalAreaTextNative.beginOperation'));assert.ok(source.includes('FormalAreaTextNative.activate'));assert.ok(source.includes('FormalAreaTextNative.captureManualAdjustment'));
   assert.ok(source.includes('FormalAreaTextNativeDiagnostic.runTracking'));assert.ok(source.includes('sharedFit'));assert.ok(source.includes('FormalAreaTextNativeDiagnostic.hCompletion'));
   assert.ok(source.includes('selectFontName'));assert.ok(source.includes('app.textFonts'));assert.ok(source.includes('no-font-available'));assert.ok(source.includes('parseReceiverResult'));assert.ok(!source.includes('function runH()'));assert.ok(!source.includes('function runHRenderSpec()'));
   assert.ok(source.includes('function eq'));assert.ok(source.includes('previousSelf'));assert.ok(source.includes('nextSelf'));assert.ok(source.includes('pathAlreadyGone'));assert.ok(source.includes('tracking=') && source.includes('stopReason='));
-  assert.ok(source.includes('bt.onTimeout'));assert.ok(source.includes('callback-timeout'));assert.ok(source.includes('renderSpecLiteral'));
+  assert.ok(source.includes('bt.onTimeout'));assert.ok(source.includes('sendWithTimeout'));const diagnosticSource=fs.readFileSync(path.join(root,'v2','formal-step2','area-text-native-diagnostic.js'),'utf8');assert.ok(diagnosticSource.includes('message.timeout'));assert.ok(diagnosticSource.includes('result-unknown-after-send-timeout'));assert.ok(source.includes('callback-timeout'));assert.ok(source.includes('renderSpecLiteral'));
   assert.ok(source.includes('Window("dialog"'));assert.ok(source.includes('report.join("\\n")'));
   assert.ok(source.includes('app.documents.add()'));assert.ok(source.includes('DONOTSAVECHANGES'));
   assert.ok(source.includes('var TRACKING = [0, -25, -50, -75, -100]'));

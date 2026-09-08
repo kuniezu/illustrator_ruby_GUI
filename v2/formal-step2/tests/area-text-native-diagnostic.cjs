@@ -46,6 +46,25 @@ test('H completion ignores late callbacks after result, error, timeout, and send
     let outputs=[];const gate=D.hCompletion(v=>outputs.push(v));assert.equal(gate[action](action==='result'?'ok':'x'),true);assert.equal(gate.result('late'),false);assert.equal(outputs.length,1);assert.equal(gate.isDone(),true);
   }
 });
+test('actual H sender flow configures timeout and converges after send without callback',()=>{
+  const cases=[
+    {name:'sync result',send:(m)=>{m.onResult({body:'PASS'});return true;},kind:'result'},
+    {name:'sync error',send:(m)=>{m.onError({body:'error'});return true;},kind:'error'},
+    {name:'send false',send:()=>false,kind:'sendFalse'},
+    {name:'unknown after send',send:()=>true,kind:'sendTimeout'},
+    {name:'timeout callback',send:(m)=>{m.onTimeout();return true;},kind:'timeout'},
+    {name:'late result after unknown',send:(m)=>{const late=()=>m.onResult({body:'late'});m.late=late;return true;},kind:'sendTimeout'}
+  ];
+  for(const item of cases){
+    let events=[];const message={};const gate=D.hCompletion(v=>events.push(v));
+    message.onResult=v=>gate.result(v);message.onError=v=>gate.error(v);message.onTimeout=()=>gate.timeout();
+    assert.equal(D.sendWithTimeout(message,gate,30,item.send),item.kind!=='sendFalse',item.name);
+    assert.equal(message.timeout,30,item.name);
+    assert.equal(events.length,1,item.name);
+    assert.equal(events[0].kind,item.kind==='sendFalse'?'send-false':item.kind==='sendTimeout'?'send-timeout':item.kind,item.name);
+    if(item.name==='late result after unknown'){message.late();assert.equal(events.length,1);}
+  }
+});
 test('expected negative fit remains an observed case, not a diagnostic failure',()=>{
   const outcomes={D1:'PASS',D2:'PASS observed-nonfit',D3:'PASS observed-nonfit',D4:'PASS observed-nonfit'};
   assert.match(D.buildSummary(outcomes,['D1','D2','D3','D4']),/D2 PASS observed-nonfit/);

@@ -161,7 +161,8 @@
             bt.onResult = function (result) { parsed = FormalAreaTextNativeDiagnostic.parseReceiverResult(result.body, expected); senderGate.result({ status: parsed.status, detail: parsed.status === "PASS" ? "complete-RenderSpec-E2E fontName=" + spec.appearance.fontName + " receiver=" + parsed.detail : "complete-RenderSpec-E2E reason=" + (parsed.reason || "receiver-result") }); };
             bt.onError = function (error) { senderGate.error("complete-RenderSpec-E2E receiver=" + s(error.body || error)); };
             bt.onTimeout = function () { senderGate.timeout(); };
-            if (!bt.send(30)) senderGate.sendFalse(); else add("H", "PENDING", "complete report waits for generated receiver callback fontName=" + spec.appearance.fontName + ", documented BridgeTalk send timeout=30s");
+            FormalAreaTextNativeDiagnostic.sendWithTimeout(bt, senderGate, 30, function (message, seconds) { return message.send(seconds); });
+            if (!senderGate.isDone()) add("H", "PENDING", "complete report waits for generated receiver callback fontName=" + spec.appearance.fontName + ", documented BridgeTalk timeout=30s");
         } catch (e) { senderGate.error("generated-RenderSpec-E2E=" + s(e.message || e)); }
     }
     function summary() { var order = ["A", "B", "C", "D", "E", "F", "G", "H"], out = ["SUMMARY"], i; for (i = 0; i < order.length; i++) out.push(order[i] + " " + (outcomes[order[i]] || "CAPABILITY_UNAVAILABLE")); return out.join("\n"); }

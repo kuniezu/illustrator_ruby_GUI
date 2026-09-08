@@ -45,8 +45,17 @@ var FormalAreaTextNativeDiagnostic = (function () {
             error: function (value) { return gate.complete({ kind: "error", value: value }); },
             timeout: function () { return gate.complete({ kind: "timeout", value: "callback-timeout" }); },
             sendFalse: function () { return gate.complete({ kind: "send-false", value: "send=false" }); },
+            sendTimeout: function () { return gate.complete({ kind: "send-timeout", value: "result-unknown-after-send-timeout" }); },
             isDone: gate.isDone
         };
+    }
+    function sendWithTimeout(message, senderGate, timeoutSeconds, send) {
+        var sent;
+        message.timeout = timeoutSeconds;
+        try { sent = send(message, timeoutSeconds); } catch (e) { senderGate.error(e.message || String(e)); return false; }
+        if (!sent) { senderGate.sendFalse(); return false; }
+        if (!senderGate.isDone()) senderGate.sendTimeout();
+        return true;
     }
     function startsWith(value, prefix) {
         value = String(value || "");
@@ -95,6 +104,6 @@ var FormalAreaTextNativeDiagnostic = (function () {
         for (var i = 0; i < state.queue.length; i++) copy.queue.push(state.queue[i]);
         try { result = action(copy); return result; } catch (e) { return { state: state, failed: true, reason: e.message || String(e) }; }
     }
-    return { runTracking: runTracking, aggregateExpectedFits: aggregateExpectedFits, buildSummary: buildSummary, reportGate: reportGate, completionGate: completionGate, hCompletion: hCompletion, withinTolerance: withinTolerance, parseReceiverResult: parseReceiverResult, buildReceiverBody: buildReceiverBody, cleanupOnce: cleanupOnce, transaction: transaction };
+    return { runTracking: runTracking, aggregateExpectedFits: aggregateExpectedFits, buildSummary: buildSummary, reportGate: reportGate, completionGate: completionGate, hCompletion: hCompletion, sendWithTimeout: sendWithTimeout, withinTolerance: withinTolerance, parseReceiverResult: parseReceiverResult, buildReceiverBody: buildReceiverBody, cleanupOnce: cleanupOnce, transaction: transaction };
 }());
 if (typeof module !== "undefined") module.exports = FormalAreaTextNativeDiagnostic;

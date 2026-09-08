@@ -259,6 +259,38 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## H sender timeout convergence at 1bf792d follow-up
+
+The actual Probe H sender now uses the shared `sendWithTimeout()` flow. It
+sets the documented BridgeTalk message `timeout` property before calling
+`send(30)`. A synchronous result/error/timeout callback completes through the
+existing exactly-once gate. If `send()` returns true without a callback, the
+sender conservatively completes as `CAPABILITY_UNAVAILABLE` with
+`result-unknown-after-send-timeout`; this does not claim that the receiver did
+not execute. A false return remains distinct as `send=false`, and callbacks
+arriving after completion are ignored. The diagnostic avoids appending a
+pending line after a synchronous callback has already finalized the report.
+
+Validation executed in this cycle:
+
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/*.cjs`: **247/247 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/area-text-native-static.cjs`: **11/11 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files; diagnostic entrypoint PASS)**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **9/9 PASS** (the current Gate 0 runner still reports all nine tests under this filter)
+- `git diff --check`: **PASS** (only standard LF/CRLF conversion warnings)
+
+The focused H sender-flow regression is included in the full suite and covers
+synchronous result, synchronous error, send false, send true with no callback,
+late result after unknown completion, timeout callback, and exactly-once
+completion. Acorn 8.15.0 was used through the external pinned
+`NODE_PATH=D:\\data\\codex\\acorn-runtime\\node_modules` because this
+environment still has no local `node_modules/acorn`; this is reported as an
+environment limitation, not the normal repository bootstrap path.
+
+No Illustrator runtime, production wiring, main-branch merge, PR, or Issue
+operation was performed in this cycle.
+
 ## NEXT WORK 5582080230 implementation cycle
 
 Dispatch source: Issue #14 comment [5582080230](https://github.com/kuniezu/illustrator_ruby_GUI/issues/14#issuecomment-5582080230).
