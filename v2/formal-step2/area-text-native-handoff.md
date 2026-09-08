@@ -289,6 +289,39 @@ No Illustrator runtime, production persistence/renderer wiring, main-branch
 merge, PR, or Issue operation was performed. The branch remains diagnostic-only
 and is ready for the requested review of this exact readback assertion.
 
+## Stale unmanaged DOM reference fix at comment 5590047374
+
+The user runtime checkpoint passed save, reopen, exact native-manifest
+readback, restart planning, note coexistence, and cleanup. Its only failure
+was the unmanaged-frame assertion dereferencing `unmanaged.name` after the
+original document had been closed. The diagnostic now stores the unmanaged
+frame name and contents as plain strings before close, reacquires the frame
+after reopen, and verifies its contents without touching the stale DOM object.
+
+Validation:
+
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/*.cjs`: **271/271 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **15/15 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (32 production files; diagnostic entrypoint PASS)**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs`: **10/10 PASS**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **10/10 PASS**
+- `git diff --check`: **PASS**
+
+The preload only exposes the existing Acorn runtime from outside the
+repository and was removed after testing. Illustrator runtime was not run in
+this cycle; production persistence/renderer wiring remains unchanged.
+
+## Runtime checkpoint follow-up at comment 5590047374
+
+The user runtime checkpoint passed save, reopen, exact manifest readback,
+restart planning, note coexistence, and cleanup. The only failure was the
+unmanaged-frame assertion, which dereferenced the pre-close Illustrator DOM
+object (`unmanaged.name`) after its document had been closed. The diagnostic
+now stores the name and contents as plain strings before close, reacquires the
+frame after reopen by the stored name, and verifies the reopened contents
+without accessing the stale object. This remains a diagnostic-only fix; no
+production persistence or renderer wiring was changed.
+
 ## Persisted manifest referential hardening at comment 5584422982
 
 The isolated store now requires every active logical binding to have a

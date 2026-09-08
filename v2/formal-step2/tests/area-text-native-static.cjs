@@ -42,6 +42,10 @@ test('native persistence runtime checkpoint is diagnostic-only and includes the 
   assert.ok(source.includes('SaveOptions.DONOTSAVECHANGES'));
   assert.ok(source.includes('Folder.temp'));
   assert.ok(source.includes('app.open(tempFile)'));
+  assert.ok(source.includes('unmanagedName'));
+  assert.ok(source.includes('unmanagedContents'));
+  assert.ok(source.includes('safe(reopenedForeign.contents) !== unmanagedContents'));
+  assert.ok(!source.includes('findTextFrame(reopened, unmanaged.name)'));
   assert.ok(!source.includes('persistence-adapter.jsx'));
   assert.ok(!source.includes('Formal Multi Step2.jsx'));
 });

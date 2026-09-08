@@ -95,12 +95,12 @@
         if (removed) emit("PASS", "cleanup", "disposable document closed and temporary file removed");
     }
     try {
-        var primary, secondary, unmanaged, primaryAfter, secondaryAfter;
+        var primary, secondary, unmanaged, unmanagedName = "FormalStep2NativeCheck-foreign", unmanagedContents = "foreign", primaryAfter, secondaryAfter, reopenedForeign;
         if (app.documents.length) fail("existing-document-open; refusing to touch user document");
         doc = app.documents.add();
         primary = createFixture("FormalStep2NativeCheck-activated", "一張羅", activatedManifest());
         secondary = createFixture("FormalStep2NativeCheck-verified", "二文字", verifiedManifest());
-        unmanaged = doc.textFrames.add(); unmanaged.name = "FormalStep2NativeCheck-foreign"; unmanaged.contents = "foreign";
+        unmanaged = doc.textFrames.add(); unmanaged.name = unmanagedName; unmanaged.contents = unmanagedContents;
         emit("PASS", "before-save", "native store/adapter wrote both disposable fixtures");
         tempFile = new File(Folder.temp.fsName + "/FormalStep2NativePersistence-" + nowToken() + ".ai");
         doc.saveAs(tempFile);
@@ -109,7 +109,8 @@
         reopened = app.open(tempFile);
         primaryAfter = verifyFixture(primary);
         secondaryAfter = verifyFixture(secondary);
-        if (!findTextFrame(reopened, unmanaged.name)) fail("foreign-frame-missing");
+        reopenedForeign = findTextFrame(reopened, unmanagedName);
+        if (!reopenedForeign || safe(reopenedForeign.contents) !== unmanagedContents) fail("foreign-frame-missing-or-changed");
         emit("PASS", "foreign-frame", "unmanaged disposable TextFrame remains present");
         emit("PASS", "application", "version=" + safe(app.version));
     } catch (e) { emit("FAIL", "runtime", e.message || e); }
