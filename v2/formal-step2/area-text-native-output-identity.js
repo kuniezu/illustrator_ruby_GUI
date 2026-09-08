@@ -38,8 +38,11 @@ var FormalAreaTextNativeOutputIdentity = (function () {
         return values;
     }
     function write(note, identity) {
-        var text = String(note), located = locate(text), marker = serialize(identity);
-        return located ? text.substring(0, located.start) + marker + text.substring(located.end) : text + marker;
+        var text = String(note), located = locate(text), value = validate(identity), existing;
+        if (!located) return text + serialize(value);
+        existing = parse(text);
+        if (existing.sourceFrameId !== value.sourceFrameId || existing.physicalId !== value.physicalId) fail("native-output-identity-immutable");
+        return text;
     }
     function stamp(frame, identity) {
         var next, parsed;

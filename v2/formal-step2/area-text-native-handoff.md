@@ -263,6 +263,28 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## Native output identity immutability at comment 5593019120
+
+The public identity `write()`/`stamp()` contract is now fail-closed and
+immutable. A missing native-output marker may be stamped once; an existing
+marker succeeds only when both `sourceFrameId` and `physicalId` match exactly,
+and repeated identical stamping is byte-identical. Any source or physical ID
+replacement is rejected with `native-output-identity-immutable` before note
+mutation. Lifecycle state remains outside the ruby note.
+
+Validation:
+
+- `node --test v2/formal-step2/tests/area-text-native-output-identity.cjs`: **7/7 PASS**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/*.cjs`: **295/295 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **18/18 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (35 production files; diagnostic entrypoint PASS)**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs`: **10/10 PASS**
+- `git diff --check`: **PASS**
+
+The Acorn preload was repository-external and removed after testing. No
+Illustrator runtime, production persistence/activation wiring, merge, PR, or
+Issue operation was performed.
+
 ## Exact manifest readback hardening at dispatch 5589894761
 
 The isolated persistence checkpoint now compares the complete readback
@@ -406,6 +428,15 @@ Validation:
 The Acorn preload was repository-external and removed after testing. No
 Illustrator runtime, production persistence/activation wiring, merge, PR, or
 Issue operation was performed.
+
+## Native output identity immutability at comment 5593019120
+
+The public identity `write()`/`stamp()` contract is now fail-closed and
+immutable. A missing native-output marker may be stamped once; an existing
+marker succeeds only when both `sourceFrameId` and `physicalId` match exactly,
+and repeated identical stamping is byte-identical. Any source or physical ID
+replacement is rejected with `native-output-identity-immutable` before note
+mutation. Lifecycle state remains outside the ruby note.
 
 ## Persisted-state authority hardening at comment 5590995892
 

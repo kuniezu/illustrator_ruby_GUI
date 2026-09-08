@@ -58,6 +58,7 @@ test('native output identity codec and backend stamping are isolated and ordered
   const renderSpec=parse(path.join('v2','formal-step2','area-text-render-spec.js'));
   assert.ok(identity.includes('[v2-formal-step2-native-output:v1]'));
   assert.ok(identity.includes('duplicate-match'));
+  assert.ok(identity.includes('native-output-identity-immutable'));
   assert.equal(identity.includes('formal-step2-output'), false);
   assert.ok(backend.includes('FormalAreaTextNativeOutputIdentity.stamp'));
   assert.ok(backend.indexOf('FormalAreaTextNativeOutputIdentity.stamp') < backend.indexOf('applyTypography'));
