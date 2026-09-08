@@ -77,6 +77,8 @@ var FormalAreaTextNativeStore = (function () {
         for (key in manifest.activeBindings) if (own(manifest.activeBindings, key)) {
             physical = manifest.activeBindings[key];
             if (typeof key !== "string" || typeof physical !== "string" || !physical || own(seen, physical)) fail("native-store-active-ownership");
+            if (!own(manifest.renderRecords, physical) || !object(manifest.renderRecords[physical])) fail("native-store-active-record-missing");
+            if (manifest.renderRecords[physical].physicalId !== physical || manifest.renderRecords[physical].logicalSegmentId !== key) fail("native-store-active-record-mismatch");
             seen[physical] = true;
             activePhysical[physical] = true;
         }
@@ -90,6 +92,8 @@ var FormalAreaTextNativeStore = (function () {
         operation = manifest.operation;
         if (operation !== null) {
             if (!object(operation) || typeof operation.requestId !== "string" || !operation.requestId || !integer(operation.baseRevision) || operation.baseRevision < 0 || (operation.phase !== "prepare" && operation.phase !== "verified" && operation.phase !== "activated") || !(operation.candidateIds instanceof Array)) fail("native-store-operation-invalid");
+            if ((operation.phase === "prepare" || operation.phase === "verified") && operation.baseRevision !== manifest.manifestRevision) fail("native-store-operation-revision-mismatch");
+            if (operation.phase === "activated" && manifest.manifestRevision !== operation.baseRevision + 1) fail("native-store-operation-revision-mismatch");
             seen = {};
             for (i = 0; i < operation.candidateIds.length; i++) { physical = operation.candidateIds[i]; if (typeof physical !== "string" || !physical || own(seen, physical)) fail("native-store-candidate-invalid"); seen[physical] = true; }
         }
@@ -104,8 +108,9 @@ var FormalAreaTextNativeStore = (function () {
             if (cursor > 0) fail("native-store-duplicate-block");
             cursor = end + 1;
         }
-        if (cursor === 0) { if (text.indexOf("[v2-formal-step2-native:") >= 0) fail("native-store-unknown-version"); return null; }
+        if (cursor === 0) { if (text.indexOf(CLOSE) >= 0) fail("native-store-orphan-close-marker"); if (text.indexOf("[v2-formal-step2-native:") >= 0) fail("native-store-unknown-version"); return null; }
         open = OPEN; close = CLOSE; start = text.indexOf(open); end = text.indexOf(close, start + open.length);
+        if (text.indexOf(close) >= 0 && text.indexOf(close) < start) fail("native-store-orphan-close-marker");
         if (end < 0) fail("native-store-broken-close-marker");
         second = text.indexOf(close, end + close.length); if (second >= 0) fail("native-store-duplicate-block");
         return { start: start, end: end + close.length, payload: text.substring(start + open.length, end) };

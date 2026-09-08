@@ -263,6 +263,21 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## Persisted manifest referential hardening at comment 5584422982
+
+The isolated store now requires every active logical binding to have a
+corresponding render record whose `physicalId` matches the map value and whose
+`logicalSegmentId` matches the binding key. Persisted operation revisions are
+also checked against the source-manifest transaction contract: `prepare` and
+`verified` require `baseRevision === manifestRevision`, while `activated`
+requires `manifestRevision === baseRevision + 1`.
+
+Native namespace residue is fail-closed: an orphan native close marker,
+unknown version, duplicate block, or broken block cannot be bypassed by
+appending a new block. Existing FormalMulti and unrelated note bytes remain
+untouched on valid replacement, and no production persistence or renderer path
+is wired to this store.
+
 ## Isolated note restart scaffold at comment 5584247546
 
 The one-shot diagnostic branch now contains an isolated ES3-compatible native
