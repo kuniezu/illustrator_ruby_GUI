@@ -345,6 +345,35 @@ The Acorn preload was repository-external and removed after testing. No
 Illustrator runtime, production wiring, merge, PR, or Issue operation was
 performed. The facade remains a scaffold for later review.
 
+## Isolated durable transaction coordinator at comment 5590689898
+
+Added `v2/formal-step2/area-text-native-transaction-coordinator.js`. This
+scaffold composes the existing pure `FormalAreaTextNative` transitions with
+`FormalAreaTextNativePersistenceFacade`; it does not duplicate transaction
+rules and is not wired into production persistence, renderer, UI, or
+BridgeTalk.
+
+The coordinator persists prepare, verified, activation with transition-derived
+retirement, retirement completion, and final finish states. It passes exact
+source contents and note snapshots to the facade, preserves request/revision
+semantics, and returns the facade's persisted readback/restart classification.
+Focused tests cover source/note concurrency rejection before mutation, stale
+activation, repeated same request/plan, complete prepare-to-finish coexistence
+with FormalMulti/unrelated bytes, and readback authority.
+
+Validation:
+
+- `node --test v2/formal-step2/tests/area-text-native-transaction-coordinator.cjs`: **6/6 PASS**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/*.cjs`: **285/285 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **17/17 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (34 production files; diagnostic entrypoint PASS)**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs`: **10/10 PASS**
+- `git diff --check`: **PASS**
+
+The Acorn preload was repository-external and removed after testing. No
+Illustrator runtime, production wiring, merge, PR, or Issue operation was
+performed.
+
 ## Runtime checkpoint follow-up at comment 5590047374
 
 The user runtime checkpoint passed save, reopen, exact manifest readback,

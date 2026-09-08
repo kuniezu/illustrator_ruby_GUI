@@ -40,6 +40,18 @@ test('isolated native persistence facade parses and remains unwired',()=>{
   assert.ok(!source.includes('Formal Multi Step2.jsx'));
 });
 
+test('isolated transaction coordinator composes pure transitions with the facade',()=>{
+  const source=parse(path.join('v2','formal-step2','area-text-native-transaction-coordinator.js'));
+  assert.ok(source.includes('FormalAreaTextNative[operation]'));
+  assert.ok(source.includes('FormalAreaTextNativePersistenceFacade.update'));
+  assert.ok(source.includes('beginOperation'));
+  assert.ok(source.includes('markVerified'));
+  assert.ok(source.includes('markRetired'));
+  assert.ok(source.includes('finishOperation'));
+  assert.ok(!source.includes('source.note'));
+  assert.ok(!source.includes('persistence-adapter.jsx'));
+});
+
 test('native persistence runtime checkpoint is diagnostic-only and includes the isolated store',()=>{
   const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Persistence Check.jsx');
   const source=fs.readFileSync(file,'utf8');
