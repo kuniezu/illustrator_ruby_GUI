@@ -374,6 +374,37 @@ The Acorn preload was repository-external and removed after testing. No
 Illustrator runtime, production wiring, merge, PR, or Issue operation was
 performed.
 
+## Persisted-state authority hardening at comment 5590995892
+
+The durable transaction coordinator now reads the current source through
+`FormalAreaTextNativePersistenceFacade.read()` before every transition. It
+requires the caller's expected source contents and exact note snapshot to
+match that readback, derives the transition input solely from the persisted
+native manifest, and uses `createManifest()` only for `begin` when no native
+block exists. `verify`, `activate`, `retire`, and `finish` fail closed when no
+persisted native manifest exists. The public coordinator API no longer accepts
+an independently authoritative state argument.
+
+Focused tests cover no-native begin, non-begin missing-manifest failure,
+prepare-to-verified, complete persisted activation/retirement/finish,
+concurrency rejection, persisted-manifest authority against caller state,
+idempotent repeated begin, and readback authority. Transaction rules remain
+inside `FormalAreaTextNative`; the coordinator only composes transitions with
+the facade.
+
+Validation:
+
+- `node --test v2/formal-step2/tests/area-text-native-transaction-coordinator.cjs`: **8/8 PASS**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/*.cjs`: **287/287 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **17/17 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (34 production files; diagnostic entrypoint PASS)**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs`: **10/10 PASS**
+- `git diff --check`: **PASS**
+
+The Acorn preload was repository-external and removed after testing. No
+Illustrator runtime, production wiring, merge, PR, or Issue operation was
+performed.
+
 ## Runtime checkpoint follow-up at comment 5590047374
 
 The user runtime checkpoint passed save, reopen, exact manifest readback,
