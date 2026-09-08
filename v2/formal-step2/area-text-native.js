@@ -117,6 +117,7 @@ var FormalAreaTextNative = (function () {
         if (state.manifestRevision !== out.operation.baseRevision) throw Error("operation-base-revision-stale");
         if (hasDuplicate(discarded) || discarded.length > out.operation.candidateIds.length) throw Error("activation-discarded-invalid");
         for (i = 0; i < discarded.length; i++) if (!contains(out.operation.candidateIds, discarded[i])) throw Error("activation-discarded-not-owned");
+        for (i = 0; i < retire.length; i++) if (!own(out.renderRecords, retire[i])) throw Error("retirement-not-owned");
         bindings = bindings || {};
         records = records || {};
         for (key in records) if (own(records, key) && !contains(out.operation.candidateIds, key)) throw Error("activation-record-not-owned");
@@ -188,6 +189,7 @@ var FormalAreaTextNative = (function () {
     function markRetired(state, removedIds) {
         var out = cloneManifest(state), removed = unique(removedIds || []), next = [], i, key;
         for (i = 0; i < removed.length; i++) {
+            if (!contains(out.retirementQueue, removed[i])) throw Error("retirement-not-queued");
             for (key in out.activeBindings) if (own(out.activeBindings, key) && out.activeBindings[key] === removed[i]) throw Error("cannot-retire-active-physical");
         }
         for (i = 0; i < out.retirementQueue.length; i++) {
@@ -204,8 +206,20 @@ var FormalAreaTextNative = (function () {
         var out = cloneManifest(state), id = String(requestId || "");
         if (!out.operation || out.operation.requestId !== id) throw Error("operation-request-mismatch");
         if (out.operation.phase !== "activated") throw Error("operation-not-activated");
+        if (out.retirementQueue.length > 0) throw Error("operation-cleanup-pending");
         out.operation = null;
         return out;
+    }
+
+    function recoveryState(state) {
+        state = state || createManifest();
+        if (state.operation) {
+            if (state.operation.phase === "prepare") return "prepare";
+            if (state.operation.phase === "verified") return "verified";
+            if (state.operation.phase === "activated") return state.retirementQueue && state.retirementQueue.length > 0 ? "activated-cleanup-pending" : "activated-clean";
+            return "unknown-operation-phase";
+        }
+        return state.retirementQueue && state.retirementQueue.length > 0 ? "activated-cleanup-pending" : "finished/recoverable";
     }
 
     function activePhysicalId(state, logicalSegmentId) {
@@ -300,6 +314,7 @@ var FormalAreaTextNative = (function () {
         finishOperation: finishOperation,
         activePhysicalId: activePhysicalId,
         physicalStatus: physicalStatus,
+        recoveryState: recoveryState,
         verifyOneLineFit: verifyOneLineFit,
         trackingCandidates: trackingCandidates,
         classifyThreading: classifyThreading,

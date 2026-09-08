@@ -301,6 +301,40 @@ Exact validation for this dispatch:
 No Illustrator runtime, production wiring, merge, PR, or Issue operation was
 performed in this cycle.
 
+## Recovery-state ownership hardening at 5584020006
+
+Dispatch source: Issue #14 comment
+https://github.com/kuniezu/illustrator_ruby_GUI/issues/14#issuecomment-5584020006
+
+`finishOperation()` now refuses to clear an activated operation while
+`retirementQueue` is non-empty, preserving the cleanup-pending state until
+`markRetired()` succeeds. `markRetired()` now requires every requested ID to
+already be in the retirement queue before deleting its render record, so an
+unrelated or nonexistent record cannot be retired by caller input.
+
+Explicit activation `retireIds` are retained for compatibility but must name a
+known render record; replacement/removal IDs are still derived from active
+binding changes. Unknown or foreign IDs fail before any state mutation.
+
+The pure `recoveryState()` helper reports `prepare`, `verified`,
+`activated-cleanup-pending`, `activated-clean`, and `finished/recoverable`
+from manifest authority without adding a second mutable state field. Tests
+cover both blocked and successful finish paths, queue ownership, unknown
+retirement IDs, and unchanged input state on rejection.
+
+Exact validation for dispatch `5584020006`:
+
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/*.cjs`: **260/260 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/area-text-native.cjs`: **27/27 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/area-text-native-static.cjs`: **12/12 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files; diagnostic entrypoint PASS)**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `git diff --check`: **PASS** (only Git line-ending normalization warnings)
+
+No Illustrator runtime, production persistence/renderer wiring, merge, PR, or
+Issue operation was performed in this cycle. Deferred work remains real
+persistence/restart wiring and production renderer integration.
+
 ## Source-manifest transaction hardening at 09ec083 follow-up
 
 The pure manifest state now enforces the operation base revision at activation,

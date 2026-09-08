@@ -3,6 +3,7 @@ const N=require('../area-text-native.js');
 
 test('manifest uses source-side active bindings as authority',()=>{
   let s=N.createManifest();
+  s.renderRecords['p-old']={generationId:'g0'};
   s=N.beginOperation(s,'req-1',['p-new']);
   assert.equal(N.physicalStatus(s,'p-new'),'pending');
   s=N.markVerified(s,'req-1');
@@ -24,8 +25,9 @@ test('activation does not require retiring old identity first',()=>{
 });
 
 test('retirement cannot leave an active physical binding',()=>{
-  let s=N.createManifest();s.activeBindings.seg1='p-old';s.renderRecords['p-old']={generationId:'g1'};
+  let s=N.createManifest();s.activeBindings.seg1='p-old';s.renderRecords['p-old']={generationId:'g1'};s.retirementQueue=['p-old'];
   assert.throws(()=>N.markRetired(s,['p-old']),/cannot-retire-active-physical/);
+  s=N.createManifest();s.activeBindings.seg1='p-old';s.renderRecords['p-old']={generationId:'g1'};
   s=N.beginOperation(s,'req-2',['p-new']);s=N.markVerified(s,'req-2');s=N.activate(s,'req-2',{seg1:'p-new'},{'p-new':{physicalId:'p-new',requestId:'req-2',logicalSegmentId:'seg1',generationId:'g2'}},['p-old']);
   s=N.markRetired(s,['p-old']);assert.equal(s.activeBindings.seg1,'p-new');assert.equal(N.physicalStatus(s,'p-old'),'unreferenced');
 });
@@ -128,6 +130,28 @@ test('same request is idempotent only for the same candidate plan',()=>{
 
 test('candidate plan rejects duplicate ids instead of silently normalizing them',()=>{
   assert.throws(()=>N.beginOperation(N.createManifest(),'r1',['p1','p1']),/candidate-plan-duplicate/);
+});
+
+test('finish waits for retirement cleanup and then reaches recoverable state',()=>{
+  let s=N.createManifest();s.renderRecords.old={generationId:'g0'};
+  s=N.beginOperation(s,'r1',['new']);assert.equal(N.recoveryState(s),'prepare');
+  s=N.markVerified(s,'r1');assert.equal(N.recoveryState(s),'verified');
+  s=N.activate(s,'r1',{s1:'new'},{new:{physicalId:'new',requestId:'r1',logicalSegmentId:'s1'}},['old']);
+  assert.equal(N.recoveryState(s),'activated-cleanup-pending');const before=JSON.stringify(s);
+  assert.throws(()=>N.finishOperation(s,'r1'),/operation-cleanup-pending/);assert.equal(JSON.stringify(s),before);
+  s=N.markRetired(s,['old']);assert.equal(N.recoveryState(s),'activated-clean');
+  s=N.finishOperation(s,'r1');assert.equal(N.recoveryState(s),'finished/recoverable');
+});
+
+test('markRetired cannot delete a non-queued unrelated render record',()=>{
+  let s=N.createManifest();s.renderRecords.foreign={generationId:'foreign'};const before=JSON.stringify(s);
+  assert.throws(()=>N.markRetired(s,['foreign']),/retirement-not-queued/);assert.equal(JSON.stringify(s),before);
+});
+
+test('activation rejects foreign or nonexistent explicit retirement ids',()=>{
+  let s=N.beginOperation(N.createManifest(),'r1',['p1']);s=N.markVerified(s,'r1');const before=JSON.stringify(s);
+  assert.throws(()=>N.activate(s,'r1',{s1:'p1'},{p1:{physicalId:'p1',requestId:'r1',logicalSegmentId:'s1'}},['foreign']),/retirement-not-owned/);
+  assert.equal(JSON.stringify(s),before);
 });
 test('threading identity classification distinguishes unthreaded, self, and external links',()=>{
   const frame={};
