@@ -132,6 +132,7 @@ var FormalAreaTextRenderSpec = (function () {
         var result = validate(spec);
         if (!result.ok) throw Error(result.reason);
         return {
+            sourceFrameId: spec.sourceFrameId,
             physicalId: spec.physicalId,
             reading: spec.reading,
             singleCharacter: spec.singleCharacter,

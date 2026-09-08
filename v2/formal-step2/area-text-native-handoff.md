@@ -374,6 +374,39 @@ The Acorn preload was repository-external and removed after testing. No
 Illustrator runtime, production wiring, merge, PR, or Issue operation was
 performed.
 
+## Durable native output identity at comment 5591368602
+
+Added the isolated ES3-compatible
+`v2/formal-step2/area-text-native-output-identity.js`. It owns immutable
+`sourceFrameId` + `physicalId` only, under the distinct versioned
+`[v2-formal-step2-native-output:v1]` namespace. It does not copy lifecycle,
+active, pending, or retirement state; the source manifest remains the sole
+authority for those fields.
+
+The codec deterministically serializes/parses Unicode and delimiter-safe
+values, ignores unrelated and legacy output notes, and fails closed on
+unknown/malformed/duplicate markers. Its resolver returns exactly one match,
+an explicit missing result, or a duplicate-identity failure without using
+collection index or geometry inference. The native backend now carries
+`sourceFrameId` in `backendSpec` and stamps the fresh AreaText candidate
+immediately after AreaText creation and kind verification, before typography
+or verification. Stamp/readback failure follows the existing candidate
+disposal path. The diagnostic receiver loads the identity codec before the
+backend.
+
+Validation:
+
+- `node --test v2/formal-step2/tests/area-text-native-output-identity.cjs`: **6/6 PASS**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/*.cjs`: **294/294 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **18/18 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (35 production files; diagnostic entrypoint PASS)**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs`: **10/10 PASS**
+- `git diff --check`: **PASS**
+
+The Acorn preload was repository-external and removed after testing. No
+Illustrator runtime, production persistence/activation wiring, merge, PR, or
+Issue operation was performed.
+
 ## Persisted-state authority hardening at comment 5590995892
 
 The durable transaction coordinator now reads the current source through

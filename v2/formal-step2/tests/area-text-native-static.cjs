@@ -52,6 +52,18 @@ test('isolated transaction coordinator composes pure transitions with the facade
   assert.ok(!source.includes('persistence-adapter.jsx'));
 });
 
+test('native output identity codec and backend stamping are isolated and ordered',()=>{
+  const identity=parse(path.join('v2','formal-step2','area-text-native-output-identity.js'));
+  const backend=parse(path.join('v2','formal-step2','area-text-native-backend.jsx'));
+  const renderSpec=parse(path.join('v2','formal-step2','area-text-render-spec.js'));
+  assert.ok(identity.includes('[v2-formal-step2-native-output:v1]'));
+  assert.ok(identity.includes('duplicate-match'));
+  assert.equal(identity.includes('formal-step2-output'), false);
+  assert.ok(backend.includes('FormalAreaTextNativeOutputIdentity.stamp'));
+  assert.ok(backend.indexOf('FormalAreaTextNativeOutputIdentity.stamp') < backend.indexOf('applyTypography'));
+  assert.ok(renderSpec.includes('sourceFrameId: spec.sourceFrameId'));
+});
+
 test('native persistence runtime checkpoint is diagnostic-only and includes the isolated store',()=>{
   const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Persistence Check.jsx');
   const source=fs.readFileSync(file,'utf8');

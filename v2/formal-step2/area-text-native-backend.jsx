@@ -25,6 +25,8 @@ function FormalAreaTextNativeBackend(doc, layer) {
             path.stroked = false;
             frame = doc.textFrames.areaText(path);
             if (!frame || frame.kind !== TextType.AREATEXT) throw Error("candidate-kind-unverified");
+            if (typeof FormalAreaTextNativeOutputIdentity === "undefined") throw Error("native-output-identity-unavailable");
+            FormalAreaTextNativeOutputIdentity.stamp(frame, { sourceFrameId: spec.sourceFrameId, physicalId: spec.physicalId });
             return { frame: frame, path: path, spec: spec, physicalId: spec.physicalId || "", constructedFromRectangle: true, areaTextKindVerified: true };
         } catch (e) {
             if (frame) try { frame.remove(); } catch (ignoreFrame) {}
