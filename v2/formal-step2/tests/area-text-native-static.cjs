@@ -98,6 +98,21 @@ test('native persistence checkpoint uses canonical exact manifest readback',()=>
   assert.notEqual(context.Store.serialize(base),context.Store.serialize(changed));
 });
 
+test('native identity persistence checkpoint uses backend stamping and identity-only reopen resolution',()=>{
+  const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Identity Persistence Check.jsx');
+  const source=fs.readFileSync(file,'utf8');
+  assert.ok(source.includes('#include "../formal-step2/area-text-render-spec.js"'));
+  assert.ok(source.includes('#include "../formal-step2/area-text-native-output-identity.js"'));
+  assert.ok(source.includes('#include "../formal-step2/area-text-native-backend.jsx"'));
+  assert.ok(source.includes('FormalAreaTextNativeOutputIdentity.stamp'));
+  assert.ok(source.includes('FormalAreaTextNativeOutputIdentity.resolve'));
+  assert.ok(source.includes('app.open(tempFile)'));
+  assert.ok(source.includes('SaveOptions.DONOTSAVECHANGES'));
+  assert.ok(source.includes('identity-removal'));
+  assert.equal(source.includes('source.note'),false);
+  assert.equal(source.includes('Formal Multi Step2.jsx'),false);
+});
+
 test('native backend scaffold parses and only creates fresh area text candidates',()=>{
   const source=parse(path.join('v2','formal-step2','area-text-native-backend.jsx'));
   assert.ok(source.includes('layer.pathItems.rectangle'));

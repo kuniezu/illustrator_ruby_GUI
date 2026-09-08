@@ -263,6 +263,34 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## Native output identity persistence checkpoint at 5593267268
+
+Added the disposable diagnostic entrypoint
+`v2/diagnostics/Formal Step2 AreaText Native Identity Persistence Check.jsx`.
+It creates two native AreaText candidates through the current RenderSpec and
+backend path with one sourceFrameId and distinct physicalIds, verifies the
+immutable identity stamp before save, saves and reopens a temporary document,
+resolves active and retirement candidates by identity only, removes one
+resolved retirement candidate, and confirms the unrelated TextFrame remains
+unchanged. The checkpoint does not use the production entrypoint or source
+notes and is not wired into production.
+
+The diagnostic entrypoint is included in the Gate 0 expanded-source ES3 and
+compatibility checks. Static coverage also verifies the backend stamping and
+identity-only reopen resolution contract.
+
+Validation for this dispatch was run after the diagnostic addition:
+
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/*.cjs`: **296/296 PASS**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/area-text-native-static.cjs`: **19/19 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (35 production files; diagnostic entrypoint PASS)**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs`: **10/10 PASS**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **10/10 PASS**
+- `git diff --check`: **PASS**
+
+Illustrator runtime was not executed. No production wiring, main-branch
+merge, PR, or Issue operation was performed.
+
 ## Native output identity immutability at comment 5593019120
 
 The public identity `write()`/`stamp()` contract is now fail-closed and
