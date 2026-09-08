@@ -136,7 +136,7 @@ test('A-H one-shot diagnostic is disposable, aggregated, and not production wiri
   assert.ok(source.includes('FormalAreaTextNative.createManifest'));assert.ok(source.includes('FormalAreaTextNative.beginOperation'));assert.ok(source.includes('FormalAreaTextNative.activate'));assert.ok(source.includes('FormalAreaTextNative.captureManualAdjustment'));
   assert.ok(source.includes('FormalAreaTextNativeDiagnostic.runTracking'));
   assert.ok(source.includes('selectFontName'));assert.ok(source.includes('app.textFonts'));assert.ok(source.includes('no-font-available'));assert.ok(source.includes('parseReceiverResult'));assert.ok(!source.includes('function runH()'));assert.ok(!source.includes('function runHRenderSpec()'));
-  assert.ok(source.includes('function eq'));assert.ok(source.includes('previousSelf'));assert.ok(source.includes('nextSelf'));assert.ok(source.includes('path-after-frame-invalidation'));assert.ok(source.includes('tracking=') && source.includes('stopReason='));
+  assert.ok(source.includes('function eq'));assert.ok(source.includes('previousSelf'));assert.ok(source.includes('nextSelf'));assert.ok(source.includes('pathAlreadyGone'));assert.ok(source.includes('tracking=') && source.includes('stopReason='));
   assert.ok(source.includes('bt.onTimeout'));assert.ok(source.includes('callback-timeout'));assert.ok(source.includes('renderSpecLiteral'));
   assert.ok(source.includes('Window("dialog"'));assert.ok(source.includes('report.join("\\n")'));
   assert.ok(source.includes('app.documents.add()'));assert.ok(source.includes('DONOTSAVECHANGES'));

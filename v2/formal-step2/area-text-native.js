@@ -165,7 +165,21 @@ var FormalAreaTextNative = (function () {
         return "unreferenced";
     }
 
-    function fitFailure(reason) { return { ok: false, reason: reason }; }
+    function fitFailure(reason) { return { ok: false, reason: reason, retryable: isRetryableFitReason(reason) }; }
+
+    function classifyThreading(frame) {
+        var previous = null, next = null, previousSelf = false, nextSelf = false;
+        try { previous = frame && frame.previousFrame ? frame.previousFrame : null; } catch (e1) { return { ok: false, reason: "threading-unverified" }; }
+        try { next = frame && frame.nextFrame ? frame.nextFrame : null; } catch (e2) { return { ok: false, reason: "threading-unverified" }; }
+        try { previousSelf = previous === frame; } catch (e3) { return { ok: false, reason: "threading-unverified" }; }
+        try { nextSelf = next === frame; } catch (e4) { return { ok: false, reason: "threading-unverified" }; }
+        if (previousSelf || nextSelf) return { ok: false, nonThreaded: false, reason: "threading-self-reference" };
+        return { ok: true, nonThreaded: !previous && !next, previous: previous, next: next };
+    }
+
+    function isRetryableFitReason(reason) {
+        return reason === "fit-line-count" || reason === "fit-line-coverage-mismatch";
+    }
 
     function verifyOneLineFit(observation, requestedReading) {
         var reading = String(requestedReading == null ? "" : requestedReading), line, rangeSpan;
@@ -229,6 +243,8 @@ var FormalAreaTextNative = (function () {
         physicalStatus: physicalStatus,
         verifyOneLineFit: verifyOneLineFit,
         trackingCandidates: trackingCandidates,
+        classifyThreading: classifyThreading,
+        isRetryableFitReason: isRetryableFitReason,
         captureManualAdjustment: captureManualAdjustment
     };
 }());

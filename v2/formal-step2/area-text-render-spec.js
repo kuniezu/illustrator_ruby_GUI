@@ -26,7 +26,7 @@ var FormalAreaTextRenderSpec = (function () {
     function validOptionalNumber(value) { return value === null; }
     function sameDerived(a, b) { return finite(a) && finite(b) && Math.abs(a - b) <= DERIVED_TOLERANCE; }
     function validComposer(policy) {
-        var i, values;
+        var i, values, expectedTracking = [0, -25, -50, -75, -100];
         if (!policy || typeof policy !== "object") return "render-spec-composer-policy";
         if (!validPolicyValue(policy.justification, ["full", "center"])) return "render-spec-justification";
         if (!validPolicyValue(policy.singleWordJustification, ["full", "center"])) return "render-spec-single-word-justification";
@@ -35,8 +35,8 @@ var FormalAreaTextRenderSpec = (function () {
         if (!policy.letterSpacing || !validOptionalNumber(policy.letterSpacing.minimum) || !validOptionalNumber(policy.letterSpacing.desired) || !validOptionalNumber(policy.letterSpacing.maximum)) return "render-spec-letter-spacing";
         if (!policy.wordSpacing || !validOptionalNumber(policy.wordSpacing.minimum) || !validOptionalNumber(policy.wordSpacing.desired) || !validOptionalNumber(policy.wordSpacing.maximum)) return "render-spec-word-spacing";
         values = policy.trackingCandidates;
-        if (!values || typeof values.length !== "number" || values.length === 0) return "render-spec-tracking-candidates";
-        for (i = 0; i < values.length; i++) if (!finite(values[i]) || values[i] < -100 || values[i] > 0) return "render-spec-tracking-candidate-range";
+        if (!values || typeof values.length !== "number" || values.length !== expectedTracking.length) return "render-spec-tracking-candidates";
+        for (i = 0; i < values.length; i++) if (!finite(values[i]) || values[i] !== expectedTracking[i]) return "render-spec-tracking-policy";
         return null;
     }
     function copyComposer(policy) {
@@ -116,8 +116,8 @@ var FormalAreaTextRenderSpec = (function () {
         if (!spec || spec.schema !== SCHEMA) return {ok:false,reason:"render-spec-schema"};
         if (spec.rendererMode !== "area-text-native") return {ok:false,reason:"render-spec-renderer-mode"};
         if (spec.rendererVersion !== RENDERER_VERSION || spec.geometryVersion !== GEOMETRY_VERSION) return {ok:false,reason:"render-spec-version"};
-        if (!spec.requestId || !spec.sourceFrameId || !spec.annotationId || !spec.logicalSegmentId || !spec.generationId || !spec.physicalId) return {ok:false,reason:"render-spec-identity"};
-        if (!spec.reading) return {ok:false,reason:"render-spec-reading"};
+        if (typeof spec.requestId !== "string" || typeof spec.sourceFrameId !== "string" || typeof spec.annotationId !== "string" || typeof spec.logicalSegmentId !== "string" || typeof spec.generationId !== "string" || typeof spec.physicalId !== "string" || !spec.requestId || !spec.sourceFrameId || !spec.annotationId || !spec.logicalSegmentId || !spec.generationId || !spec.physicalId) return {ok:false,reason:"render-spec-identity"};
+        if (typeof spec.reading !== "string" || !spec.reading || /[\r\n]/.test(spec.reading)) return {ok:false,reason:"render-spec-reading"};
         if (typeof spec.singleCharacter !== "boolean" || spec.singleCharacter !== (String(spec.reading).length === 1)) return {ok:false,reason:"render-spec-single-character"};
         if (!spec.appearance || typeof spec.appearance.fontName !== "string" || !spec.appearance.fontName || !finite(spec.appearance.fontSize) || spec.appearance.fontSize <= 0 || !finite(spec.appearance.manualDeltaX) || !finite(spec.appearance.widthScale) || spec.appearance.widthScale <= 0 || !finite(spec.appearance.gapEm) || spec.appearance.gapEm < 0) return {ok:false,reason:"render-spec-appearance"};
         if (!spec.geometry || !finite(spec.geometry.autoLeft) || !finite(spec.geometry.autoTop) || !finite(spec.geometry.autoWidth) || spec.geometry.autoWidth <= 0 || !finite(spec.geometry.boxHeight) || spec.geometry.boxHeight <= 0) return {ok:false,reason:"render-spec-nested-geometry"};

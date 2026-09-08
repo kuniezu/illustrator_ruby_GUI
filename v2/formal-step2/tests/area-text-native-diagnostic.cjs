@@ -6,6 +6,14 @@ test('tracking stops at first verified fit',()=>{
   let calls=[];const r=D.runTracking([0,-25,-50,-75,-100],v=>{calls.push(v);return {ok:v===0,retryable:true};});
   assert.deepEqual(calls,[0]);assert.equal(r.tracking,0);
 });
+test('D expected-fit aggregation distinguishes execution failure from negative outcome mismatch',()=>{
+  assert.equal(D.aggregateExpectedFits([
+    {created:true,observed:true,actualFit:true,expectedFit:true},
+    {created:true,observed:true,actualFit:false,expectedFit:false}
+  ]).ok,true);
+  assert.equal(D.aggregateExpectedFits([{created:true,observed:true,actualFit:true,expectedFit:false}]).ok,false);
+  assert.equal(D.aggregateExpectedFits([{created:false,observed:false,actualFit:false,expectedFit:false}]).ok,false);
+});
 test('geometry comparator accepts exact and tolerance-bound values but rejects drift',()=>{
   assert.equal(D.withinTolerance(10,10,0.01),true);
   assert.equal(D.withinTolerance(10.009,10,0.01),true);
@@ -27,11 +35,16 @@ test('result, error, and timeout each finalize exactly once',()=>{
 });
 test('receiver result status is validated instead of treating callback as PASS',()=>{
   const expected={schema:'formal-area-text-render-spec:v1',rendererMode:'area-text-native',rendererVersion:'area-text-native-v1',geometryVersion:'area-text-rectangle-v1',requestId:'r',logicalSegmentId:'s',physicalId:'p',reading:'かな',singleCharacter:'false',finalGeometry:'10:20:40:12',fontName:'TestFont'};
-  const pass='PASS:schema=formal-area-text-render-spec:v1,rendererMode=area-text-native,rendererVersion=area-text-native-v1,geometryVersion=area-text-rectangle-v1,requestId=r,logicalSegmentId=s,physicalId=p,reading=かな,singleCharacter=false,finalGeometry=10:20:40:12,verify=verified-fit,fontName=TestFont';
+  const pass='PASS:schema=formal-area-text-render-spec%3Av1;rendererMode=area-text-native;rendererVersion=area-text-native-v1;geometryVersion=area-text-rectangle-v1;requestId=r;logicalSegmentId=s;physicalId=p;reading=%E3%81%8B%E3%81%AA;singleCharacter=false;finalGeometry=10%3A20%3A40%3A12;verify=fit-one-line-covered;fontName=TestFont';
   assert.equal(D.parseReceiverResult(pass,expected).status,'PASS');
   assert.equal(D.parseReceiverResult('CAPABILITY_UNAVAILABLE:no-font-available',expected).status,'CAPABILITY_UNAVAILABLE');
   assert.equal(D.parseReceiverResult('some unexpected body',expected).status,'FAIL');
   assert.notEqual(D.parseReceiverResult('some unexpected body',expected).status,'PASS');
+});
+test('H completion ignores late callbacks after result, error, timeout, and send false',()=>{
+  for(const action of ['result','error','timeout','sendFalse']){
+    let outputs=[];const gate=D.hCompletion(v=>outputs.push(v));assert.equal(gate[action](action==='result'?'ok':'x'),true);assert.equal(gate.result('late'),false);assert.equal(outputs.length,1);assert.equal(gate.isDone(),true);
+  }
 });
 test('expected negative fit remains an observed case, not a diagnostic failure',()=>{
   const outcomes={D1:'PASS',D2:'PASS observed-nonfit',D3:'PASS observed-nonfit',D4:'PASS observed-nonfit'};

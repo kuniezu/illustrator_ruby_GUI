@@ -77,11 +77,13 @@ function FormalAreaTextNativeBackend(doc, layer) {
             line = range.lines[i];
             lines.push({ start: line.start, end: line.end, contents: text(line.contents) });
         }
+        var threading = FormalAreaTextNative.classifyThreading ? FormalAreaTextNative.classifyThreading(frame) : { ok: true, nonThreaded: !frame.previousFrame && !frame.nextFrame };
         return {
             horizontal: frame.orientation === TextOrientation.HORIZONTAL,
             rectangular: candidate.constructedFromRectangle === true,
             areaTextKind: frame.kind,
-            nonThreaded: !frame.previousFrame && !frame.nextFrame,
+            threading: threading,
+            nonThreaded: threading.ok && threading.nonThreaded === true,
             frameContents: text(frame.contents),
             rangeContents: text(range.contents),
             rangeStart: range.start,
@@ -186,7 +188,7 @@ function FormalAreaTextNativeBackend(doc, layer) {
         readback = verifyReadback(observation, spec, expectedTracking);
         if (!readback.ok) { readback.observation = observation; return readback; }
         fit = FormalAreaTextNative.verifyOneLineFit(observation, text(spec.reading));
-        return { ok: fit.ok, reason: fit.reason, retryable: true, observation: observation, fit: fit };
+        return { ok: fit.ok, reason: fit.reason, retryable: fit.retryable === true, observation: observation, fit: fit };
     }
 
     function tryTracking(candidate, spec) {
@@ -206,11 +208,13 @@ function FormalAreaTextNativeBackend(doc, layer) {
     }
 
     function disposeCandidate(candidate) {
-        var frameRemoved = false, pathRemoved = false;
-        if (!candidate) return { frameRemoved: false, pathRemoved: false };
-        try { if (candidate.frame && candidate.frame.parent) { candidate.frame.remove(); frameRemoved = true; } } catch (ignoreFrame) {}
-        try { if (candidate.path && candidate.path.parent) { candidate.path.remove(); pathRemoved = true; } } catch (ignorePath) {}
-        return { frameRemoved: frameRemoved, pathRemoved: pathRemoved };
+        var frameRemoved = false, pathRemoved = false, pathAlreadyGone = false, cleanupFailed = false;
+        if (!candidate) return { frameRemoved: false, pathRemoved: false, pathAlreadyGone: true, cleanupFailed: false };
+        try { if (candidate.frame && candidate.frame.parent) { candidate.frame.remove(); frameRemoved = true; } } catch (ignoreFrame) { cleanupFailed = true; }
+        if (!frameRemoved) return { frameRemoved: false, pathRemoved: false, pathAlreadyGone: true, cleanupFailed: cleanupFailed };
+        /* areaText(path) consumes the path; after frame removal a stale path ref is not owned. */
+        try { pathAlreadyGone = !candidate.path || !candidate.path.parent; } catch (ignorePathState) { pathAlreadyGone = true; }
+        return { frameRemoved: true, pathRemoved: false, pathAlreadyGone: pathAlreadyGone, cleanupFailed: cleanupFailed };
     }
 
     function prepareCandidate(spec) {

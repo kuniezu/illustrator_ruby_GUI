@@ -73,3 +73,10 @@ test('received specs reject unsupported composer values and nested geometry muta
   x=Object.assign({},base,{finalWidth:999});assert.equal(S.validate(x).ok,false);
   assert.equal(S.validate(base).ok,true);
 });
+test('received specs require string identities and reject line-bearing readings',()=>{
+  const base=S.create(input());
+  let x=Object.assign({},base,{requestId:7});assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{reading:'かな\n'});assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{composerPolicy:Object.assign({},base.composerPolicy,{trackingCandidates:[0,-25,-25,-75,-100]})});assert.equal(S.validate(x).ok,false);
+  x=Object.assign({},base,{composerPolicy:Object.assign({},base.composerPolicy,{trackingCandidates:[0,-25,-50,-75]})});assert.equal(S.validate(x).ok,false);
+});

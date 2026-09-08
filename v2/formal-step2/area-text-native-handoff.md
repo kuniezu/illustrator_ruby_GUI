@@ -259,6 +259,50 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## NEXT WORK 5582080230 implementation cycle
+
+Dispatch source: Issue #14 comment [5582080230](https://github.com/kuniezu/illustrator_ruby_GUI/issues/14#issuecomment-5582080230).
+Target branch: `v2/area-text-native-one-shot-diagnostic`.
+Base HEAD checked before work: `8432e1c9eb7e9c8f1864d2a68c961501391ea9df`.
+Stop condition: commit and push this diagnostic branch, then stop. Illustrator
+runtime, production wiring, main-branch merge, PR, and Issue close remain
+forbidden.
+
+Completed in this cycle:
+
+- Added the shared threading identity classifier. It distinguishes no links,
+  strict self-reference, and external previous/next links; getter failures are
+  unverified rather than inferred from kind or contents.
+- Updated backend observation and tracking retry behavior. Only line-count or
+  line-coverage shortage is retryable; style, identity, threading, stability,
+  range, and other failures stop tracking immediately.
+- Made fresh AreaText disposal ownership-aware. The consumed construction path
+  is not removed after successful frame removal; disposal reports
+  `frameRemoved`, `pathAlreadyGone`, and `cleanupFailed` and remains idempotent.
+- Made D diagnostic aggregation depend on actual create/observe/fit results,
+  including expected-negative cases and unexpected-fit failures.
+- Added H exactly-once completion protection, robust encoded receiver-field
+  parsing, full identity expectations, and explicit verification-reason checks.
+- Hardened received RenderSpec identity/readings and strict tracking policy.
+- Added the requested continuation dispatch rule to repository-root AGENTS.md.
+
+Validation executed in this cycle:
+
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/*.cjs`: **245/245 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/area-text-native-static.cjs`: **11/11 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files; diagnostic entrypoint PASS)**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **9/9 PASS**
+- `git diff --check`: **PASS**
+
+The Acorn runtime was the pinned 8.15.0 installation used by the repository's
+ES3 gate in this environment. No Illustrator runtime was run. The following
+Issue-deferred production-wiring blockers remain intentionally untouched:
+manifest revision persistence re-read, binding removal transitions,
+retirementQueue/active intersection hardening, candidate-plan reconciliation,
+crash/save-close-reopen recovery, full coordinator persistence wiring, and
+manual baseline persistence/runtime wiring.
+
 ## A-H runtime evidence follow-up at edea280
 
 The real Illustrator probe reported H failure because the generated receiver
