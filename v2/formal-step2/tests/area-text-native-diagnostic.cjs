@@ -79,6 +79,12 @@ test('copy-on-write transaction preserves old active on failure and queues retir
 test('cleanup report is emitted once for one owned entry',()=>{
   const entry={},calls=[];assert.equal(D.cleanupOnce(entry,()=>calls.push('remove')),true);assert.equal(D.cleanupOnce(entry,()=>calls.push('remove')),false);assert.deepEqual(calls,['remove']);
 });
+test('RenderSpec literal quoting preserves text and escapes ES3 line separators',()=>{
+  const value="日本語\\\\引用'\r\n"+String.fromCharCode(0x2028)+'区切り'+String.fromCharCode(0x2029);
+  const quoted=D.quoteValue(value);
+  assert.match(quoted,/日本語/);assert.match(quoted,/\\\\/);assert.match(quoted,/\\'/);assert.match(quoted,/\\r/);assert.match(quoted,/\\n/);assert.match(quoted,/\\u2028/);assert.match(quoted,/\\u2029/);
+  assert.equal(quoted.indexOf(String.fromCharCode(0x2028)),-1);assert.equal(quoted.indexOf(String.fromCharCode(0x2029)),-1);
+});
 test('generated H receiver body parses with full RenderSpec payload',()=>{
   const spec={schema:'formal-area-text-render-spec:v1',rendererMode:'area-text-native',rendererVersion:'area-text-native-v1',geometryVersion:'area-text-rectangle-v1',requestId:'r',sourceFrameId:'f',annotationId:'a',logicalSegmentId:'s',generationId:'g',physicalId:'p',reading:'かな',singleCharacter:false,appearance:{fontName:'TestFont',fontSize:8,manualDeltaX:0,widthScale:1,gapEm:.15},geometry:{autoLeft:10,autoTop:20,autoWidth:40,boxHeight:12},composerPolicy:{justification:'full',singleWordJustification:'full',oneCharacterPolicy:'center',glyphScaling:{minimum:100,desired:100,maximum:100},letterSpacing:{minimum:null,desired:null,maximum:null},wordSpacing:{minimum:null,desired:null,maximum:null},trackingCandidates:[0,-25,-50,-75,-100]},finalLeft:10,finalTop:20,finalWidth:40,finalHeight:12};
   const body=D.buildReceiverBody(JSON.stringify(spec),JSON.stringify('C:/repo'));

@@ -126,6 +126,15 @@ test('native probe compares fresh geometry instead of resizing an existing frame
   assert.ok(!source.includes('textPath.width ='));
 });
 
+test('C/D visual fixtures survive until checkpoint and cleanup follows continuation',()=>{
+  const source=fs.readFileSync(path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Probe.jsx'),'utf8');
+  const c=source.indexOf('function runC()'), d=source.indexOf('function runD()'), checkpoint=source.indexOf('function runVisualCheckpoint()'), call=source.indexOf('runVisualCheckpoint(); cleanupOwnedFixtures(); runHProductionScaffold();');
+  assert.ok(c>=0 && d>=0 && checkpoint>=0 && call>=0);
+  assert.ok(source.slice(c,checkpoint).indexOf('cleanup(a)')<0);assert.ok(source.slice(d,checkpoint).indexOf('cleanup(a)')<0);
+  assert.ok(call>checkpoint);
+  assert.match(source,/C1: 複数文字 \+ FULLJUSTIFY/);assert.match(source,/C2: 1文字 \+ CENTER/);assert.match(source,/Continue/);
+});
+
 test('A-H one-shot diagnostic is disposable, aggregated, and not production wiring',()=>{
   const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Probe.jsx');
   const source=fs.readFileSync(file,'utf8');
@@ -138,10 +147,10 @@ test('A-H one-shot diagnostic is disposable, aggregated, and not production wiri
   assert.ok(source.includes('selectFontName'));assert.ok(source.includes('app.textFonts'));assert.ok(source.includes('no-font-available'));assert.ok(source.includes('parseReceiverResult'));assert.ok(!source.includes('function runH()'));assert.ok(!source.includes('function runHRenderSpec()'));
   assert.ok(source.includes('function eq'));assert.ok(source.includes('previousSelf'));assert.ok(source.includes('nextSelf'));assert.ok(source.includes('pathAlreadyGone'));assert.ok(source.includes('tracking=') && source.includes('stopReason='));
   assert.ok(source.includes('bt.onTimeout'));assert.ok(source.includes('sendWithTimeout'));const diagnosticSource=fs.readFileSync(path.join(root,'v2','formal-step2','area-text-native-diagnostic.js'),'utf8');assert.ok(diagnosticSource.includes('message.timeout'));assert.ok(diagnosticSource.includes('result-unknown-after-send-timeout'));assert.ok(source.includes('callback-timeout'));assert.ok(source.includes('renderSpecLiteral'));
-  assert.ok(source.includes('Window("dialog"'));assert.ok(source.includes('report.join("\\n")'));
+  assert.ok(source.includes('Window("dialog"'));assert.ok(source.includes('report.join("\\n")'));assert.ok(source.includes('runVisualCheckpoint'));assert.ok(source.includes('cleanupOwnedFixtures'));
   assert.ok(source.includes('app.documents.add()'));assert.ok(source.includes('DONOTSAVECHANGES'));
   assert.ok(source.includes('var TRACKING = [0, -25, -50, -75, -100]'));
   assert.ok(source.includes('pendingH'));assert.ok(source.includes('completeH'));assert.ok(source.includes('finalizeReport'));assert.ok(source.includes('function summary()'));
   assert.ok(!source.includes('source.note'));assert.ok(!source.includes('kind = TextType.AREATEXT'));
-  assert.ok(!source.includes('TextType.POINTTEXT'));assert.ok(!source.includes('app.activeDocument'));
+  assert.ok(!source.includes('TextType.POINTTEXT'));assert.ok(!source.includes('app.activeDocument'));assert.ok(diagnosticSource.includes('quoteValue'));assert.ok(source.includes('FormalAreaTextNativeDiagnostic.quoteValue'));
 });

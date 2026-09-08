@@ -259,6 +259,36 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## C/D visual checkpoint and RenderSpec separator escaping at d55ef1e follow-up
+
+C1/C2 and D1-D4 are now retained in the disposable diagnostic document until
+an explicit ScriptUI visual-checkpoint dialog is dismissed. The dialog names
+the multi-character FULLJUSTIFY, single-character CENTER, expected-fit, and
+expected-nonfit fixtures. Only after continuation are all owned fixtures
+cleaned; H then runs, and the existing final aggregated A-H report and
+DONOTSAVECHANGES close path remain unchanged.
+
+The diagnostic RenderSpec serializer now delegates string literal escaping to
+the shared ES3-safe helper. Backslashes, quotes, CR/LF, U+2028, and U+2029 are
+escaped without emitting raw JavaScript line separators. A regression test
+covers Japanese text, quotes, backslashes, CR/LF, and both Unicode separators;
+the generated H receiver parse and execution/return tests remain active.
+
+Exact validation commands and results for this follow-up (Acorn 8.15.0 was
+resolved through the existing external pinned `NODE_PATH` because this
+environment has no local `node_modules/acorn`):
+
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/*.cjs`: **249/249 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/area-text-native-static.cjs`: **12/12 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/area-text-native-diagnostic.cjs`: **15/15 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files; diagnostic entrypoint PASS)**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **9/9 PASS** (the current Gate 0 runner reports all nine tests under this filter)
+- `git diff --check`: **PASS** (only Git line-ending normalization warnings)
+
+No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
+operation was performed.
+
 ## H sender timeout convergence at 1bf792d follow-up
 
 The actual Probe H sender now uses the shared `sendWithTimeout()` flow. It

@@ -61,6 +61,9 @@ var FormalAreaTextNativeDiagnostic = (function () {
         value = String(value || "");
         return value.substring(0, prefix.length) === prefix;
     }
+    function quoteValue(value) {
+        return "'" + String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r/g, "\\r").replace(/\n/g, "\\n").replace(new RegExp(String.fromCharCode(0x2028), "g"), "\\u2028").replace(new RegExp(String.fromCharCode(0x2029), "g"), "\\u2029") + "'";
+    }
     function withinTolerance(actual, expected, tolerance) {
         var delta;
         if (typeof actual !== "number" || typeof expected !== "number" || typeof tolerance !== "number" || isNaN(actual) || isNaN(expected) || isNaN(tolerance) || tolerance < 0) throw Error("non-numeric-tolerance");
@@ -104,6 +107,6 @@ var FormalAreaTextNativeDiagnostic = (function () {
         for (var i = 0; i < state.queue.length; i++) copy.queue.push(state.queue[i]);
         try { result = action(copy); return result; } catch (e) { return { state: state, failed: true, reason: e.message || String(e) }; }
     }
-    return { runTracking: runTracking, aggregateExpectedFits: aggregateExpectedFits, buildSummary: buildSummary, reportGate: reportGate, completionGate: completionGate, hCompletion: hCompletion, sendWithTimeout: sendWithTimeout, withinTolerance: withinTolerance, parseReceiverResult: parseReceiverResult, buildReceiverBody: buildReceiverBody, cleanupOnce: cleanupOnce, transaction: transaction };
+    return { runTracking: runTracking, aggregateExpectedFits: aggregateExpectedFits, buildSummary: buildSummary, reportGate: reportGate, completionGate: completionGate, hCompletion: hCompletion, sendWithTimeout: sendWithTimeout, withinTolerance: withinTolerance, quoteValue: quoteValue, parseReceiverResult: parseReceiverResult, buildReceiverBody: buildReceiverBody, cleanupOnce: cleanupOnce, transaction: transaction };
 }());
 if (typeof module !== "undefined") module.exports = FormalAreaTextNativeDiagnostic;
