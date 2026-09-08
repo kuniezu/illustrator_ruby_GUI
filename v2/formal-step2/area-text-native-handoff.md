@@ -263,6 +263,54 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## Isolated note restart scaffold at comment 5584247546
+
+The one-shot diagnostic branch now contains an isolated ES3-compatible native
+note store in `area-text-native-store.js` and a thin note adapter in
+`area-text-native-note-adapter.js`. The store uses the exact namespace
+`[v2-formal-step2-native:v1]` and a deterministic tagged serialization rather
+than JSON, eval, or executable payloads. It persists the authoritative
+`rendererMode`, `manifestRevision`, `activeBindings`, complete host-produced
+`renderRecords` (identity, generation/request/version fields, auto/applied
+geometry, tracking, font, justification, fit reason, and evidence),
+`operation` request/base/phase/candidate state, and `retirementQueue`.
+
+Reads and writes are strict: duplicate, unknown-version, broken, malformed,
+non-finite, duplicate-identity, active/retirement-overlap, and incomplete
+record/operation states fail closed. Existing note bytes, including the
+FormalMulti block, are preserved byte-for-byte outside replacement of the
+native block. Optimistic update requires the exact expected note and verifies
+the exact written note plus parsed manifest readback.
+
+Restart planning is deterministic and does not invent a request or candidate:
+
+- `prepare` -> `reprepare`
+- `verified` -> `reprepare-reverify`
+- `activated` with retirement queue -> `cleanup-retirement`
+- `activated` without queue -> `finish-operation`
+- no operation with queue -> `cleanup-retirement`
+- no operation and no queue -> `idle`
+- malformed manifest -> `manual-recovery-required`
+
+The store and adapter are intentionally not included by any production
+entrypoint, persistence adapter, renderer, or activation path. This is a
+restart/coexistence scaffold only; no Illustrator runtime evidence is claimed.
+
+Exact validation for this dispatch (2026-09-08):
+
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/area-text-native-store.cjs`: **6/6 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/area-text-native-store.cjs v2/formal-step2/tests/area-text-native-static.cjs`: **19/19 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/*.cjs`: **268/268 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/area-text-native.cjs`: **28/28 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/area-text-native-static.cjs`: **13/13 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (32 production files; diagnostic entrypoint PASS)**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `$env:NODE_PATH='D:\\data\\codex\\acorn-runtime\\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **9/9 PASS; generated BridgeTalk parse case PASS**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, production wiring, main-branch merge, PR, or Issue
+operation was performed.
+
 ## Source-manifest transaction hardening at 5583881276
 
 Dispatch source: Issue #14 comment

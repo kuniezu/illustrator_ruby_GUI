@@ -18,6 +18,18 @@ test('native pure helpers parse in ordinary JavaScript',()=>{
   parse(path.join('v2','formal-step2','area-text-render-spec.js'));
 });
 
+test('isolated native note store and adapter parse without executable payload support',()=>{
+  const store=parse(path.join('v2','formal-step2','area-text-native-store.js'));
+  const adapter=parse(path.join('v2','formal-step2','area-text-native-note-adapter.js'));
+  assert.ok(store.includes('[v2-formal-step2-native:v1]'));
+  assert.ok(store.includes('function restartPlan'));
+  assert.ok(store.includes('function update'));
+  assert.ok(!store.includes('JSON.parse'));
+  assert.ok(!store.includes('eval('));
+  assert.ok(adapter.includes('FormalAreaTextNativeStore.update'));
+  assert.ok(!adapter.includes('source.note'));
+});
+
 test('native backend scaffold parses and only creates fresh area text candidates',()=>{
   const source=parse(path.join('v2','formal-step2','area-text-native-backend.jsx'));
   assert.ok(source.includes('layer.pathItems.rectangle'));
