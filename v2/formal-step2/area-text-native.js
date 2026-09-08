@@ -173,8 +173,8 @@ var FormalAreaTextNative = (function () {
         try { next = frame && frame.nextFrame ? frame.nextFrame : null; } catch (e2) { return { ok: false, reason: "threading-unverified" }; }
         try { previousSelf = previous === frame; } catch (e3) { return { ok: false, reason: "threading-unverified" }; }
         try { nextSelf = next === frame; } catch (e4) { return { ok: false, reason: "threading-unverified" }; }
-        if (previousSelf || nextSelf) return { ok: false, nonThreaded: false, reason: "threading-self-reference" };
-        return { ok: true, nonThreaded: !previous && !next, previous: previous, next: next };
+        if (previousSelf) return { ok: false, nonThreaded: false, reason: "threading-previous-self-reference" };
+        return { ok: true, nonThreaded: !previous && (!next || nextSelf), previous: previous, next: next, nextSelf: nextSelf };
     }
 
     function isRetryableFitReason(reason) {
@@ -193,7 +193,8 @@ var FormalAreaTextNative = (function () {
         if (!integer(observation.rangeStart) || !integer(observation.rangeEnd) || observation.rangeEnd < observation.rangeStart) return fitFailure("fit-range-invalid");
         rangeSpan = observation.rangeEnd - observation.rangeStart;
         if (rangeSpan !== reading.length) return fitFailure("fit-range-span-mismatch");
-        if (!observation.lines || observation.lines.length !== 1) return fitFailure("fit-line-count");
+        if (!observation.lines || observation.lines.length === 0) return fitFailure("fit-zero-lines");
+        if (observation.lines.length !== 1) return fitFailure("fit-line-count");
         line = observation.lines[0];
         if (!integer(line.start) || !integer(line.end)) return fitFailure("fit-line-range-invalid");
         if (line.start !== observation.rangeStart || line.end !== observation.rangeEnd) return fitFailure("fit-line-coverage-mismatch");

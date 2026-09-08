@@ -63,7 +63,7 @@
             detail.push(safe("justification", function () { return range.paragraphAttributes.justification; })); detail.push(safe("singleWordJustification", function () { return range.paragraphAttributes.singleWordJustification; }));
             detail.push(safe("glyphScaling", function () { return range.paragraphAttributes.minimumGlyphScaling + "/" + range.paragraphAttributes.desiredGlyphScaling + "/" + range.paragraphAttributes.maximumGlyphScaling; }));
             detail.push(safe("letterSpacing", function () { return range.paragraphAttributes.minimumLetterSpacing + "/" + range.paragraphAttributes.desiredLetterSpacing + "/" + range.paragraphAttributes.maximumLetterSpacing; }));
-            add(id, "OBSERVE", detail.join(",")); return { first: first, second: second, stable: snapshotKey(first) === snapshotKey(second) };
+            add(id, "OBSERVE", detail.join(",")); return { frame: frame, first: first, second: second, stable: snapshotKey(first) === snapshotKey(second) };
         } catch (e) { add(id, "FAIL", "observe=" + s(e.message || e)); return null; }
     }
     function fit(id, entry, expected) {
@@ -75,6 +75,15 @@
             if (snap.lines.length === 1) { line = snap.lines[0]; if (line.start !== snap.start || line.end !== snap.end || line.contents !== expected) { ok = false; reason.push("coverage"); } }
             add(id, ok ? "FIT_PASS" : "FIT_NONFIT", ok ? "full-one-line-coverage" : reason.join("/")); return ok;
         } catch (e) { add(id, "FAIL", "fit=" + s(e.message || e)); return false; }
+    }
+    function sharedFit(id, observation, expected) {
+        var first = observation && observation.first, threading, result, normalized;
+        if (!first) { add(id, "FAIL", "fit=observation-missing"); return { ok: false, reason: "fit-observation-missing", retryable: false }; }
+        threading = FormalAreaTextNative.classifyThreading(observation.frame);
+        normalized = { horizontal: true, rectangular: true, nonThreaded: threading.ok && threading.nonThreaded === true, stable: observation.stable, frameContents: first.frameContents, rangeContents: first.rangeContents, rangeStart: first.start, rangeEnd: first.end, lines: first.lines };
+        result = FormalAreaTextNative.verifyOneLineFit(normalized, expected);
+        add(id, result.ok ? "FIT_PASS" : "FIT_NONFIT", "reason=" + result.reason + ",retryable=" + result.retryable);
+        return result;
     }
     function policy(id, entry, one) {
         var range = entry.frame.textRange;
@@ -126,13 +135,35 @@
             range.characterAttributes.tracking = trackingValue; observation = observe("E" + trackingValue, entry);
             if (!observation || !observation.stable) { add("E", "TRIAL", "tracking=" + trackingValue + ",fit=false,retryable=false,stopReason=observation-unstable"); return { ok: false, retryable: false, reason: "observation-unstable" }; }
             if (entry.frame.kind !== TextType.AREATEXT || entry.frame.orientation !== TextOrientation.HORIZONTAL || !FormalAreaTextNative.classifyThreading(entry.frame).ok || !FormalAreaTextNative.classifyThreading(entry.frame).nonThreaded) { add("E", "TRIAL", "tracking=" + trackingValue + ",fit=false,retryable=false,stopReason=identity-or-threading-mismatch"); return { ok: false, retryable: false, reason: "identity-or-threading-mismatch" }; }
-            fitResult = fit("E" + trackingValue, entry, "あいうえおかきくけこ"); stable = fitResult; add("E", "TRIAL", "tracking=" + trackingValue + ",fit=" + fitResult + ",retryable=true,stopReason=" + (fitResult ? "verified-fit" : "coverage-nonfit"));
-            return { ok: stable, retryable: stable ? false : FormalAreaTextNative.isRetryableFitReason("fit-line-coverage-mismatch"), reason: stable ? "verified-fit" : "fit-line-coverage-mismatch" };
+            fitResult = sharedFit("E" + trackingValue, observation, "あいうえおかきくけこ"); stable = fitResult.ok; add("E", "TRIAL", "tracking=" + trackingValue + ",fit=" + stable + ",retryable=" + fitResult.retryable + ",stopReason=" + fitResult.reason);
+            return fitResult;
         });
         add("E", result.ok ? "PASS" : "MANUAL_REQUIRED", "firstVerified=" + (result.ok ? result.tracking : "none") + ",trials=" + result.trials.length + ",bounded=" + TRACKING.join("/"));
         outcome("E", result.ok ? "PASS" : "MANUAL_REQUIRED"); cleanup(entry);
     }
-    function runHProductionScaffold() { var spec, root, body, bt, expected, parsed; pendingH = 1; hCompleted = false; try { spec = makeHSpec(); root = quote(File($.fileName).parent.parent.fsName); body = FormalAreaTextNativeDiagnostic.buildReceiverBody(renderSpecLiteral(spec), root); if (typeof BridgeTalk === "undefined") { completeH("CAPABILITY_UNAVAILABLE", "BridgeTalk-unavailable"); return; } expected = { schema: spec.schema, rendererMode: spec.rendererMode, rendererVersion: spec.rendererVersion, geometryVersion: spec.geometryVersion, requestId: spec.requestId, sourceFrameId: spec.sourceFrameId, annotationId: spec.annotationId, logicalSegmentId: spec.logicalSegmentId, generationId: spec.generationId, physicalId: spec.physicalId, reading: spec.reading, singleCharacter: spec.singleCharacter, finalGeometry: spec.finalLeft + ":" + spec.finalTop + ":" + spec.finalWidth + ":" + spec.finalHeight, fontName: spec.appearance.fontName }; bt = new BridgeTalk(); bt.target = BridgeTalk.getSpecifier("illustrator"); bt.body = body; bt.onResult = function (result) { parsed = FormalAreaTextNativeDiagnostic.parseReceiverResult(result.body, expected); if (parsed.status === "PASS") completeH("PASS", "complete-RenderSpec-E2E fontName=" + spec.appearance.fontName + " receiver=" + parsed.detail); else if (parsed.status === "CAPABILITY_UNAVAILABLE") completeH("CAPABILITY_UNAVAILABLE", "complete-RenderSpec-E2E reason=" + parsed.reason); else completeH("FAIL", "complete-RenderSpec-E2E reason=" + parsed.reason); }; bt.onError = function (error) { completeH("CAPABILITY_UNAVAILABLE", "complete-RenderSpec-E2E receiver=" + s(error.body || error)); }; bt.onTimeout = function () { completeH("CAPABILITY_UNAVAILABLE", "reason=callback-timeout"); }; if (!bt.send(30)) completeH("CAPABILITY_UNAVAILABLE", "send=false"); else add("H", "PENDING", "complete report waits for generated receiver callback fontName=" + spec.appearance.fontName); } catch (e) { completeH("CAPABILITY_UNAVAILABLE", "generated-RenderSpec-E2E=" + s(e.message || e)); } }
+    function runHProductionScaffold() {
+        var spec, root, body, bt, expected, parsed, senderGate;
+        pendingH = 1; hCompleted = false;
+        senderGate = FormalAreaTextNativeDiagnostic.hCompletion(function (event) {
+            if (event.kind === "result") {
+                if (event.value.status === "PASS") completeH("PASS", event.value.detail);
+                else if (event.value.status === "CAPABILITY_UNAVAILABLE") completeH("CAPABILITY_UNAVAILABLE", event.value.detail);
+                else completeH("FAIL", event.value.detail);
+            } else if (event.kind === "timeout") completeH("CAPABILITY_UNAVAILABLE", "reason=callback-timeout");
+            else if (event.kind === "send-false") completeH("CAPABILITY_UNAVAILABLE", "send=false");
+            else completeH("CAPABILITY_UNAVAILABLE", event.value);
+        });
+        try {
+            spec = makeHSpec(); root = quote(File($.fileName).parent.parent.fsName); body = FormalAreaTextNativeDiagnostic.buildReceiverBody(renderSpecLiteral(spec), root);
+            if (typeof BridgeTalk === "undefined") { senderGate.error("BridgeTalk-unavailable"); return; }
+            expected = { schema: spec.schema, rendererMode: spec.rendererMode, rendererVersion: spec.rendererVersion, geometryVersion: spec.geometryVersion, requestId: spec.requestId, sourceFrameId: spec.sourceFrameId, annotationId: spec.annotationId, logicalSegmentId: spec.logicalSegmentId, generationId: spec.generationId, physicalId: spec.physicalId, reading: spec.reading, singleCharacter: spec.singleCharacter, finalGeometry: spec.finalLeft + ":" + spec.finalTop + ":" + spec.finalWidth + ":" + spec.finalHeight, fontName: spec.appearance.fontName };
+            bt = new BridgeTalk(); bt.target = BridgeTalk.getSpecifier("illustrator"); bt.body = body;
+            bt.onResult = function (result) { parsed = FormalAreaTextNativeDiagnostic.parseReceiverResult(result.body, expected); senderGate.result({ status: parsed.status, detail: parsed.status === "PASS" ? "complete-RenderSpec-E2E fontName=" + spec.appearance.fontName + " receiver=" + parsed.detail : "complete-RenderSpec-E2E reason=" + (parsed.reason || "receiver-result") }); };
+            bt.onError = function (error) { senderGate.error("complete-RenderSpec-E2E receiver=" + s(error.body || error)); };
+            bt.onTimeout = function () { senderGate.timeout(); };
+            if (!bt.send(30)) senderGate.sendFalse(); else add("H", "PENDING", "complete report waits for generated receiver callback fontName=" + spec.appearance.fontName + ", documented BridgeTalk send timeout=30s");
+        } catch (e) { senderGate.error("generated-RenderSpec-E2E=" + s(e.message || e)); }
+    }
     function summary() { var order = ["A", "B", "C", "D", "E", "F", "G", "H"], out = ["SUMMARY"], i; for (i = 0; i < order.length; i++) out.push(order[i] + " " + (outcomes[order[i]] || "CAPABILITY_UNAVAILABLE")); return out.join("\n"); }
     function show() { var textReport = "FORMAL_STEP2_AREA_TEXT_NATIVE_A_H\n" + summary() + "\nDETAILS\n" + report.join("\n"), win = new Window("dialog", "AreaText-native A-H diagnostic"), box = win.add("edittext", undefined, textReport, { multiline: true, scrolling: true }); box.preferredSize = [900, 650]; win.add("button", undefined, "Close", { name: "ok" }); win.show(); }
     function finalizeReport() { if (finalized) return; if (pendingH > 0) return; finalized = true; while (owned.length) cleanup(owned.pop()); if (doc) try { doc.close(SaveOptions.DONOTSAVECHANGES); } catch (closeError) { add("META", "WARN", "close=" + s(closeError.message || closeError)); } $.writeln("FORMAL_STEP2_AREA_TEXT_NATIVE_A_H\n" + summary() + "\nDETAILS\n" + report.join("\n")); show(); }

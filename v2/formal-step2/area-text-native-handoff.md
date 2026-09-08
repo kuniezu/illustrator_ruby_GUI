@@ -303,6 +303,50 @@ retirementQueue/active intersection hardening, candidate-plan reconciliation,
 crash/save-close-reopen recovery, full coordinator persistence wiring, and
 manual baseline persistence/runtime wiring.
 
+## NEXT WORK 5582463018 correction cycle
+
+Dispatch source: Issue #14 comment [5582463018](https://github.com/kuniezu/illustrator_ruby_GUI/issues/14#issuecomment-5582463018).
+Target branch: `v2/area-text-native-one-shot-diagnostic`.
+Base reviewed HEAD: `531ea69ae6df416c1a41854b9d226ff369a3257d`.
+Stop condition: commit/push this branch and stop. No Illustrator runtime,
+production wiring, merge, PR, or Issue operation.
+
+Corrections in this cycle:
+
+- `classifyThreading()` now accepts previous-none plus next-none or strict
+  next-self as normal non-threaded AreaText, rejects previous-self and foreign
+  previous/next links, and treats property readback exceptions as unverified.
+- `verifyOneLineFit()` now distinguishes zero-lines (`fit-zero-lines`,
+  non-retryable) from multi-line/coverage shortage. Tracking fallback cannot
+  hide a height/zero-line failure.
+- Probe E now builds its fit result through the shared
+  `FormalAreaTextNative.verifyOneLineFit()` contract and preserves the actual
+  retry reason rather than mapping every non-fit to coverage shortage.
+- H now uses `FormalAreaTextNativeDiagnostic.hCompletion()` on the actual
+  sender path. Result, error, timeout, send-false, and late-callback behavior
+  converge through one exactly-once gate; the documented `bt.send(30)` timeout
+  and `bt.onTimeout` remain the runtime no-callback mechanism.
+- Regression tests now cover self-next acceptance, previous-self rejection,
+  zero-lines no-retry, shared E fit semantics, and H completion cases.
+
+Dependency reproducibility note: `package.json`/`package-lock.json` pin Acorn
+8.15.0, but this environment has no local `node_modules/acorn` and npm is not
+available. Validation therefore used the external pinned installation via
+`NODE_PATH=D:\data\codex\acorn-runtime\node_modules`; this is reported as an
+environment limitation, not as the normal repository bootstrap workflow.
+
+Validation for this correction cycle:
+
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/*.cjs`: **246/246 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/area-text-native-static.cjs`: **11/11 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (30 production files; diagnostic entrypoint PASS)**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs`: **9/9 PASS**
+- `$env:NODE_PATH='D:\data\codex\acorn-runtime\node_modules'; node --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **9/9 PASS**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime was run. The remaining deferred production-wiring
+blockers from the prior dispatch remain intentionally untouched.
+
 ## A-H runtime evidence follow-up at edea280
 
 The real Illustrator probe reported H failure because the generated receiver

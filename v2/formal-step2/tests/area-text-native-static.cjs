@@ -134,7 +134,7 @@ test('A-H one-shot diagnostic is disposable, aggregated, and not production wiri
   assert.ok(source.includes('areaText(path)'));assert.ok(source.includes('BridgeTalk'));assert.ok(source.includes('bt.send(30)'));
   assert.ok(source.includes('FormalAreaTextRenderSpec.create'));assert.ok(source.includes('FormalAreaTextRenderSpec.validate'));assert.ok(source.includes('FormalAreaTextNativeDiagnostic.buildReceiverBody'));assert.ok(source.includes('FormalAreaTextNativeDiagnostic.parseReceiverResult'));
   assert.ok(source.includes('FormalAreaTextNative.createManifest'));assert.ok(source.includes('FormalAreaTextNative.beginOperation'));assert.ok(source.includes('FormalAreaTextNative.activate'));assert.ok(source.includes('FormalAreaTextNative.captureManualAdjustment'));
-  assert.ok(source.includes('FormalAreaTextNativeDiagnostic.runTracking'));
+  assert.ok(source.includes('FormalAreaTextNativeDiagnostic.runTracking'));assert.ok(source.includes('sharedFit'));assert.ok(source.includes('FormalAreaTextNativeDiagnostic.hCompletion'));
   assert.ok(source.includes('selectFontName'));assert.ok(source.includes('app.textFonts'));assert.ok(source.includes('no-font-available'));assert.ok(source.includes('parseReceiverResult'));assert.ok(!source.includes('function runH()'));assert.ok(!source.includes('function runHRenderSpec()'));
   assert.ok(source.includes('function eq'));assert.ok(source.includes('previousSelf'));assert.ok(source.includes('nextSelf'));assert.ok(source.includes('pathAlreadyGone'));assert.ok(source.includes('tracking=') && source.includes('stopReason='));
   assert.ok(source.includes('bt.onTimeout'));assert.ok(source.includes('callback-timeout'));assert.ok(source.includes('renderSpecLiteral'));

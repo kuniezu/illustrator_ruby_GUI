@@ -86,12 +86,15 @@ test('threading identity classification distinguishes unthreaded, self, and exte
   frame.previousFrame=frame;assert.equal(N.classifyThreading(frame).ok,false);
   frame.previousFrame={};assert.equal(N.classifyThreading(frame).nonThreaded,false);
   frame.previousFrame=null;frame.nextFrame={};assert.equal(N.classifyThreading(frame).nonThreaded,false);
-  frame.nextFrame=frame;assert.equal(N.classifyThreading(frame).reason,'threading-self-reference');
+  frame.nextFrame=frame;assert.equal(N.classifyThreading(frame).ok,true);assert.equal(N.classifyThreading(frame).nonThreaded,true);
+  frame.previousFrame=frame;assert.equal(N.classifyThreading(frame).reason,'threading-previous-self-reference');
 });
 test('fit retry policy is limited to coverage shortage',()=>{
   assert.equal(N.isRetryableFitReason('fit-line-count'),true);
   assert.equal(N.isRetryableFitReason('fit-line-coverage-mismatch'),true);
-  for (const reason of ['fit-range-invalid','fit-range-span-mismatch','fit-nonthreaded-unverified','fit-observation-unstable','fit-line-range-invalid','fit-frame-contents-mismatch']) assert.equal(N.isRetryableFitReason(reason),false,reason);
+  for (const reason of ['fit-zero-lines','fit-range-invalid','fit-range-span-mismatch','fit-nonthreaded-unverified','fit-observation-unstable','fit-line-range-invalid','fit-frame-contents-mismatch']) assert.equal(N.isRetryableFitReason(reason),false,reason);
+  const zero={horizontal:true,rectangular:true,nonThreaded:true,stable:true,frameContents:'かな',rangeContents:'かな',rangeStart:0,rangeEnd:2,lines:[]};
+  assert.equal(N.verifyOneLineFit(zero,'かな').retryable,false);
 });
 
 test('tracking fallback is finite and starts from zero',()=>{
