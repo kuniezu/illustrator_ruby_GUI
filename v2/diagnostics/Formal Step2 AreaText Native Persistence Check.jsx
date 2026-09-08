@@ -63,11 +63,8 @@
     }
     function assertManifest(actual, expected) {
         var plan;
-        if (!actual || actual.rendererMode !== expected.rendererMode || actual.manifestRevision !== expected.manifestRevision) fail("manifest-header-mismatch");
-        if (actual.activeBindings.s1 !== expected.activeBindings.s1 && actual.activeBindings.s2 !== expected.activeBindings.s2) fail("manifest-active-binding-mismatch");
-        if (actual.operation.requestId !== expected.operation.requestId || actual.operation.phase !== expected.operation.phase || actual.operation.baseRevision !== expected.operation.baseRevision) fail("manifest-operation-mismatch");
-        if (actual.operation.candidateIds.length !== expected.operation.candidateIds.length || actual.operation.candidateIds[0] !== expected.operation.candidateIds[0]) fail("manifest-candidate-mismatch");
-        if (actual.retirementQueue.length !== expected.retirementQueue.length || (actual.retirementQueue.length && actual.retirementQueue[0] !== expected.retirementQueue[0])) fail("manifest-retirement-mismatch");
+        if (!actual || !expected) fail("manifest-missing");
+        if (FormalAreaTextNativeStore.serialize(actual) !== FormalAreaTextNativeStore.serialize(expected)) fail("manifest-exact-readback-mismatch");
         plan = FormalAreaTextNativeStore.restartPlan(actual);
         if (expected.operation.phase === "activated" && plan.action !== "cleanup-retirement") fail("restart-plan-cleanup-mismatch");
         if (expected.operation.phase === "verified" && (plan.action !== "reprepare-reverify" || plan.requestId !== expected.operation.requestId)) fail("restart-plan-reverify-mismatch");

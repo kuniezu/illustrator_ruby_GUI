@@ -46,6 +46,19 @@ test('native persistence runtime checkpoint is diagnostic-only and includes the 
   assert.ok(!source.includes('Formal Multi Step2.jsx'));
 });
 
+test('native persistence checkpoint uses canonical exact manifest readback',()=>{
+  const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Persistence Check.jsx');
+  const source=fs.readFileSync(file,'utf8');
+  assert.ok(source.includes('FormalAreaTextNativeStore.serialize(actual) !== FormalAreaTextNativeStore.serialize(expected)'));
+  assert.ok(!source.includes('activeBindings.s1 !== expected.activeBindings.s1 && actual.activeBindings.s2 !== expected.activeBindings.s2'));
+  const storeSource=parse(path.join('v2','formal-step2','area-text-native-store.js'));
+  const context={};
+  vm.runInNewContext(storeSource+';this.Store=FormalAreaTextNativeStore;',context);
+  const base=vm.runInNewContext("({rendererMode:'area-text-native',manifestRevision:0,activeBindings:{s1:'p1'},renderRecords:{p1:{physicalId:'p1',logicalSegmentId:'s1',generationId:'g',requestId:'r',rendererVersion:'v',geometryVersion:'g',autoLeft:1,autoWidth:2,appliedLeft:1,appliedWidth:2,appliedTop:1,appliedHeight:1,tracking:0,fontName:'f',fontSize:1,justification:'full',singleWordJustification:'full',fitReason:'fit'}},operation:null,retirementQueue:[]})",context);
+  const changed=vm.runInNewContext("({rendererMode:'area-text-native',manifestRevision:0,activeBindings:{s1:'p1'},renderRecords:{p1:{physicalId:'p1',logicalSegmentId:'s1',generationId:'g',requestId:'r',rendererVersion:'v',geometryVersion:'g',autoLeft:1,autoWidth:2,appliedLeft:1,appliedWidth:2,appliedTop:1,appliedHeight:1,tracking:0,fontName:'f',fontSize:1,justification:'full',singleWordJustification:'full',fitReason:'fit'},retired:{physicalId:'retired',logicalSegmentId:'retired',generationId:'g',requestId:'r',rendererVersion:'v',geometryVersion:'g',autoLeft:1,autoWidth:2,appliedLeft:1,appliedWidth:2,appliedTop:1,appliedHeight:1,tracking:0,fontName:'f',fontSize:1,justification:'full',singleWordJustification:'full',fitReason:'fit'}},operation:null,retirementQueue:['retired']})",context);
+  assert.notEqual(context.Store.serialize(base),context.Store.serialize(changed));
+});
+
 test('native backend scaffold parses and only creates fresh area text candidates',()=>{
   const source=parse(path.join('v2','formal-step2','area-text-native-backend.jsx'));
   assert.ok(source.includes('layer.pathItems.rectangle'));

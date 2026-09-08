@@ -263,6 +263,32 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## Exact manifest readback hardening at dispatch 5589894761
+
+The isolated persistence checkpoint now compares the complete readback
+manifest with the expected manifest using
+`FormalAreaTextNativeStore.serialize(actual) ===
+FormalAreaTextNativeStore.serialize(expected)`. The previous partial
+`activeBindings.s1/s2` comparison was removed. This covers the complete
+canonical authority, including header, active bindings, render records,
+operation/candidates, and retirement queue, before the separate restart-plan
+assertion. A static/pure regression test also proves that a changed retirement
+record/queue cannot serialize as equal and guards against the old false-PASS
+pattern.
+
+Validation from this change:
+
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/*.cjs`: **271/271 PASS**. The preload only exposes the repository's existing Acorn 8.15.0 runtime dependency; it is outside the repository and was removed after testing.
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **15/15 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (32 production files; diagnostic entrypoint PASS)**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs`: **10/10 PASS**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **10/10 PASS**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, production persistence/renderer wiring, main-branch
+merge, PR, or Issue operation was performed. The branch remains diagnostic-only
+and is ready for the requested review of this exact readback assertion.
+
 ## Persisted manifest referential hardening at comment 5584422982
 
 The isolated store now requires every active logical binding to have a
