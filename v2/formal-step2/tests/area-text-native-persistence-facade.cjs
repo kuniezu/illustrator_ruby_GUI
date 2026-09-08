@@ -1,0 +1,16 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const Store=require('../area-text-native-store.js');
+global.FormalAreaTextNativeStore=Store;
+global.FormalAreaTextNativeNoteAdapter=require('../area-text-native-note-adapter.js');
+const Facade=require('../area-text-native-persistence-facade.js');
+
+function record(id,logical){return {physicalId:id,logicalSegmentId:logical,generationId:'g1',requestId:'r1',rendererVersion:'rv1',geometryVersion:'gv1',autoLeft:10,autoWidth:40,appliedLeft:11,appliedWidth:42,appliedTop:20,appliedHeight:12,tracking:-25,fontName:'日本語 Font',fontSize:8,justification:'full',singleWordJustification:'full',fitReason:'fit-one-line-covered',evidence:{source:'test'}};}
+function manifest(){return {rendererMode:'area-text-native',manifestRevision:3,activeBindings:{s1:'p1'},renderRecords:{p1:record('p1','s1'),old:record('old','s-old')},operation:{requestId:'r1',baseRevision:3,phase:'verified',candidateIds:['p1']},retirementQueue:[]};}
+function multiNote(){return 'prefix\n[v2-formal-step2-multi:v1]\nschemaVersion=1\nrevision=0\nsourceFrameId=f\ntextSnapshot=%E7%94%B2\nrenderStatus=complete\nmanagedAnnotationIds=\n[/v2-formal-step2-multi]\nsuffix';}
+
+test('facade rejects changed source contents before note mutation',()=>{const target={contents:'changed',note:'original'},m=manifest();assert.throws(()=>Facade.update(target,'expected','original',m),/concurrent-source-change/);assert.equal(target.note,'original');});
+test('facade rejects changed note before mutation',()=>{const target={contents:'甲',note:'changed'},m=manifest();assert.throws(()=>Facade.update(target,'甲','expected',m),/concurrent-note-change/);assert.equal(target.note,'changed');});
+test('facade updates native block and preserves FormalMulti/unrelated bytes',()=>{const target={contents:'甲',note:multiNote()},m=manifest(),before=target.note,result=Facade.update(target,'甲',before,m);assert.equal(result.status,'success');assert.equal(result.sourceContents,'甲');assert.equal(Store.read(target.note).manifestRevision,3);assert.ok(target.note.indexOf('[v2-formal-step2-multi:v1]')>=0);assert.ok(target.note.indexOf('prefix\n')===0);assert.ok(target.note.indexOf('\nsuffix')>=0);assert.equal(Facade.read(target).restartPlan.action,'reprepare-reverify');});
+test('malformed native residue fails closed without mutation',()=>{const target={contents:'甲',note:'prefix\n[/v2-formal-step2-native]'},before=target.note;assert.throws(()=>Facade.update(target,'甲',before,manifest()),/orphan-close-marker/);assert.equal(target.note,before);});
+test('note readback mismatch is persistence failure without rollback claim',()=>{let target={contents:'甲',note:'original'};Object.defineProperty(target,'note',{get(){return this._note||'original';},set(value){this._note='corrupted';}});assert.throws(()=>Facade.update(target,'甲','original',manifest()),/note-readback-mismatch/);assert.equal(target._note,'corrupted');});
+test('restart classification comes from persisted readback',()=>{const target={contents:'甲',note:'original'},m=manifest();const result=Facade.update(target,'甲','original',m);assert.equal(result.restartPlan.action,'reprepare-reverify');assert.equal(result.manifest.operation.requestId,'r1');});

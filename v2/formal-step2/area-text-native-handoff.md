@@ -311,6 +311,40 @@ The preload only exposes the existing Acorn runtime from outside the
 repository and was removed after testing. Illustrator runtime was not run in
 this cycle; production persistence/renderer wiring remains unchanged.
 
+## Production-adjacent native persistence facade at comment 5590536962
+
+Added the isolated ES3-compatible
+`v2/formal-step2/area-text-native-persistence-facade.js`. It composes the
+native store and optimistic note adapter without changing production
+`persistence-adapter.jsx`, renderer orchestration, UI, or BridgeTalk.
+
+The facade reads the current source contents/note and persisted manifest,
+returns restart classification from the readback manifest, and updates only
+when both the expected source contents and exact expected note snapshot match.
+It performs exact post-write note/manifest readback and reports readback
+mismatch as persistence failure without claiming rollback. FormalMulti and
+unrelated note bytes remain owned by the existing store coexistence contract.
+
+Focused facade coverage includes changed source/note rejection before mutation,
+FormalMulti/unrelated-byte preservation, malformed residue fail-closed
+behavior, write/readback mismatch, and restart classification from persisted
+readback. The facade is intentionally not included by any production
+entrypoint.
+
+Validation:
+
+- `node --test v2/formal-step2/tests/area-text-native-persistence-facade.cjs`: **6/6 PASS**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/*.cjs`: **278/278 PASS**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **16/16 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (33 production files; diagnostic entrypoint PASS)**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs`: **10/10 PASS**
+- `node --require D:\\data\\codex\\node-path-preload.cjs --test v2/formal-step2/tests/gate-0.cjs --test-name-pattern "production generated BridgeTalk body parses as a script"`: **10/10 PASS**
+- `git diff --check`: **PASS**
+
+The Acorn preload was repository-external and removed after testing. No
+Illustrator runtime, production wiring, merge, PR, or Issue operation was
+performed. The facade remains a scaffold for later review.
+
 ## Runtime checkpoint follow-up at comment 5590047374
 
 The user runtime checkpoint passed save, reopen, exact manifest readback,

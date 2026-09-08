@@ -30,6 +30,16 @@ test('isolated native note store and adapter parse without executable payload su
   assert.ok(!adapter.includes('source.note'));
 });
 
+test('isolated native persistence facade parses and remains unwired',()=>{
+  const source=parse(path.join('v2','formal-step2','area-text-native-persistence-facade.js'));
+  assert.ok(source.includes('FormalAreaTextNativeNoteAdapter.update'));
+  assert.ok(source.includes('concurrent-source-change'));
+  assert.ok(source.includes('concurrent-note-change'));
+  assert.ok(source.includes('FormalAreaTextNativeStore.restartPlan'));
+  assert.ok(!source.includes('persistence-adapter.jsx'));
+  assert.ok(!source.includes('Formal Multi Step2.jsx'));
+});
+
 test('native persistence runtime checkpoint is diagnostic-only and includes the isolated store',()=>{
   const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Persistence Check.jsx');
   const source=fs.readFileSync(file,'utf8');
