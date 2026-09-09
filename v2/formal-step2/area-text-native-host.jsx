@@ -57,6 +57,7 @@ function FormalAreaTextNativeHost(doc, layer) {
                 observation = result.observation;
                 records.push({
                     physicalId: entry.spec.physicalId,
+                    sourceFrameId: entry.spec.sourceFrameId,
                     logicalSegmentId: entry.spec.logicalSegmentId,
                     generationId: entry.spec.generationId,
                     requestId: entry.spec.requestId,

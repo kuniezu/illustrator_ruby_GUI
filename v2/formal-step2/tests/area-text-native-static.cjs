@@ -52,6 +52,14 @@ test('isolated transaction coordinator composes pure transitions with the facade
   assert.ok(!source.includes('persistence-adapter.jsx'));
 });
 
+test('isolated recovery layer covers restart, cleanup, and source identity without production wiring',()=>{
+  const source=parse(path.join('v2','formal-step2','area-text-native-recovery.js'));
+  assert.ok(source.includes('prepare-candidates'));assert.ok(source.includes('reverify-candidates'));
+  assert.ok(source.includes('native-recovery-duplicate-candidate'));assert.ok(source.includes('sourceFrameId'));
+  assert.ok(source.includes('discardedCleanup'));assert.ok(source.includes('canFinish'));
+  assert.ok(!source.includes('persistence-adapter.jsx'));assert.ok(!source.includes('Formal Multi Step2.jsx'));
+});
+
 test('native output identity codec and backend stamping are isolated and ordered',()=>{
   const identity=parse(path.join('v2','formal-step2','area-text-native-output-identity.js'));
   const backend=parse(path.join('v2','formal-step2','area-text-native-backend.jsx'));

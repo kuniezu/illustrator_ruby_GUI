@@ -263,6 +263,38 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## NEXT WORK 5594684418 recovery boundary follow-up
+
+Dispatch source: Issue #14 comment [5594684418](https://github.com/kuniezu/illustrator_ruby_GUI/issues/14#issuecomment-5594684418).
+Target branch: `v2/area-text-native-one-shot-diagnostic`.
+Base reviewed HEAD: `525e31c6a0e25ae4a540bbb966524fc4e5002c0d`.
+Stop condition: commit/push this branch and stop. No Illustrator runtime,
+production wiring, merge, PR, or Issue operation.
+
+Added the isolated ES3-safe `area-text-native-recovery.js` layer. It provides:
+
+- executable restart plans for `prepare`, `verified`, and `activated` phases;
+- found/missing/duplicate resolver handling, with duplicate candidates failing closed;
+- sourceFrameId plus physicalId validation before activation;
+- discarded-candidate cleanup tracking that retains deletion failures and
+  converges when a resolver later reports `missing`;
+- a finish guard that remains false while cleanup IDs are still resolvable.
+
+The native host's verified records now carry `sourceFrameId` for the isolated
+activation boundary. Production persistence, renderer, UI, and activation
+entrypoints remain unwired.
+
+Focused validation:
+
+- `node --test v2/formal-step2/tests/area-text-native-recovery.cjs v2/formal-step2/tests/area-text-native-static.cjs v2/formal-step2/tests/area-text-native.cjs v2/formal-step2/tests/area-text-native-transaction-coordinator.cjs`: **63/63 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (36 production files; diagnostic entrypoint PASS)**
+- formal-step2 suite excluding `gate-0.cjs`: **279 PASS; 1 file could not load because Acorn is unavailable in this environment**
+- `node --test v2/formal-step2/tests/area-text-native-static.cjs`: **20/20 PASS**
+- `git diff --check`: **PASS**
+
+Illustrator runtime was not run. The remaining boundary is integration of this
+recovery layer with a real production host/resolver after independent review.
+
 ## Native output identity persistence checkpoint at 5593267268
 
 Added the disposable diagnostic entrypoint
