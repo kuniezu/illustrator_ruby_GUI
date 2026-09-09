@@ -246,6 +246,8 @@ test('native lifecycle checkpoint connects backend, persistence, recovery, and r
   assert.ok(source.includes('FormalAreaTextNativeOutputIdentity.resolve'));
   assert.ok(source.includes('doc.saveAs(tempFile)'));assert.ok(source.includes('app.open(tempFile)'));
   assert.ok(source.includes('duplicate-fail-closed'));assert.ok(source.includes('SaveOptions.DONOTSAVECHANGES'));
+  assert.ok(source.indexOf('duplicate =') < source.indexOf('closeAndReopen();'));
+  assert.ok(source.includes('native-recovery-duplicate-candidate'));
 });
 
 test('native probe compares fresh geometry instead of resizing an existing frame',()=>{

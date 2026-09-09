@@ -287,6 +287,18 @@ Validation:
 No Illustrator runtime, production wiring, merge, PR, or Issue close was
 performed.
 
+## Lifecycle duplicate-check ordering fix from cfa073a
+
+Moved the duplicate identity fail-closed probe before save/close/reopen while
+the original document, layer, backend, and resolver are still live. The probe
+now requires the specific `native-recovery-duplicate-candidate` error, rather
+than treating any exception as success. The post-reopen section only checks
+the persisted finished manifest and unique active `new-2` identity.
+
+Validation: static/lifecycle suite **22/22 PASS**; ExtendScript compatibility
+lint **PASS (36 production files; diagnostic entrypoint PASS)**; `git diff
+--check` **PASS**. No Illustrator runtime was run.
+
 ## Isolated Illustrator lifecycle checkpoint from ee3f75c
 
 Added `v2/diagnostics/Formal Step2 AreaText Native Lifecycle Check.jsx`.
