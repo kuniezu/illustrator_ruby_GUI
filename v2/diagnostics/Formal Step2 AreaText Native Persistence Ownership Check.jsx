@@ -1,0 +1,54 @@
+#target illustrator
+#include "../formal-step1/core.js"
+#include "../formal-step2/multi.js"
+#include "../formal-step2/multi-store.js"
+#include "../formal-step2/occurrences.js"
+#include "../formal-step2/projection.js"
+#include "../formal-step2/segments.js"
+#include "../formal-step2/area-text-native.js"
+#include "../formal-step2/area-text-native-store.js"
+#include "../formal-step2/area-text-native-note-adapter.js"
+#include "../formal-step2/area-text-native-output-identity.js"
+#include "../formal-step2/area-text-render-spec.js"
+#include "../formal-step2/area-text-native-backend.jsx"
+#include "../formal-step2/area-text-native-host.jsx"
+#include "../formal-step2/area-text-native-persistence-facade.js"
+#include "../formal-step2/area-text-native-transaction-coordinator.js"
+#include "../formal-step2/area-text-native-integration.js"
+
+(function () {
+    var report = [], doc = null, reopened = null, layer = null, source = null, backend = null, tempFile = null;
+    var sourceId = "native-persistence-ownership-source", unmanagedName = "NativePersistenceOwnership-Unmanaged";
+    var candidates = {};
+    function text(v) { return v === undefined || v === null ? "" : String(v); }
+    function emit(s, id, d) { report.push(s + " " + id + (d ? " | " + d : "")); }
+    function fail(m) { throw Error(m); }
+    function fontName() { var n = ""; try { n = text(source.textRange.characterAttributes.textFont.name); } catch (e) {} if (!n) fail("font-unavailable"); return n; }
+    function policy() { return { justification: "full", singleWordJustification: "full", oneCharacterPolicy: "center", minimumGlyphScaling: 100, desiredGlyphScaling: 100, maximumGlyphScaling: 100, minimumLetterSpacing: null, desiredLetterSpacing: null, maximumLetterSpacing: null, minimumWordSpacing: null, desiredWordSpacing: null, maximumWordSpacing: null, trackingCandidates: [0, -25, -50, -75, -100] }; }
+    function spec(id, logical, annotation, reading, left, width, request, font) { return FormalAreaTextRenderSpec.create({ sourceFrameId: sourceId, annotationId: annotation, logicalSegmentId: logical, reading: reading, appearance: { fontName: font, fontSize: 8, manualDeltaX: 0, widthScale: 1, gapEm: .15 }, geometry: { autoLeft: left, autoTop: 420, autoWidth: width, boxHeight: 70 }, meta: { requestId: request, generationId: "generation-" + id, physicalId: id }, composerPolicy: policy() }); }
+    function find(batch, id) { var i; for (i = 0; i < batch.candidates.length; i++) if (batch.candidates[i].spec.physicalId === id) return batch.candidates[i].candidate; return null; }
+    function resolve(id, target) { return FormalAreaTextNativeOutputIdentity.resolve((target || doc).textFrames, sourceId, id); }
+    function dispose(id) { if (candidates[id]) { backend.disposeCandidate(candidates[id]); delete candidates[id]; } }
+    function removeOwned(id, target) { var found = resolve(id, target); if (found.status === "found") { found.frame.remove(); return true; } return false; }
+    function activateBatch(request, specs, retireIds) {
+        var host = FormalAreaTextNativeHost(doc, layer), seam = FormalAreaTextNativeIntegration.create({ planAll: function () { return { status: "complete" }; } }, host, FormalAreaTextNativeTransactionCoordinator), tx = { source: source, requestId: request, expectedContents: source.contents, expectedNote: source.note }, prepared, verified, i, bindings, records, activation;
+        prepared = seam.planAndPrepare({}, source.contents, {}, specs, tx); if (prepared.status !== "prepared") fail("prepare-failed");
+        for (i = 0; i < specs.length; i++) candidates[specs[i].physicalId] = find(prepared.batch, specs[i].physicalId);
+        verified = seam.verify(prepared); if (!verified.durableVerify || verified.durableVerify.status !== "success") fail("verify-failed");
+        bindings = host.bindingsByLogicalSegmentId(verified.batch); records = host.recordsByPhysicalId(verified.batch); activation = FormalAreaTextNativeTransactionCoordinator.activate(source, tx.expectedContents, tx.expectedNote, request, bindings, records, retireIds || [], []);
+        FormalAreaTextNativeTransactionCoordinator.finish(source, source.contents, activation.note, request); return activation;
+    }
+    function findSource(target) { var i; for (i = 0; i < target.textFrames.length; i++) if (text(target.textFrames[i].name) === "FormalStep2NativePersistenceOwnershipSource") return target.textFrames[i]; return null; }
+    function cleanup() { var k, ok = true; for (k in candidates) if (Object.prototype.hasOwnProperty.call(candidates, k)) try { dispose(k); } catch (e) { ok = false; emit("FAIL", "cleanup-owned", e.message || e); } try { if (reopened) reopened.close(SaveOptions.DONOTSAVECHANGES); if (doc) doc.close(SaveOptions.DONOTSAVECHANGES); } catch (e2) { ok = false; emit("FAIL", "cleanup-document", e2.message || e2); } if (tempFile) try { if (tempFile.exists) ok = tempFile.remove() && ok; } catch (e3) { ok = false; emit("FAIL", "cleanup-file", e3.message || e3); } if (ok) emit("PASS", "cleanup", "disposable document and temporary file removed"); }
+    try {
+        var name, unmanaged, logical, frame, projected, a, b, hint, multi, initialSpecs, ids, i, state, activeBefore, activeAfter, reopenedState, oldId = "persist-a1", newId = "persist-a1-r2";
+        if (app.documents.length) fail("existing-document-open; refusing-to-touch-user-document");
+        doc = app.documents.add(); layer = doc.layers.add(); source = doc.textFrames.areaText(layer.pathItems.rectangle(620, 100, 420, 180)); source.name = "FormalStep2NativePersistenceOwnershipSource"; source.contents = "一張羅 甲乙"; source.note = ""; unmanaged = doc.textFrames.add(); unmanaged.name = unmanagedName; unmanaged.contents = "keep"; backend = FormalAreaTextNativeBackend(doc, layer); name = fontName();
+        logical = FormalLongText.extract(source.contents); logical.occurrences[0].reading = "いっちょうら"; logical.occurrences[0].readingConfirmed = true; logical.occurrences[1].reading = "こうおつ"; logical.occurrences[1].readingConfirmed = true; frame = FormalMulti.createFrame(source.contents); frame.sourceFrameId = sourceId; frame.occurrences = logical.occurrences; projected = FormalMultiProjection.project(frame); a = projected.annotations[0].annotationId; b = projected.annotations[1].annotationId; hint = { baseBoundaryAfter: 2, readingBoundaryAfter: 5, baseText: "一張羅", reading: "いっちょうら", baseRevision: projected.revision, readingRevision: projected.revision }; projected.annotations[0].splitHints = [hint]; FormalMulti.validate(projected); source.note = FormalMultiStore.write(source.note, projected); multi = FormalMultiStore.read(source.note); if (!multi || multi.annotations.length !== 2 || multi.annotations[0].splitHints.length !== 1) fail("multi-split-hint-persist-failed"); emit("PASS", "fixture", "annotations=2;splitHint=2,5;source-and-unmanaged-created");
+        initialSpecs = [spec(oldId, "persist-a-0", a, "いっちょう", 120, 120, "persist-r1", name), spec("persist-a2", "persist-a-1", a, "ら", 240, 60, "persist-r1", name), spec("persist-b1", "persist-b-0", b, "こうおつ", 320, 120, "persist-r1", name)]; activateBatch("persist-r1", initialSpecs, []); ids = [oldId, "persist-a2", "persist-b1"]; for (i = 0; i < ids.length; i++) if (resolve(ids[i]).status !== "found") fail("initial-active-missing-" + ids[i]); emit("PASS", "initial-activation", "active annotations=2;managed segments=3");
+        tempFile = new File(Folder.temp.fsName + "/FormalStep2NativePersistenceOwnership-" + String((new Date()).getTime()) + ".ai"); doc.saveAs(tempFile); doc.close(SaveOptions.DONOTSAVECHANGES); doc = null; candidates = {}; reopened = app.open(tempFile); source = findSource(reopened); if (!source) fail("reopened-source-missing"); state = FormalAreaTextNativePersistenceFacade.read(source); if (!state.manifest || state.manifest.operation !== null) fail("reopened-manifest-not-finished"); multi = FormalMultiStore.read(source.note); if (!multi || multi.annotations.length !== 2 || multi.annotations[0].splitHints.length !== 1) fail("reopened-splithint-invalid"); for (i = 0; i < ids.length; i++) if (resolve(ids[i], reopened).status !== "found") fail("reopened-active-missing-" + ids[i]); if (text(source.contents) !== "一張羅 甲乙") fail("source-contents-changed"); unmanaged = null; for (i = 0; i < reopened.textFrames.length; i++) if (text(reopened.textFrames[i].name) === unmanagedName) unmanaged = reopened.textFrames[i]; if (!unmanaged || text(unmanaged.contents) !== "keep") fail("unmanaged-changed"); emit("PASS", "save-close-reopen", "manifest,2 annotations,SplitHint,3 active outputs,source,unmanaged restored");
+        activeBefore = FormalAreaTextNativeStore.serialize(state.manifest); state = FormalAreaTextNativePersistenceFacade.read(source); activeAfter = FormalAreaTextNativeStore.serialize(state.manifest); if (activeBefore !== activeAfter) fail("reconcile-not-idempotent"); emit("PASS", "reconcile-after-reopen", "manifest active authority stable;no duplicate generation");
+        doc = reopened; reopened = null; layer = doc.layers[0]; backend = FormalAreaTextNativeBackend(doc, layer); activateBatch("persist-r2", [spec(newId, "persist-a-0", a, "いっちょうら", 120, 180, "persist-r2", name)], [oldId, "persist-a2"]); if (resolve(newId).status !== "found") fail("copy-on-write-new-active-missing"); state = FormalAreaTextNativePersistenceFacade.read(source); if (state.manifest.activeBindings["persist-a-0"] !== newId) fail("copy-on-write-binding-invalid"); emit("PASS", "copy-on-write-after-reopen", "new active survives;old generation queued for retirement"); if (!removeOwned(oldId, doc) || !removeOwned("persist-a2", doc)) fail("old-generation-cleanup-missing"); emit("PASS", "retirement-cleanup", "owned old generation removed after durable activation without rollback");
+    } catch (e) { emit("FAIL", "runtime", e.message || e); }
+    cleanup(); $.writeln(report.join("\n")); alert("Formal Step 2 AreaText-native persistence ownership checkpoint\n" + report.join("\n"));
+}());
