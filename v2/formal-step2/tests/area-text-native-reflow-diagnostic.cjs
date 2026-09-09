@@ -31,7 +31,9 @@ test('reflow diagnostic is ES3-parseable and fail-closed', () => {
     'rangeSpan',
     'contentsLength',
     'textPathHeight',
-    'readbackPassed'
+    'readbackPassed',
+    'fitSafeReading',
+    'runtimeReading'
   ]) assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.doesNotMatch(source, /source\.width\s*=/);
   assert.doesNotMatch(source, /\.overflows\b/);
