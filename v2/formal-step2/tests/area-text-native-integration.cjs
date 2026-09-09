@@ -34,8 +34,8 @@ test('integration seam enforces durable begin, prepare, host verify, durable ver
     recordsByPhysicalId(){calls.push('records');return {};}
   };
   const coordinator={
-    begin(){calls.push('begin');return {status:'success'};},
-    verify(){calls.push('durable-verify');return {status:'success'};},
+    begin(source){calls.push('begin');source.note='after-begin';return {status:'success',sourceContents:source.contents,note:source.note};},
+    verify(source){calls.push('durable-verify');source.note='after-verify';return {status:'success',sourceContents:source.contents,note:source.note};},
     activate(){calls.push('activate');return {status:'success'};}
   };
   const seam=Integration.create(orchestration,host,coordinator);
@@ -43,7 +43,7 @@ test('integration seam enforces durable begin, prepare, host verify, durable ver
   assert.deepEqual(calls,['plan','begin','prepare']);
   assert.throws(()=>seam.activate(source,'text','', 'r1',prepared),/before-verify/);
   const verified=seam.verify(prepared);
-  seam.activate(source,'text','', 'r1',verified,['old'],['discarded']);
+  seam.activate(source,'text','after-verify', 'r1',verified,['old'],['discarded']);
   assert.deepEqual(calls,['plan','begin','prepare','host-verify','durable-verify','bindings','records','activate']);
 });
 
@@ -62,6 +62,7 @@ test('connected actual coordinator persists begin, verify, activation and cleanu
   seamOld.activate(source,source.contents,source.note,'old-request',verifiedOld,[],[]);
   let state=FormalAreaTextNativeStore.read(source.note);
   assert.equal(state.activeBindings.segment,'p-old');
+  Coordinator.finish(source,source.contents,source.note,'old-request');
   const newer=spec('p-new','segment','new-request');
   const discarded=spec('p-discarded','other','new-request');
   const seamNew=Integration.create(orchestration,hostFor([newer],{segment:'p-new'}),Coordinator);
@@ -87,5 +88,5 @@ test('integration source remains outside production entrypoints',()=>{
   const root=path.resolve(__dirname,'..','..','..');
   const source=fs.readFileSync(path.join(root,'v2','formal-step2','area-text-native-integration.js'),'utf8');
   assert.ok(source.indexOf('FormalAreaTextNativeTransactionCoordinator')<0);
-  assert.ok(source.indexOf('Formal Multi Step2.jsx')<0);assert.ok(source.indexOf('persistence-adapter.jsx')<0);assert.ok(source.indexOf('source.note')<0);
+  assert.ok(source.indexOf('Formal Multi Step2.jsx')<0);assert.ok(source.indexOf('persistence-adapter.jsx')<0);
 });

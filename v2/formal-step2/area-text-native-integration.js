@@ -1,7 +1,11 @@
 /* Production-adjacent Gate D integration seam. No UI or production persistence wiring. */
 var FormalAreaTextNativeIntegration = (function () {
     function fail(message) { throw Error(message); }
-    function own(object, key) { return Object.prototype.hasOwnProperty.call(object, key); }
+    function advanceExpectedState(transaction, result) {
+        if (!result || result.status !== "success" || typeof result.note !== "string" || typeof result.sourceContents !== "string") fail("native-integration-durable-readback-invalid");
+        if (result.sourceContents !== transaction.expectedContents) fail("native-integration-source-readback-mismatch");
+        transaction.expectedNote = result.note;
+    }
     function requireTransaction(transaction) {
         if (!transaction || !transaction.source || typeof transaction.source.contents !== "string" || typeof transaction.source.note !== "string") fail("native-integration-transaction-required");
         if (typeof transaction.requestId !== "string" || !transaction.requestId) fail("native-integration-request-required");
@@ -27,6 +31,7 @@ var FormalAreaTextNativeIntegration = (function () {
             requireTransaction(transaction);
             tx = transaction;
             begun = coordinator.begin(tx.source, tx.expectedContents, tx.expectedNote, tx.requestId, candidateIds(renderSpecs));
+            advanceExpectedState(tx, begun);
             batch = host.prepareAll(renderSpecs);
             return { status: "prepared", plan: plan, batch: batch, transaction: tx, durableBegin: begun };
         }
@@ -38,6 +43,7 @@ var FormalAreaTextNativeIntegration = (function () {
             prepared.batch = host.verifyAll(prepared.batch);
             if (!prepared.batch || prepared.batch.status !== "verified") fail("native-integration-not-verified");
             durable = coordinator.verify(tx.source, tx.expectedContents, tx.expectedNote, tx.requestId);
+            advanceExpectedState(tx, durable);
             prepared.durableVerify = durable;
             prepared.status = "verified";
             return prepared;
