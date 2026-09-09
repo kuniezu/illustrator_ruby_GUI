@@ -55,6 +55,8 @@
         if (String(active.frame.note) !== activeNote) fail("restamp-not-byte-identical");
         try { FormalAreaTextNativeOutputIdentity.stamp(active.frame, { sourceFrameId: sourceFrameId, physicalId: "replacement" }); fail("replacement-accepted"); } catch (replaceError) { if (String(replaceError.message || replaceError) !== "native-output-identity-immutable") throw replaceError; }
         if (String(active.frame.note) !== activeNote) fail("replacement-mutated-note");
+        try { FormalAreaTextNativeOutputIdentity.stamp(active.frame, { sourceFrameId: sourceFrameId + "-replacement", physicalId: activePhysicalId }); fail("source-replacement-accepted"); } catch (sourceReplaceError) { if (String(sourceReplaceError.message || sourceReplaceError) !== "native-output-identity-immutable") throw sourceReplaceError; }
+        if (String(active.frame.note) !== activeNote) fail("source-replacement-mutated-note");
         emit("PASS", "before-save", "font=" + font + "; sourceFrameId=" + sourceFrameId);
         emit("PASS", "before-save-resolve", "active and retirement identities resolve uniquely");
         tempFile = new File(Folder.temp.fsName + "/FormalStep2NativeIdentityPersistence-" + String((new Date()).getTime()) + ".ai"); doc.saveAs(tempFile); emit("PASS", "save", tempFile.fsName);

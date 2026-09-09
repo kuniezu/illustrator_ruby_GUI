@@ -109,6 +109,8 @@ test('native identity persistence checkpoint uses backend stamping and identity-
   assert.ok(source.includes('app.open(tempFile)'));
   assert.ok(source.includes('SaveOptions.DONOTSAVECHANGES'));
   assert.ok(source.includes('identity-removal'));
+  assert.ok(source.includes('source-replacement-accepted'));
+  assert.ok(source.includes('source-replacement-mutated-note'));
   assert.equal(source.includes('source.note'),false);
   assert.equal(source.includes('Formal Multi Step2.jsx'),false);
 });
