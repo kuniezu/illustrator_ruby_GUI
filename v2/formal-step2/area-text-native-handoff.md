@@ -263,6 +263,20 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## Activation-boundary follow-up from db157014
+
+The recovery activation wrapper now validates the complete persisted
+`operation.candidateIds` set before invoking the pure activation transition.
+This includes discarded candidates that have no activation record. Every
+candidate must resolve as found for the requested source frame; missing or
+duplicate resolver results fail closed, so a discarded foreign or ambiguous
+object cannot be acknowledged as absent and left orphaned.
+
+Validation: focused recovery/static/store/coordinator tests **48/48 PASS**;
+ExtendScript compatibility lint **PASS (36 production files; diagnostic
+entrypoint PASS)**; `git diff --check` **PASS**. No Illustrator runtime or
+production wiring was changed.
+
 ## Issue #14 durable recovery follow-up from b684330
 
 The isolated AreaText-native recovery layer now persists discarded candidate

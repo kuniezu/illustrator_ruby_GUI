@@ -54,6 +54,17 @@ var FormalAreaTextNativeRecovery = (function () {
         }
         return { sourceFrameId: sourceFrameId, physicalIds: checked };
     }
+    function validateOperationCandidates(sourceFrameId, state, resolver) {
+        var ids, i, result;
+        if (!state || !state.operation) fail("native-recovery-operation-missing");
+        ids = unique(state.operation.candidateIds || []);
+        for (i = 0; i < ids.length; i++) {
+            result = resolution(resolver, sourceFrameId, ids[i]);
+            if (result.status === "duplicate") fail("native-recovery-duplicate-candidate:" + ids[i]);
+            if (result.status !== "found") fail("native-recovery-candidate-missing:" + ids[i]);
+        }
+        return { sourceFrameId: sourceFrameId, physicalIds: ids };
+    }
     function discardedCleanup(discardedIds, sourceFrameId, resolver, remove) {
         var pending = [], removed = [], i, id, before, result;
         discardedIds = unique(discardedIds || []);
@@ -76,6 +87,7 @@ var FormalAreaTextNativeRecovery = (function () {
         return state.retirementQueue.length === 0 && (!state.cleanupQueue || state.cleanupQueue.length === 0) && pending.pending.length === 0;
     }
     function activate(sourceFrameId, state, requestId, bindings, records, retireIds, discardedIds, resolver, transition) {
+        validateOperationCandidates(sourceFrameId, state, resolver);
         validateActivation(sourceFrameId, records, resolver);
         return transition(state, requestId, bindings, records, retireIds, discardedIds);
     }
@@ -88,6 +100,6 @@ var FormalAreaTextNativeRecovery = (function () {
         }
         return plan;
     }
-    return { restart: restart, resume: resume, validateActivation: validateActivation, discardedCleanup: discardedCleanup, canFinish: canFinish, activate: activate };
+    return { restart: restart, resume: resume, validateActivation: validateActivation, validateOperationCandidates: validateOperationCandidates, discardedCleanup: discardedCleanup, canFinish: canFinish, activate: activate };
 }());
 if (typeof module !== "undefined") module.exports = FormalAreaTextNativeRecovery;

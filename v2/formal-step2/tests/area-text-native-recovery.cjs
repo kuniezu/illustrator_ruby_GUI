@@ -57,3 +57,9 @@ test('activation wrapper validates before transition and rejects cross-source ca
   assert.throws(()=>R.activate('source',state('verified',['p1']),'r1',{s1:'p1'},records,[],[],resolver({'source:p1':{status:'found'}}),()=>{called=true;}),/source-mismatch/);assert.equal(called,false);
   const good={p1:{physicalId:'p1',sourceFrameId:'source'}};const out=R.activate('source',state('verified',['p1']),'r1',{s1:'p1'},good,[],[],resolver({'source:p1':{status:'found'}}),()=>{called=true;return 'activated';});assert.equal(out,'activated');assert.equal(called,true);
 });
+test('activation wrapper validates discarded candidates before transition',()=>{
+  let called=false;const base=state('verified',['p1','p2']);
+  assert.throws(()=>R.activate('source',base,'r1',{s1:'p1'},{p1:{physicalId:'p1',sourceFrameId:'source'}},[],['p2'],resolver({'source:p1':{status:'found'},'source:p2':{status:'missing'}}),()=>{called=true;}),/candidate-missing/);assert.equal(called,false);
+  assert.throws(()=>R.activate('source',base,'r1',{s1:'p1'},{p1:{physicalId:'p1',sourceFrameId:'source'}},[],['p2'],resolver({'source:p1':{status:'found'},'source:p2':{status:'duplicate'}}),()=>{called=true;}),/duplicate-candidate/);assert.equal(called,false);
+  const out=R.activate('source',base,'r1',{s1:'p1'},{p1:{physicalId:'p1',sourceFrameId:'source'}},[],['p2'],resolver({'source:p1':{status:'found'},'source:p2':{status:'found'}}),()=>{called=true;return 'activated';});assert.equal(out,'activated');assert.equal(called,true);
+});

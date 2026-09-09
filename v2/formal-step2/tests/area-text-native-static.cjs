@@ -57,7 +57,7 @@ test('isolated recovery layer covers restart, cleanup, and source identity witho
   assert.ok(source.includes('prepare-candidates'));assert.ok(source.includes('reverify-candidates'));
   assert.ok(source.includes('native-recovery-duplicate-candidate'));assert.ok(source.includes('sourceFrameId'));
   assert.ok(source.includes('discardedCleanup'));assert.ok(source.includes('canFinish'));
-  assert.ok(source.includes('function resume'));assert.ok(source.includes('function activate'));
+  assert.ok(source.includes('function resume'));assert.ok(source.includes('function activate'));assert.ok(source.includes('validateOperationCandidates'));
   assert.ok(!source.includes('persistence-adapter.jsx'));assert.ok(!source.includes('Formal Multi Step2.jsx'));
 });
 
