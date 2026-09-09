@@ -1294,3 +1294,10 @@ Exact validation commands and results for this follow-up:
 
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
+
+
+## Duplicate probe runtime contract fix
+
+The user runtime at `13e4b605` completed all lifecycle checks except the deliberate duplicate probe. The resolver surfaced `native-output-identity-duplicate-match` before recovery could emit its normalized error. The disposable lifecycle diagnostic now accepts exactly that resolver error, alongside the recovery duplicate error, as the successful fail-closed result. Arbitrary exceptions remain failures. Production identity and ownership validation are unchanged.
+
+Work-state files are maintained under `v2/formal-step2/04_Work整理結果/`.

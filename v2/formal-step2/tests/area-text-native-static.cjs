@@ -290,3 +290,12 @@ test('A-H one-shot diagnostic is disposable, aggregated, and not production wiri
   assert.ok(!source.includes('source.note'));assert.ok(!source.includes('kind = TextType.AREATEXT'));
   assert.ok(!source.includes('TextType.POINTTEXT'));assert.ok(!source.includes('app.activeDocument'));assert.ok(diagnosticSource.includes('quoteValue'));assert.ok(source.includes('FormalAreaTextNativeDiagnostic.quoteValue'));
 });
+
+
+test('lifecycle diagnostic accepts only the resolver duplicate-match as fail-closed',()=>{
+  const source=fs.readFileSync(path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Lifecycle Check.jsx'),'utf8');
+  assert.ok(source.includes('native-output-identity-duplicate-match'));
+  assert.ok(source.includes('native-recovery-duplicate-candidate'));
+  assert.ok(source.includes('duplicate-fail-closed'));
+  assert.ok(!source.includes('catch (duplicateError) { emit("PASS"'));
+});
