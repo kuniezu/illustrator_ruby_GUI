@@ -263,6 +263,30 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## P1-1 connected persistence proof from 048f44a
+
+The P1-1 connection tests now use the actual native Store, persistence
+facade, and transaction coordinator. A persisted `prepare` operation is
+resumed with found/missing resolver results, missing candidates are
+materialized, verification succeeds, exactly one real coordinator `verify`
+persists `verified`, and real coordinator `activate` persists `activated`
+with active bindings. A persisted `verified` operation reuses/recreates and
+reverifies candidates, then reaches real activation without another verify
+write. A verification failure leaves the persisted note, active bindings, and
+operation phase unchanged.
+
+Validation:
+
+- focused recovery/store/coordinator/static suite: **55/55 PASS**
+- full formal-step2 suite: **294/296 PASS**; the two failures are the
+  existing Acorn-dependent `area-text-native-diagnostic.cjs` and `gate-0.cjs`
+  because `acorn` is unavailable in this environment
+- ExtendScript compatibility lint: **PASS (36 production files; diagnostic entrypoint PASS)**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, production wiring, merge, PR, or Issue close was
+performed.
+
 ## P1-1/P1-2 closure follow-up from 7646b01
 
 The isolated recovery layer now exposes `execute`, which connects persisted
