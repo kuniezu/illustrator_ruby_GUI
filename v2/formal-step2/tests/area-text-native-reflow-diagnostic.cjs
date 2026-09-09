@@ -21,6 +21,8 @@ test('reflow diagnostic is ES3-parseable and fail-closed', () => {
     'actual-2-to-1-reflow',
     'actual-1-to-2-reflow',
     'MANUAL_REQUIRED',
+    'native-fit-manual-required',
+    'native-fit-policy',
     'cleanupActive',
     'SaveOptions.DONOTSAVECHANGES',
     'native-fit-evidence',
@@ -57,4 +59,32 @@ test('split hint is reused across observed 2-line -> 1-line -> 2-line states', (
   assert.equal(last.status, 'complete');
   assert.equal(last.segments.length, 2);
   assert.equal(stale.status, 'unresolved');
+});
+
+test('strict fit rejects the observed 2-base-char / 5-reading-char overflow', () => {
+  const native = require('../area-text-native.js');
+  const observation = {
+    horizontal: true, rectangular: true, nonThreaded: true, stable: true,
+    frameContents: 'いっちょう', rangeContents: 'いっちょう', rangeStart: 0, rangeEnd: 5,
+    lines: [{ start: 0, end: 4, contents: 'いっちょ' }]
+  };
+  const result = native.verifyOneLineFit(observation, 'いっちょう');
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'fit-line-coverage-mismatch');
+  assert.equal(result.retryable, true);
+  assert.deepEqual(native.trackingCandidates(), [0, -25, -50, -75, -100]);
+});
+
+test('single-character render spec retains CENTER policy', () => {
+  const renderSpec = require('../area-text-render-spec.js');
+  const spec = renderSpec.create({
+    sourceFrameId: 'source', annotationId: 'annotation', logicalSegmentId: 'segment', reading: 'ら',
+    appearance: { fontName: 'TestFont', fontSize: 20, manualDeltaX: 0, widthScale: 1, gapEm: 0.15 },
+    geometry: { autoLeft: 0, autoTop: 0, autoWidth: 20, boxHeight: 20 },
+    meta: { requestId: 'request', generationId: 'generation', physicalId: 'physical' },
+    composerPolicy: { justification: 'center', singleWordJustification: 'center', oneCharacterPolicy: 'center', trackingCandidates: [0, -25, -50, -75, -100] }
+  });
+  assert.equal(spec.singleCharacter, true);
+  assert.equal(spec.composerPolicy.justification, 'center');
+  assert.equal(spec.composerPolicy.singleWordJustification, 'center');
 });
