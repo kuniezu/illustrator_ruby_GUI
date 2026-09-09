@@ -287,6 +287,31 @@ Validation:
 No Illustrator runtime, production wiring, merge, PR, or Issue close was
 performed.
 
+## Isolated Illustrator lifecycle checkpoint from ee3f75c
+
+Added `v2/diagnostics/Formal Step2 AreaText Native Lifecycle Check.jsx`.
+The disposable checkpoint creates a real AreaText source and native candidates,
+stamps immutable source/physical identity, persists prepare/verified/activated
+states through the real coordinator and persistence facade, verifies candidates
+through the existing backend, retires and finishes old generations, saves and
+reopens the document, and resolves the final active output uniquely. It also
+exercises persisted prepare/verified restart classification, verification
+failure without state mutation, and duplicate resolver fail-closed behavior.
+The diagnostic closes its disposable document and temp file automatically and
+does not wire production UI or BridgeTalk paths.
+
+Validation:
+
+- lifecycle/static and recovery/store/coordinator focused tests: **56/56 PASS**
+- lifecycle diagnostic static wiring test: **PASS**
+- ExtendScript compatibility lint: **PASS (36 production files; diagnostic entrypoint PASS)**
+- `git diff --check`: **PASS**
+- full formal-step2 suite: **295/297 PASS**; the two failures are the existing
+  Acorn-dependent `area-text-native-diagnostic.cjs` and `gate-0.cjs` because
+  `acorn` is unavailable in this environment
+- no Illustrator runtime was run by Luna; the new `.jsx` is prepared for the
+  user-run checkpoint
+
 ## P1-1/P1-2 closure follow-up from 7646b01
 
 The isolated recovery layer now exposes `execute`, which connects persisted

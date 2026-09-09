@@ -232,6 +232,21 @@ test('native capability probe is isolated in a disposable document',()=>{
   assert.ok(!source.includes('app.activeDocument'));
   assert.ok(!source.includes('source.note ='));
 });
+test('native lifecycle checkpoint connects backend, persistence, recovery, and reopen',()=>{
+  const file=path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Lifecycle Check.jsx');
+  const source=fs.readFileSync(file,'utf8');
+  const parseable=source.replace(/^\s*#target.*$/gm,'').replace(/^\s*#include.*$/gm,'');
+  assert.doesNotThrow(()=>new vm.Script(parseable,{filename:file}));
+  assert.ok(source.includes('FormalAreaTextNativeTransactionCoordinator.begin'));
+  assert.ok(source.includes('FormalAreaTextNativeTransactionCoordinator.verify'));
+  assert.ok(source.includes('FormalAreaTextNativeTransactionCoordinator.activate'));
+  assert.ok(source.includes('FormalAreaTextNativeTransactionCoordinator.retire'));
+  assert.ok(source.includes('FormalAreaTextNativeTransactionCoordinator.finish'));
+  assert.ok(source.includes('FormalAreaTextNativeRecovery.execute'));
+  assert.ok(source.includes('FormalAreaTextNativeOutputIdentity.resolve'));
+  assert.ok(source.includes('doc.saveAs(tempFile)'));assert.ok(source.includes('app.open(tempFile)'));
+  assert.ok(source.includes('duplicate-fail-closed'));assert.ok(source.includes('SaveOptions.DONOTSAVECHANGES'));
+});
 
 test('native probe compares fresh geometry instead of resizing an existing frame',()=>{
   const source=fs.readFileSync(path.join(root,'v2','diagnostics','Formal Step2 AreaText Native Probe.jsx'),'utf8');
