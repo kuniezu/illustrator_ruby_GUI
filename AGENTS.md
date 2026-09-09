@@ -15,3 +15,9 @@
 - Do not infer continuation from chat summaries. If Issue fetch fails, or branch/base HEAD materially differs, stop and report instead of using stale instructions.
 - If the latest Issue state is runtime-wait or STOP, do not resume older work.
 - Completion reports must include the dispatch comment, new HEAD, completed items, tests, runtime-not-run status, and remaining items.
+
+## Role routing
+
+- Planning/review ChatGPT owns Issue design, CURRENT DISPATCH updates, and remote review; it receives `終わりましたー` and does not launch a separate execution handoff.
+- The separately running Luna/Codex/Work execution worker receives `続けてください`, reads Issue #14 CURRENT DISPATCH, implements/tests/commits/pushes, then stops.
+- Issue #14 remains the source of truth; `01_次これやって.md` and `02_今これやったよ.md` are temporary header-only bookkeeping, while `03_作業ログ.md` is append-only durable detail.
