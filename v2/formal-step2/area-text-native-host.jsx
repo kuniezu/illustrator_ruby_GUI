@@ -3,6 +3,12 @@
  * Requires FormalAreaTextRenderSpec, FormalAreaTextNative and FormalAreaTextNativeBackend.
  * Does not mutate source persistence, activate generations, or retire old output.
  */
+function justificationString(value) {
+    if (value === Justification.FULLJUSTIFY) return "full";
+    if (value === Justification.CENTER) return "center";
+    throw Error("native-host-justification-unrecognized");
+}
+
 function FormalAreaTextNativeHost(doc, layer) {
     var backend = FormalAreaTextNativeBackend(doc, layer);
 
@@ -74,8 +80,8 @@ function FormalAreaTextNativeHost(doc, layer) {
                     tracking: result.tracking == null ? observation.tracking : result.tracking,
                     fontName: observation.fontName,
                     fontSize: observation.fontSize,
-                    justification: observation.justification,
-                    singleWordJustification: observation.singleWordJustification,
+                    justification: justificationString(observation.justification),
+                    singleWordJustification: justificationString(observation.singleWordJustification),
                     fitReason: result.reason
                 });
             }

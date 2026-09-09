@@ -299,3 +299,32 @@ test('lifecycle diagnostic accepts only the resolver duplicate-match as fail-clo
   assert.ok(source.includes('duplicate-fail-closed'));
   assert.ok(!source.includes('catch (duplicateError) { emit("PASS"'));
 });
+
+test('native host canonicalizes Illustrator justification enums for persisted records',()=>{
+  const source=parse(path.join('v2','formal-step2','area-text-native-host.jsx'));
+  const context={
+    Justification:{FULLJUSTIFY:'FULLJUSTIFY',CENTER:'CENTER'},
+    FormalAreaTextNativeBackend:()=>({
+      prepareCandidate(){return {};},
+      disposeCandidate(){},
+      verifyCandidate(){return {ok:true,reason:'fit-one-line-covered',tracking:0,observation:{
+        frameLeft:10,frameTop:20,frameWidth:30,frameHeight:12,textPathWidth:null,textPathHeight:null,
+        tracking:0,fontName:'RubyFont',fontSize:8,justification:context.justification,
+        singleWordJustification:context.justification
+      }};}
+    }),
+    FormalAreaTextRenderSpec:{validate(){return {ok:true};},backendSpec(s){return s;}},
+    justification:'FULLJUSTIFY'
+  };
+  vm.runInNewContext(source+';this.Host=FormalAreaTextNativeHost;',context);
+  function verify(reading, physicalId, justification) {
+    context.justification=justification;
+    const host=new context.Host({},{});
+    const spec={requestId:'r1',sourceFrameId:'f1',physicalId:physicalId,logicalSegmentId:physicalId,generationId:'g1',rendererVersion:'v1',geometryVersion:'g1',geometry:{autoLeft:1,autoWidth:2},reading:reading};
+    return host.verifyAll(host.prepareAll([spec])).records[0];
+  }
+  assert.equal(verify('かな','multi',context.Justification.FULLJUSTIFY).justification,'full');
+  assert.equal(verify('あ','single',context.Justification.CENTER).justification,'center');
+  assert.equal(verify('かな','multi-word',context.Justification.FULLJUSTIFY).singleWordJustification,'full');
+  assert.throws(()=>verify('かな','bad','unexpected'),/native-host-justification-unrecognized/);
+});
