@@ -5,3 +5,15 @@ test('persistence ownership diagnostic is ES3-safe and save/reopen scoped',()=>{
 test('persistence diagnostic never touches an existing user document',()=>{const s=source();assert.ok(s.includes('if (app.documents.length) fail("existing-document-open; refusing-to-touch-user-document")'));assert.ok(s.includes('app.documents.add()'));});
 test('bookkeeping files keep the temporary header-only contract',()=>{assert.equal(fs.readFileSync(path.join(root,'v2/formal-step2/04_Work整理結果/01_次これやって.md'),'utf8'),'# 次これやって\n');assert.equal(fs.readFileSync(path.join(root,'v2/formal-step2/04_Work整理結果/02_今これやったよ.md'),'utf8'),'# 今これやったよ\n');});
 test('persistence diagnostic retires only owned generations after activation',()=>{const s=source();assert.ok(s.includes('stageBatch("persist-r2"'));assert.ok(s.includes('activateVerified(staged, [oldId, "persist-a2"])'));assert.ok(s.includes('finishActivated(staged)'));assert.ok(s.includes('removeOwned(oldId, doc)'));assert.ok(s.includes('copy-on-write-after-reopen'));});
+test('pure manifest lifecycle exercises pending, verified, active, retirement boundaries',()=>{
+  const Native=require('../area-text-native.js');
+  let m=Native.createManifest();
+  m.activeBindings={'persist-a-0':'old','persist-b-0':'peer'};
+  m.renderRecords={old:{physicalId:'old',logicalSegmentId:'persist-a-0'},peer:{physicalId:'peer',logicalSegmentId:'persist-b-0'}};
+  m=Native.beginOperation(m,'r2',['new']);
+  assert.equal(m.activeBindings['persist-a-0'],'old'); assert.deepEqual(m.operation.candidateIds,['new']);
+  m=Native.markVerified(m,'r2'); assert.equal(m.operation.phase,'verified');
+  m=Native.activate(m,'r2',{'persist-a-0':'new','persist-b-0':'peer'},{new:{physicalId:'new',requestId:'r2',logicalSegmentId:'persist-a-0'}},['old'],[]);
+  assert.equal(m.activeBindings['persist-a-0'],'new'); assert.deepEqual(m.retirementQueue,['old']);
+  m=Native.markRetired(m,['old']); m=Native.finishOperation(m,'r2'); assert.equal(m.operation,null); assert.deepEqual(m.retirementQueue,[]);
+});
