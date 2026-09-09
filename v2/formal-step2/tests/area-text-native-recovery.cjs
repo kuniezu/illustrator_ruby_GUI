@@ -63,3 +63,14 @@ test('activation wrapper validates discarded candidates before transition',()=>{
   assert.throws(()=>R.activate('source',base,'r1',{s1:'p1'},{p1:{physicalId:'p1',sourceFrameId:'source'}},[],['p2'],resolver({'source:p1':{status:'found'},'source:p2':{status:'duplicate'}}),()=>{called=true;}),/duplicate-candidate/);assert.equal(called,false);
   const out=R.activate('source',base,'r1',{s1:'p1'},{p1:{physicalId:'p1',sourceFrameId:'source'}},[],['p2'],resolver({'source:p1':{status:'found'},'source:p2':{status:'found'}}),()=>{called=true;return 'activated';});assert.equal(out,'activated');assert.equal(called,true);
 });
+test('execute connects persisted prepare through materialize, verify, mark once, and activate',()=>{
+  const map={'source:p1':{status:'found'},'source:p2':{status:'missing'}};let marks=0,verified=0,activated=0;
+  const out=R.execute(state('prepare',['p1','p2']),'source','r1',resolver(map),(found,missing)=>{map['source:p2']={status:'found'};return {entries:found.concat(missing),bindings:{s1:'p1'},records:{p1:{physicalId:'p1',sourceFrameId:'source'},},discardedIds:['p2']};},(entries,reverify)=>{verified++;assert.equal(reverify,false);assert.equal(entries.length,2);return true;},(s)=>{marks++;return Object.assign({},s,{operation:Object.assign({},s.operation,{phase:'verified'})});},(s,request,bindings,records,retire,discarded)=>{activated++;assert.deepEqual(discarded,['p2']);return 'activated';});
+  assert.equal(out,'activated');assert.equal(marks,1);assert.equal(verified,1);assert.equal(activated,1);
+});
+test('execute re-verifies persisted verified state without markVerified and stops on verification failure',()=>{
+  const map={'source:p1':{status:'found'},'source:p2':{status:'missing'}};let marks=0,activated=0;
+  const out=R.execute(state('verified',['p1','p2']),'source','r1',resolver(map),(found,missing)=>{map['source:p2']={status:'found'};return {entries:found.concat(missing),bindings:{s1:'p1',s2:'p2'},records:{p1:{physicalId:'p1',sourceFrameId:'source'},p2:{physicalId:'p2',sourceFrameId:'source'}}};},()=>true,()=>{marks++;throw Error('markVerified must not run');},(s)=>{activated++;return 'activated';});
+  assert.equal(out,'activated');assert.equal(marks,0);assert.equal(activated,1);
+  const before=JSON.stringify(state('verified',['p1']));assert.throws(()=>R.execute(state('verified',['p1']),'source','r1',resolver({'source:p1':{status:'found'}}),(found)=>({entries:found,bindings:{s1:'p1'},records:{p1:{physicalId:'p1',sourceFrameId:'source'}}}),()=>false,()=>{throw Error('must not mark');},()=>{throw Error('must not activate');}),/verification-failed/);assert.equal(JSON.stringify(state('verified',['p1'])),before);
+});

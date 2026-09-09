@@ -74,7 +74,8 @@ var FormalAreaTextNativeStore = (function () {
         var seen = {}, activePhysical = {}, key, physical, record, i, operation;
         if (!object(manifest) || manifest.rendererMode !== "area-text-native" || !integer(manifest.manifestRevision) || manifest.manifestRevision < 0) fail("native-store-manifest-invalid");
         if (!object(manifest.activeBindings) || !object(manifest.renderRecords) || !(manifest.retirementQueue instanceof Array)) fail("native-store-manifest-shape");
-        if (!(manifest.cleanupQueue instanceof Array)) manifest.cleanupQueue = [];
+        if (!own(manifest, "cleanupQueue")) manifest.cleanupQueue = [];
+        else if (!(manifest.cleanupQueue instanceof Array)) fail("native-store-cleanup-invalid");
         for (key in manifest.activeBindings) if (own(manifest.activeBindings, key)) {
             physical = manifest.activeBindings[key];
             if (typeof key !== "string" || typeof physical !== "string" || !physical || own(seen, physical)) fail("native-store-active-ownership");

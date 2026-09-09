@@ -100,6 +100,16 @@ var FormalAreaTextNativeRecovery = (function () {
         }
         return plan;
     }
-    return { restart: restart, resume: resume, validateActivation: validateActivation, validateOperationCandidates: validateOperationCandidates, discardedCleanup: discardedCleanup, canFinish: canFinish, activate: activate };
+    function execute(state, sourceFrameId, requestId, resolver, materialize, verify, markVerified, activation) {
+        var plan = restart(state, sourceFrameId, resolver), prepared, nextState;
+        if (plan.action !== "prepare-candidates" && plan.action !== "reverify-candidates") return plan;
+        prepared = materialize(plan.found, plan.missing, plan.action === "reverify-candidates");
+        if (!prepared || !prepared.entries || prepared.entries.length !== plan.found.length + plan.missing.length) fail("native-recovery-materialization-incomplete");
+        if (verify(prepared.entries, plan.action === "reverify-candidates") !== true) fail("native-recovery-verification-failed");
+        nextState = state;
+        if (plan.action === "prepare-candidates") nextState = markVerified(state, requestId);
+        return activate(sourceFrameId, nextState, requestId, prepared.bindings, prepared.records, prepared.retireIds || [], prepared.discardedIds || [], resolver, activation);
+    }
+    return { restart: restart, resume: resume, execute: execute, validateActivation: validateActivation, validateOperationCandidates: validateOperationCandidates, discardedCleanup: discardedCleanup, canFinish: canFinish, activate: activate };
 }());
 if (typeof module !== "undefined") module.exports = FormalAreaTextNativeRecovery;

@@ -263,6 +263,32 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## P1-1/P1-2 closure follow-up from 7646b01
+
+The isolated recovery layer now exposes `execute`, which connects persisted
+prepare/verified state to resolver classification, materialization, host-style
+verification, and the activation wrapper. Prepare resumes reuse found
+candidates, recreate missing candidates, verify all entries, call exactly one
+`markVerified` transition, then activate. Verified resumes reverify all
+entries and activate without calling `markVerified`; verification failure and
+duplicate resolution stop before activation.
+
+`cleanupQueue` compatibility is now fail-closed: an absent field is the only
+case normalized to `[]`; a present non-array is rejected. Store and coordinator
+tests prove corrupted cleanup state cannot reach `finishOperation`.
+
+Validation:
+
+- focused recovery/store/coordinator/static suite: **52/52 PASS**
+- full formal-step2 suite: **291/293 PASS**; the two failures are the existing
+  Acorn-dependent `area-text-native-diagnostic.cjs` and `gate-0.cjs`, because
+  the `acorn` module is unavailable in this environment
+- ExtendScript compatibility lint: **PASS (36 production files; diagnostic entrypoint PASS)**
+- `git diff --check`: **PASS**
+
+No Illustrator runtime, production wiring, merge, PR, or Issue close was
+performed.
+
 ## Activation-boundary follow-up from db157014
 
 The recovery activation wrapper now validates the complete persisted
