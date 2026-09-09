@@ -248,6 +248,10 @@ test('native lifecycle checkpoint connects backend, persistence, recovery, and r
   assert.ok(source.includes('duplicate-fail-closed'));assert.ok(source.includes('SaveOptions.DONOTSAVECHANGES'));
   assert.ok(source.indexOf('duplicate =') < source.indexOf('closeAndReopen();'));
   assert.ok(source.includes('native-recovery-duplicate-candidate'));
+  assert.ok(source.includes('logicalSegmentId: logicalSegmentId || "main"'));
+  assert.ok(source.includes('initial.activeBindings.main = "old"'));
+  assert.ok(source.includes('bindings: { main:'));
+  assert.equal(source.includes('logicalSegmentId: id'), false);
 });
 
 test('native probe compares fresh geometry instead of resizing an existing frame',()=>{

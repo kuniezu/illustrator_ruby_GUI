@@ -287,6 +287,21 @@ Validation:
 No Illustrator runtime, production wiring, merge, PR, or Issue close was
 performed.
 
+## Lifecycle fixture logical identity fix from fdc9740
+
+The user runtime reached the initial persistence step and reported
+`native-store-active-record-mismatch`. The diagnostic fixture incorrectly
+used each physical candidate ID as its logical segment ID while binding the
+single lifecycle segment as `main`. `frameSpec` now accepts a separate logical
+segment and defaults all lifecycle records to `main`; physical IDs remain
+`old`, `new-1`, and `new-2` for immutable output identity and resolver use.
+A static regression check proves the binding/record contract and prevents
+reintroducing `logicalSegmentId: id`.
+
+Validation: focused tests **56/56 PASS**; ExtendScript compatibility lint
+**PASS (36 production files; diagnostic entrypoint PASS)**; `git diff --check`
+**PASS**. No Illustrator runtime was run by Luna.
+
 ## Lifecycle duplicate-check ordering fix from cfa073a
 
 Moved the duplicate identity fail-closed probe before save/close/reopen while
