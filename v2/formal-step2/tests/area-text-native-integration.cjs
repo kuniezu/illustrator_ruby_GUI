@@ -90,3 +90,11 @@ test('integration source remains outside production entrypoints',()=>{
   assert.ok(source.indexOf('FormalAreaTextNativeTransactionCoordinator')<0);
   assert.ok(source.indexOf('Formal Multi Step2.jsx')<0);assert.ok(source.indexOf('persistence-adapter.jsx')<0);
 });
+
+test('reconcileExisting reuses finished active manifest without creating candidates',()=>{
+  const calls=[];
+  const orchestration={planAll(){calls.push('plan');return {status:'complete',results:[]};}};
+  const seam=Integration.create(orchestration,{prepareAll(){throw Error('must-not-prepare');},verifyAll(){},bindingsByLogicalSegmentId(){return {};},recordsByPhysicalId(){return {}; }},{begin(){throw Error('must-not-begin');},verify(){},activate(){}});
+  const result=seam.reconcileExisting({annotations:[]},'source',{status:'complete',lines:[]},{operation:null,activeBindings:{a:'p1',b:'p2'}});
+  assert.equal(result.status,'reused'); assert.deepEqual(result.physicalIds,['p1','p2']); assert.deepEqual(calls,['plan']);
+});

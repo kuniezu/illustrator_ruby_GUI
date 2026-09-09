@@ -63,7 +63,14 @@ var FormalAreaTextNativeIntegration = (function () {
             records = host.recordsByPhysicalId(batch);
             return coordinator.activate(actualSource, actualContents, actualNote, actualRequest, bindings, records, retireIds || [], discardedIds || []);
         }
-        return { planAndPrepare: planAndPrepare, verify: verify, activate: activate };
+        function reconcileExisting(bundle, sourceText, observation, manifest) {
+            var plan = orchestration.planAll(bundle, sourceText, observation), active = {}, physicalIds = [], key;
+            if (!plan || plan.status !== "complete") return { status: plan && plan.status || "failed", plan: plan };
+            if (!manifest || manifest.operation !== null) fail("native-integration-reconcile-manifest-not-finished");
+            for (key in manifest.activeBindings) if (Object.prototype.hasOwnProperty.call(manifest.activeBindings, key)) { active[key] = manifest.activeBindings[key]; physicalIds.push(manifest.activeBindings[key]); }
+            return { status: "reused", plan: plan, activeBindings: active, physicalIds: physicalIds };
+        }
+        return { planAndPrepare: planAndPrepare, verify: verify, activate: activate, reconcileExisting: reconcileExisting };
     }
     return { create: create };
 }());
