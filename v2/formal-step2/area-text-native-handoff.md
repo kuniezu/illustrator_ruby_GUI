@@ -263,6 +263,38 @@ Exact validation commands and results for this follow-up:
 No Illustrator runtime, main-branch merge, production wiring, PR, or Issue
 operation was performed.
 
+## Issue #14 durable recovery follow-up from b684330
+
+The isolated AreaText-native recovery layer now persists discarded candidate
+IDs in the manifest `cleanupQueue`. Manifest validation rejects malformed,
+duplicate, active, or retirement-overlapping cleanup IDs, while old manifests
+without the field normalize to an empty queue. Activation records discarded
+IDs durably; `markDiscardedCleaned` and the transaction coordinator acknowledge
+only queued IDs. Store restart planning and recovery restart both expose a
+`cleanup-discarded` action, with missing resolver results treated as already
+removed and duplicate results failing closed. Finish remains blocked until
+both retirement and discarded cleanup queues are empty.
+
+The host batch now preserves cleanup failure details on both the returned
+batch and thrown preparation/verification errors. Recovery `resume` composes
+persisted restart state with found/missing materialization, and the isolated
+activation wrapper validates source identity and resolver uniqueness before
+calling the pure activation transition.
+
+Validation for this follow-up:
+
+- focused native recovery/store/coordinator/static suite: **76/76 PASS**
+- `node v2/formal-step2/extendscript-compat-lint.cjs`: **PASS (36 production files; diagnostic entrypoint PASS)**
+- `git diff --check`: **PASS**
+- all formal-step2 tests: **286/288 PASS**; the two failures are the existing
+  `area-text-native-diagnostic.cjs` and `gate-0.cjs` Acorn grammar tests, which
+  cannot load because the external `acorn` module is unavailable in this
+  environment. The remaining 286 tests pass, including Gate C, Gate D, and
+  generated BridgeTalk checks.
+
+No Illustrator runtime, production wiring, main-branch merge, PR, or Issue
+operation was performed.
+
 ## NEXT WORK 5594684418 recovery boundary follow-up
 
 Dispatch source: Issue #14 comment [5594684418](https://github.com/kuniezu/illustrator_ruby_GUI/issues/14#issuecomment-5594684418).

@@ -22,8 +22,10 @@ var FormalAreaTextNativeRecovery = (function () {
         return { found: found, missing: missing };
     }
     function restart(state, sourceFrameId, resolver) {
-        var operation, candidates, retirement, i, result;
+        var operation, candidates, retirement, discarded;
         if (!state || !state.operation) {
+            discarded = candidateResolution(state && state.cleanupQueue || [], sourceFrameId, resolver);
+            if (discarded.found.length || discarded.missing.length) return { action: "cleanup-discarded", found: discarded.found, missing: discarded.missing };
             retirement = candidateResolution(state && state.retirementQueue || [], sourceFrameId, resolver);
             return retirement.found.length || retirement.missing.length ? { action: "cleanup-retirement", found: retirement.found, missing: retirement.missing } : { action: "idle", found: [], missing: [] };
         }
@@ -32,6 +34,8 @@ var FormalAreaTextNativeRecovery = (function () {
         if (operation.phase === "prepare") return { action: "prepare-candidates", requestId: operation.requestId, found: candidates.found, missing: candidates.missing };
         if (operation.phase === "verified") return { action: "reverify-candidates", requestId: operation.requestId, found: candidates.found, missing: candidates.missing };
         if (operation.phase === "activated") {
+            discarded = candidateResolution(state.cleanupQueue || [], sourceFrameId, resolver);
+            if (discarded.found.length || discarded.missing.length) return { action: "cleanup-discarded", requestId: operation.requestId, found: discarded.found, missing: discarded.missing };
             retirement = candidateResolution(state.retirementQueue || [], sourceFrameId, resolver);
             return { action: retirement.found.length || retirement.missing.length ? "cleanup-retirement" : "finish-operation", requestId: operation.requestId, found: retirement.found, missing: retirement.missing };
         }
@@ -66,11 +70,24 @@ var FormalAreaTextNativeRecovery = (function () {
         }
         return { removed: removed, pending: pending, complete: pending.length === 0 };
     }
-    function canFinish(state, cleanupIds, sourceFrameId, resolver) {
-        var pending = discardedCleanup(cleanupIds || [], sourceFrameId, resolver, function () { return false; });
+    function canFinish(state, sourceFrameId, resolver) {
+        var pending = discardedCleanup(state && state.cleanupQueue || [], sourceFrameId, resolver, function () { return false; });
         if (!state || !state.operation || state.operation.phase !== "activated") return false;
-        return state.retirementQueue.length === 0 && pending.pending.length === 0;
+        return state.retirementQueue.length === 0 && (!state.cleanupQueue || state.cleanupQueue.length === 0) && pending.pending.length === 0;
     }
-    return { restart: restart, validateActivation: validateActivation, discardedCleanup: discardedCleanup, canFinish: canFinish };
+    function activate(sourceFrameId, state, requestId, bindings, records, retireIds, discardedIds, resolver, transition) {
+        validateActivation(sourceFrameId, records, resolver);
+        return transition(state, requestId, bindings, records, retireIds, discardedIds);
+    }
+    function resume(state, sourceFrameId, resolver, materialize) {
+        var plan = restart(state, sourceFrameId, resolver), entries;
+        if (plan.action === "prepare-candidates" || plan.action === "reverify-candidates") {
+            entries = materialize(plan.found, plan.missing, plan.action === "reverify-candidates");
+            if (!entries || entries.length !== plan.found.length + plan.missing.length) fail("native-recovery-materialization-incomplete");
+            return { action: plan.action === "prepare-candidates" ? "ready-for-verification" : "ready-for-activation", requestId: plan.requestId, reused: plan.found, created: plan.missing, entries: entries };
+        }
+        return plan;
+    }
+    return { restart: restart, resume: resume, validateActivation: validateActivation, discardedCleanup: discardedCleanup, canFinish: canFinish, activate: activate };
 }());
 if (typeof module !== "undefined") module.exports = FormalAreaTextNativeRecovery;

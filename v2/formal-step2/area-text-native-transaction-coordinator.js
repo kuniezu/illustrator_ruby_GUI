@@ -29,9 +29,12 @@ var FormalAreaTextNativeTransactionCoordinator = (function () {
     function retire(source, expectedContents, expectedNote, removedIds) {
         return persist(source, expectedContents, expectedNote, "markRetired", [removedIds]);
     }
+    function cleanupDiscarded(source, expectedContents, expectedNote, removedIds) {
+        return persist(source, expectedContents, expectedNote, "markDiscardedCleaned", [removedIds]);
+    }
     function finish(source, expectedContents, expectedNote, requestId) {
         return persist(source, expectedContents, expectedNote, "finishOperation", [requestId]);
     }
-    return { begin: begin, verify: verify, activate: activate, retire: retire, finish: finish };
+    return { begin: begin, verify: verify, activate: activate, retire: retire, cleanupDiscarded: cleanupDiscarded, finish: finish };
 }());
 if (typeof module !== "undefined") module.exports = FormalAreaTextNativeTransactionCoordinator;

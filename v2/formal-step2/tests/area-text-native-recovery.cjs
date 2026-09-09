@@ -17,6 +17,11 @@ test('activated restart cleans found retirement and treats missing as already re
   const r=R.restart(state('activated',[],['old','gone']),'source',resolver({'source:old':{status:'found'}}));
   assert.deepEqual(r,{action:'cleanup-retirement',requestId:'r1',found:['old'],missing:['gone']});
 });
+test('activated restart prioritizes durable discarded cleanup after reload',()=>{
+  const s=state('activated',[],['old']);s.cleanupQueue=['discarded'];
+  const r=R.restart(s,'source',resolver({'source:discarded':{status:'found'}}));
+  assert.deepEqual(r,{action:'cleanup-discarded',requestId:'r1',found:['discarded'],missing:[]});
+});
 test('activation requires source identity and unique resolver result',()=>{
   const records={p1:{physicalId:'p1',sourceFrameId:'source'}};
   assert.deepEqual(R.validateActivation('source',records,resolver({'source:p1':{status:'found'}})).physicalIds,['p1']);
@@ -38,8 +43,17 @@ test('successful deletion followed by crash is resolved by missing on retry',()=
   assert.deepEqual(deletion,{removed:['p1'],pending:[],complete:true});
   assert.deepEqual(R.discardedCleanup(['p1'],'source',resolver(map),()=>{throw Error('must not delete missing');}),{removed:['p1'],pending:[],complete:true});
 });
-test('finish is blocked while cleanup resolver still finds a discarded candidate',()=>{
-  const active=state('activated',[],[]);
-  assert.equal(R.canFinish(active,['p1'],'source',resolver({'source:p1':{status:'found'}})),false);
-  assert.equal(R.canFinish(active,['p1'],'source',resolver({})),true);
+test('finish is blocked while durable cleanup queue still resolves',()=>{
+  const active=state('activated',[],[]);active.cleanupQueue=['p1'];
+  assert.equal(R.canFinish(active,'source',resolver({'source:p1':{status:'found'}})),false);
+  assert.equal(R.canFinish(active,'source',resolver({})),false);
+});
+test('verified restart is executable without markVerified and reuses found candidates',()=>{
+  const calls=[];const result=R.resume(state('verified',['p1','p2']),'source',resolver({'source:p1':{status:'found'}}),(found,missing)=>{calls.push({found,missing});return found.concat(missing);});
+  assert.equal(result.action,'ready-for-activation');assert.deepEqual(result.reused,['p1']);assert.deepEqual(result.created,['p2']);assert.deepEqual(calls,[{found:['p1'],missing:['p2']}]);
+});
+test('activation wrapper validates before transition and rejects cross-source candidates',()=>{
+  let called=false;const records={p1:{physicalId:'p1',sourceFrameId:'other'}};
+  assert.throws(()=>R.activate('source',state('verified',['p1']),'r1',{s1:'p1'},records,[],[],resolver({'source:p1':{status:'found'}}),()=>{called=true;}),/source-mismatch/);assert.equal(called,false);
+  const good={p1:{physicalId:'p1',sourceFrameId:'source'}};const out=R.activate('source',state('verified',['p1']),'r1',{s1:'p1'},good,[],[],resolver({'source:p1':{status:'found'}}),()=>{called=true;return 'activated';});assert.equal(out,'activated');assert.equal(called,true);
 });

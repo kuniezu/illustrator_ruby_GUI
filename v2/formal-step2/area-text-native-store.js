@@ -74,6 +74,7 @@ var FormalAreaTextNativeStore = (function () {
         var seen = {}, activePhysical = {}, key, physical, record, i, operation;
         if (!object(manifest) || manifest.rendererMode !== "area-text-native" || !integer(manifest.manifestRevision) || manifest.manifestRevision < 0) fail("native-store-manifest-invalid");
         if (!object(manifest.activeBindings) || !object(manifest.renderRecords) || !(manifest.retirementQueue instanceof Array)) fail("native-store-manifest-shape");
+        if (!(manifest.cleanupQueue instanceof Array)) manifest.cleanupQueue = [];
         for (key in manifest.activeBindings) if (own(manifest.activeBindings, key)) {
             physical = manifest.activeBindings[key];
             if (typeof key !== "string" || typeof physical !== "string" || !physical || own(seen, physical)) fail("native-store-active-ownership");
@@ -87,6 +88,12 @@ var FormalAreaTextNativeStore = (function () {
         for (i = 0; i < manifest.retirementQueue.length; i++) {
             physical = manifest.retirementQueue[i];
             if (typeof physical !== "string" || !physical || own(seen, physical) || !own(manifest.renderRecords, physical) || own(activePhysical, physical)) fail("native-store-retirement-invalid");
+            seen[physical] = true;
+        }
+        seen = {};
+        for (i = 0; i < manifest.cleanupQueue.length; i++) {
+            physical = manifest.cleanupQueue[i];
+            if (typeof physical !== "string" || !physical || own(seen, physical) || own(activePhysical, physical) || contains(manifest.retirementQueue, physical)) fail("native-store-cleanup-invalid");
             seen[physical] = true;
         }
         operation = manifest.operation;
@@ -143,10 +150,13 @@ var FormalAreaTextNativeStore = (function () {
 
     function restartPlan(manifest) {
         try { validateManifest(manifest); } catch (e) { return { action: "manual-recovery-required", reason: e.message || String(e) }; }
-        if (!manifest.operation) return manifest.retirementQueue.length ? { action: "cleanup-retirement" } : { action: "idle" };
+        if (!manifest.operation) {
+            if (manifest.cleanupQueue.length) return { action: "cleanup-discarded", candidateIds: copyArray(manifest.cleanupQueue) };
+            return manifest.retirementQueue.length ? { action: "cleanup-retirement" } : { action: "idle" };
+        }
         if (manifest.operation.phase === "prepare") return { action: "reprepare", requestId: manifest.operation.requestId, candidateIds: copyArray(manifest.operation.candidateIds) };
         if (manifest.operation.phase === "verified") return { action: "reprepare-reverify", requestId: manifest.operation.requestId, candidateIds: copyArray(manifest.operation.candidateIds) };
-        if (manifest.operation.phase === "activated") return manifest.retirementQueue.length ? { action: "cleanup-retirement" } : { action: "finish-operation", requestId: manifest.operation.requestId };
+        if (manifest.operation.phase === "activated") return manifest.retirementQueue.length ? { action: "cleanup-retirement" } : (manifest.cleanupQueue.length ? { action: "cleanup-discarded", candidateIds: copyArray(manifest.cleanupQueue) } : { action: "finish-operation", requestId: manifest.operation.requestId });
         return { action: "manual-recovery-required", reason: "native-store-operation-phase" };
     }
 

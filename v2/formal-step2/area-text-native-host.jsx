@@ -41,6 +41,8 @@ function FormalAreaTextNativeHost(doc, layer) {
             return batch;
         } catch (e) {
             disposeAll(batch);
+            e.cleanupPendingIds = batch.cleanupPendingIds || [];
+            e.cleanupFailed = batch.cleanupFailed === true;
             throw e;
         }
     }
@@ -82,6 +84,8 @@ function FormalAreaTextNativeHost(doc, layer) {
             return batch;
         } catch (e) {
             disposeAll(batch);
+            e.cleanupPendingIds = batch.cleanupPendingIds || [];
+            e.cleanupFailed = batch.cleanupFailed === true;
             throw e;
         }
     }
@@ -111,10 +115,15 @@ function FormalAreaTextNativeHost(doc, layer) {
     }
 
     function disposeAll(batch) {
-        var i;
+        var i, result, pending = [];
         if (!batch || !batch.candidates) return;
-        for (i = batch.candidates.length - 1; i >= 0; i--) backend.disposeCandidate(batch.candidates[i].candidate);
-        batch.status = "disposed";
+        for (i = batch.candidates.length - 1; i >= 0; i--) {
+            result = backend.disposeCandidate(batch.candidates[i].candidate);
+            if (result && result.cleanupFailed) pending.push(batch.candidates[i].spec.physicalId);
+        }
+        batch.cleanupPendingIds = pending;
+        batch.cleanupFailed = pending.length > 0;
+        batch.status = batch.cleanupFailed ? "cleanup-pending" : "disposed";
     }
 
     return {

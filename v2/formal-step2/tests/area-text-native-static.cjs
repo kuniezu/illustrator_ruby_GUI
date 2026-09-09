@@ -57,6 +57,7 @@ test('isolated recovery layer covers restart, cleanup, and source identity witho
   assert.ok(source.includes('prepare-candidates'));assert.ok(source.includes('reverify-candidates'));
   assert.ok(source.includes('native-recovery-duplicate-candidate'));assert.ok(source.includes('sourceFrameId'));
   assert.ok(source.includes('discardedCleanup'));assert.ok(source.includes('canFinish'));
+  assert.ok(source.includes('function resume'));assert.ok(source.includes('function activate'));
   assert.ok(!source.includes('persistence-adapter.jsx'));assert.ok(!source.includes('Formal Multi Step2.jsx'));
 });
 
@@ -189,6 +190,15 @@ test('native state activation is verified-only and ownership-scoped',()=>{
   assert.ok(source.includes('activation-record-not-owned'));
   assert.ok(source.includes('activation-binding-record-mismatch'));
   assert.ok(source.includes('cannot-activate-retired-physical'));
+});
+
+test('native manifest carries durable discarded cleanup state and host exposes cleanup failure',()=>{
+  const native=parse(path.join('v2','formal-step2','area-text-native.js'));
+  const store=parse(path.join('v2','formal-step2','area-text-native-store.js'));
+  const host=parse(path.join('v2','formal-step2','area-text-native-host.jsx'));
+  assert.ok(native.includes('cleanupQueue'));assert.ok(native.includes('markDiscardedCleaned'));
+  assert.ok(store.includes('cleanup-invalid'));assert.ok(store.includes('cleanup-discarded'));
+  assert.ok(host.includes('cleanupPendingIds'));assert.ok(host.includes('cleanupFailed'));
 });
 
 test('tracking stops after the first non-retryable readback failure',()=>{

@@ -121,6 +121,12 @@ test('activation rejects an unconsumed candidate unless explicitly discarded',()
   s=N.activate(s,'r1',{s1:'p1'},{p1:{physicalId:'p1',requestId:'r1',logicalSegmentId:'s1'}},[],['p2']);
   assert.equal(s.activeBindings.s1,'p1');
 });
+test('discarded activation ids become durable cleanup and can be acknowledged',()=>{
+  let s=N.beginOperation(N.createManifest(),'r1',['p1','p2']);s=N.markVerified(s,'r1');
+  s=N.activate(s,'r1',{s1:'p1'},{p1:{physicalId:'p1',requestId:'r1',logicalSegmentId:'s1'}},[],['p2']);
+  assert.deepEqual(s.cleanupQueue,['p2']);assert.throws(()=>N.finishOperation(s,'r1'),/operation-cleanup-pending/);
+  s=N.markDiscardedCleaned(s,['p2']);assert.deepEqual(s.cleanupQueue,[]);assert.equal(N.recoveryState(s),'activated-clean');
+});
 
 test('same request is idempotent only for the same candidate plan',()=>{
   let s=N.beginOperation(N.createManifest(),'r1',['p1']);

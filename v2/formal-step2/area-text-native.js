@@ -70,7 +70,8 @@ var FormalAreaTextNative = (function () {
             activeBindings: {},
             renderRecords: {},
             operation: null,
-            retirementQueue: []
+            retirementQueue: [],
+            cleanupQueue: []
         };
     }
 
@@ -87,7 +88,8 @@ var FormalAreaTextNative = (function () {
                 phase: state.operation.phase || "prepare",
                 candidateIds: copyArray(state.operation.candidateIds)
             } : null,
-            retirementQueue: copyArray(state.retirementQueue)
+            retirementQueue: copyArray(state.retirementQueue),
+            cleanupQueue: copyArray(state.cleanupQueue || [])
         };
     }
 
@@ -173,6 +175,7 @@ var FormalAreaTextNative = (function () {
             for (key in out.activeBindings) if (own(out.activeBindings, key) && out.activeBindings[key] === retire[i]) throw Error("cannot-activate-retired-physical");
         }
         out.retirementQueue = unique(out.retirementQueue.concat(retire));
+        out.cleanupQueue = unique(out.cleanupQueue.concat(discarded));
         out.manifestRevision++;
         out.operation.phase = "activated";
         return out;
@@ -202,11 +205,19 @@ var FormalAreaTextNative = (function () {
         return out;
     }
 
+    function markDiscardedCleaned(state, removedIds) {
+        var out = cloneManifest(state), removed = unique(removedIds || []), next = [], i;
+        for (i = 0; i < removed.length; i++) if (!contains(out.cleanupQueue, removed[i])) throw Error("cleanup-not-queued");
+        for (i = 0; i < out.cleanupQueue.length; i++) if (!contains(removed, out.cleanupQueue[i])) next.push(out.cleanupQueue[i]);
+        out.cleanupQueue = next;
+        return out;
+    }
+
     function finishOperation(state, requestId) {
         var out = cloneManifest(state), id = String(requestId || "");
         if (!out.operation || out.operation.requestId !== id) throw Error("operation-request-mismatch");
         if (out.operation.phase !== "activated") throw Error("operation-not-activated");
-        if (out.retirementQueue.length > 0) throw Error("operation-cleanup-pending");
+        if (out.retirementQueue.length > 0 || out.cleanupQueue.length > 0) throw Error("operation-cleanup-pending");
         out.operation = null;
         return out;
     }
@@ -219,7 +230,7 @@ var FormalAreaTextNative = (function () {
             if (state.operation.phase === "activated") return state.retirementQueue && state.retirementQueue.length > 0 ? "activated-cleanup-pending" : "activated-clean";
             return "unknown-operation-phase";
         }
-        return state.retirementQueue && state.retirementQueue.length > 0 ? "activated-cleanup-pending" : "finished/recoverable";
+        return state.retirementQueue && state.retirementQueue.length > 0 || state.cleanupQueue && state.cleanupQueue.length > 0 ? "activated-cleanup-pending" : "finished/recoverable";
     }
 
     function activePhysicalId(state, logicalSegmentId) {
@@ -311,6 +322,7 @@ var FormalAreaTextNative = (function () {
         markVerified: markVerified,
         activate: activate,
         markRetired: markRetired,
+        markDiscardedCleaned: markDiscardedCleaned,
         finishOperation: finishOperation,
         activePhysicalId: activePhysicalId,
         physicalStatus: physicalStatus,
