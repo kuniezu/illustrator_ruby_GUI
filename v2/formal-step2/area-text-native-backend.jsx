@@ -190,7 +190,7 @@ function FormalAreaTextNativeBackend(doc, layer) {
         readback = verifyReadback(observation, spec, expectedTracking);
         if (!readback.ok) { readback.observation = observation; return readback; }
         fit = FormalAreaTextNative.verifyOneLineFit(observation, text(spec.reading));
-        return { ok: fit.ok, reason: fit.reason, retryable: fit.retryable === true, observation: observation, fit: fit };
+        return { ok: fit.ok, reason: fit.reason, retryable: fit.retryable === true, observation: observation, readback: readback, fit: fit };
     }
 
     function tryTracking(candidate, spec) {

@@ -8,6 +8,8 @@ const segments = require('../segments.js');
 const root = path.resolve(__dirname, '..', '..', '..');
 const file = path.join(root, 'v2/diagnostics/Formal Step2 AreaText Native Reflow Check.jsx');
 const source = fs.readFileSync(file, 'utf8');
+const hostSource = fs.readFileSync(path.join(root, 'v2/formal-step2/area-text-native-host.jsx'), 'utf8');
+const backendSource = fs.readFileSync(path.join(root, 'v2/formal-step2/area-text-native-backend.jsx'), 'utf8');
 
 test('reflow diagnostic is ES3-parseable and fail-closed', () => {
   assert.doesNotThrow(() => grammar.parseES3(source, file));
@@ -20,12 +22,21 @@ test('reflow diagnostic is ES3-parseable and fail-closed', () => {
     'actual-1-to-2-reflow',
     'MANUAL_REQUIRED',
     'cleanupActive',
-    'SaveOptions.DONOTSAVECHANGES'
+    'SaveOptions.DONOTSAVECHANGES',
+    'native-fit-evidence',
+    'fitEvidenceDetail',
+    'readingLength',
+    'rangeSpan',
+    'contentsLength',
+    'textPathHeight',
+    'readbackPassed'
   ]) assert.match(source, new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.doesNotMatch(source, /source\.width\s*=/);
   assert.doesNotMatch(source, /\.overflows\b/);
   assert.doesNotMatch(source, /\.kind\s*=/);
   assert.doesNotMatch(source, /Formal Multi Step2\.jsx/);
+  for (const token of ['fitEvidence', 'readingLength', 'rangeSpan', 'contentsLength', 'readbackPassed']) assert.match(hostSource, new RegExp(token));
+  assert.match(backendSource, /readback:\s*readback/);
 });
 
 test('split hint is reused across observed 2-line -> 1-line -> 2-line states', () => {
