@@ -52,6 +52,29 @@ test('native renderer widens a short-base long-reading candidate from ruby size'
   assert.equal(result.specs[0].finalWidth, 192);
 });
 
+test('native renderer preserves centered baseSize geometry through backend and manual adjustment', () => {
+  const custom = bundle();
+  custom.annotations[0].appearance = { fontName: 'RubyFont', fontSize: null, manualDeltaX: 3, widthScale: 1.1, gapEm: 0.15 };
+  const plan = {
+    status: 'complete',
+    results: [
+      { annotationId: 'a1', status: 'complete', decision: { segments: [{ renderSegmentId: 'segment-1', reading: 'こんかい', geometry: { left: 10, top: 20, width: 96, baseSize: 96, leading: 110 } }] } }
+    ]
+  };
+  const result = Renderer.createSpecs(custom, plan, 'request-geometry', 'RubyFont');
+  const spec = result.specs[0];
+  const backend = RenderSpec.backendSpec(spec);
+  assert.equal(spec.appearance.fontSize, 48);
+  assert.equal(spec.geometry.autoLeft, -38);
+  assert.equal(spec.geometry.autoWidth, 192);
+  assert.equal(spec.finalLeft, -35);
+  assert.ok(Math.abs(spec.finalWidth - 211.2) < 0.000001);
+  assert.equal(backend.left, -35);
+  assert.ok(Math.abs(backend.width - 211.2) < 0.000001);
+  assert.equal(spec.finalTop, 20);
+  assert.equal(spec.finalHeight, 110);
+});
+
 test('native renderer still rejects a nonempty plan entry without its annotation', () => {
   const plan = {
     status: 'complete',

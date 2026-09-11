@@ -17,8 +17,38 @@ const catalogIds = [
   'OBS-01', 'OBS-02'
 ];
 
+const coverageMap = {
+  'DOM-01': ['v2/formal-step2/tests/area-text-native-static.cjs', 'fresh rectangle/path AreaText construction'],
+  'DOM-02': ['v2/formal-step2/tests/area-text-native-reflow-diagnostic.cjs', 'actual reflow remains manual-only'],
+  'DOM-03': ['v2/formal-step2/tests/area-text-native-static.cjs', 'consumed path cleanup is not treated as owned failure'],
+  'MULTI-01': ['v2/formal-step2/tests/run.cjs', 'foreign managed output is ignored'],
+  'MULTI-02': ['v2/formal-step2/tests/run.cjs', 'duplicate segment identity is rejected'],
+  'MULTI-03': ['v2/formal-step2/tests/area-text-native-reflow-diagnostic.cjs', '2-to-1-to-2 simulation is separate'],
+  'MULTI-04': ['v2/formal-step2/tests/native-renderer.cjs', 'empty plan no-op'],
+  'ES3-01': ['v2/formal-step2/tests/gate-0.cjs', 'production compatibility gate'],
+  'ES3-02': ['v2/formal-step2/tests/gate-0.cjs', 'diagnostic compatibility gate'],
+  'FIT-01': ['v2/formal-step2/tests/area-text-native.cjs', 'strict line coverage'],
+  'FIT-02': ['v2/formal-step2/tests/native-renderer.cjs', 'centered baseSize geometry through backend'],
+  'FIT-03': ['v2/formal-step2/tests/area-text-native.cjs', 'finite tracking candidates'],
+  'FIT-04': ['v2/formal-step2/tests/persistence-adapter.cjs', 'structured failure detail'],
+  'LIFE-01': ['v2/formal-step2/tests/area-text-native-integration.cjs', 'explicit logical removal'],
+  'LIFE-02': ['v2/formal-step2/tests/area-text-native-transaction-coordinator.cjs', 'cleanup pending before finish'],
+  'LIFE-03': ['v2/formal-step2/tests/area-text-native-recovery.cjs', 'new active remains authoritative'],
+  'LIFE-04': ['v2/formal-step2/tests/area-text-native-integration.cjs', 'practical lifecycle replay'],
+  'LIFE-05': ['v2/formal-step2/tests/area-text-native-transaction-coordinator.cjs', 'persisted state survives restart'],
+  'LIFE-06': ['v2/formal-step2/tests/adapter-transaction.cjs', 'foreign identity preservation'],
+  'LIFE-07': ['v2/formal-step2/tests/area-text-native.cjs', 'copy-on-write ownership guards'],
+  'OBS-01': ['v2/formal-step2/tests/persistence-adapter.cjs', 'stage/category propagation'],
+  'OBS-02': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated body parse'],
+};
+
+const executedFiles = {};
+
 function run(label, args) {
   process.stdout.write('\n[minimum-pack] ' + label + '\n');
+  for (let i = 0; i < args.length; i++) {
+    if (/\.cjs$/.test(args[i])) executedFiles[path.relative(root, args[i]).replace(/\\/g, '/')]=true;
+  }
   const result = spawnSync(process.execPath, args, { cwd: root, stdio: 'inherit' });
   if (result.status !== 0) throw new Error(label + ' failed with exit code ' + String(result.status));
 }
@@ -43,6 +73,11 @@ run('ownership, explicit removal, cleanup ordering, and preservation', [
   path.join(step2, 'tests', 'area-text-native-recovery.cjs'),
   path.join(step2, 'tests', 'adapter-transaction.cjs')
 ]);
+run('static DOM and practical ownership assertions', [
+  '--test',
+  path.join(step2, 'tests', 'area-text-native-static.cjs'),
+  path.join(step2, 'tests', 'run.cjs')
+]);
 run('multi segmentation and diagnostic UI contracts', [
   '--test',
   path.join(step2, 'tests', 'multi-renderer.cjs'),
@@ -54,4 +89,11 @@ run('gate-0', ['--test', path.join(step2, 'tests', 'gate-0.cjs')]);
 
 const diff = spawnSync('git', ['diff', '--check'], { cwd: root, stdio: 'inherit' });
 if (diff.status !== 0) throw new Error('git diff --check failed');
+for (let i = 0; i < catalogIds.length; i++) {
+  const id = catalogIds[i];
+  const mapping = coverageMap[id];
+  if (!mapping) throw new Error('coverage map entry missing: ' + id);
+  if (!executedFiles[mapping[0]]) throw new Error('coverage anchor was not executed: ' + id + ' -> ' + mapping[0]);
+}
+process.stdout.write('\n[minimum-pack] coverage map PASS (' + String(catalogIds.length) + ' IDs)\n');
 process.stdout.write('\n[minimum-pack] PASS\n');

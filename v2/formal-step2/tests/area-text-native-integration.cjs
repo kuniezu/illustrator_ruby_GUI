@@ -76,6 +76,43 @@ test('connected actual coordinator persists begin, verify, activation and cleanu
   assert.throws(()=>Coordinator.finish(source,source.contents,source.note,'new-request'),/operation-cleanup-pending/);
 });
 
+test('practical lifecycle replay replaces one logical segment and finishes without duplicate ownership',()=>{
+  global.FormalAreaTextNative=require('../area-text-native.js');
+  global.FormalAreaTextNativeStore=require('../area-text-native-store.js');
+  global.FormalAreaTextNativeNoteAdapter=require('../area-text-native-note-adapter.js');
+  global.FormalAreaTextNativePersistenceFacade=require('../area-text-native-persistence-facade.js');
+  const Coordinator=require('../area-text-native-transaction-coordinator.js');
+  const orchestration={planAll(){return {status:'complete'};}};
+  const source={contents:'source',note:''};
+  const first=spec('p-first','segment','request-first');
+  let seam=Integration.create(orchestration,hostFor([first],{segment:'p-first'}),Coordinator);
+  let prepared=seam.planAndPrepare({},source.contents,{},[first],tx(source,'request-first'));
+  let verified=seam.verify(prepared);
+  seam.activate(source,source.contents,source.note,'request-first',verified,[],[]);
+  Coordinator.finish(source,source.contents,source.note,'request-first');
+  let state=FormalAreaTextNativeStore.read(source.note);
+  assert.deepEqual(state.activeBindings,{segment:'p-first'});
+  assert.deepEqual(state.retirementQueue,[]);
+  const replacement=spec('p-replacement','segment','request-replacement');
+  seam=Integration.create(orchestration,hostFor([replacement],{segment:'p-replacement'}),Coordinator);
+  prepared=seam.planAndPrepare({},source.contents,{},[replacement],tx(source,'request-replacement'));
+  verified=seam.verify(prepared);
+  seam.activate(source,source.contents,source.note,'request-replacement',verified,['p-first'],[]);
+  state=FormalAreaTextNativeStore.read(source.note);
+  assert.deepEqual(state.activeBindings,{segment:'p-replacement'});
+  assert.deepEqual(state.retirementQueue,['p-first']);
+  assert.equal(state.cleanupQueue.length,0);
+  assert.equal(Object.keys(state.activeBindings).length,1);
+  assert.equal(state.activeBindings.segment,'p-replacement');
+  Coordinator.retire(source,source.contents,source.note,['p-first']);
+  Coordinator.finish(source,source.contents,source.note,'request-replacement');
+  state=FormalAreaTextNativeStore.read(source.note);
+  assert.deepEqual(state.activeBindings,{segment:'p-replacement'});
+  assert.deepEqual(state.retirementQueue,[]);
+  assert.deepEqual(state.cleanupQueue,[]);
+  assert.equal(state.operation,null);
+});
+
 test('incomplete plan stops before durable begin or candidate preparation',()=>{
   let begun=0,prepared=0;
   const seam=Integration.create({planAll(){return {status:'unresolved'};}},{prepareAll(){prepared++;},verifyAll(){}},{begin(){begun++;},verify(){},activate(){}});
