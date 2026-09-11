@@ -32,6 +32,20 @@
             segments: File(here + "/segments.js").fsName,
             orchestration: File(here + "/orchestration.js").fsName,
             appearance: File(here + "/appearance.js").fsName,
+            multi: File(here + "/multi.js").fsName,
+            projection: File(here + "/projection.js").fsName,
+            multiRenderer: File(here + "/multi-renderer.js").fsName,
+            nativeRenderer: File(here + "/native-renderer.js").fsName,
+            renderSpec: File(here + "/area-text-render-spec.js").fsName,
+            nativeCore: File(here + "/area-text-native.js").fsName,
+            nativeStore: File(here + "/area-text-native-store.js").fsName,
+            nativeNoteAdapter: File(here + "/area-text-native-note-adapter.js").fsName,
+            nativePersistence: File(here + "/area-text-native-persistence-facade.js").fsName,
+            nativeCoordinator: File(here + "/area-text-native-transaction-coordinator.js").fsName,
+            nativeIdentity: File(here + "/area-text-native-output-identity.js").fsName,
+            nativeBackend: File(here + "/area-text-native-backend.jsx").fsName,
+            nativeHost: File(here + "/area-text-native-host.jsx").fsName,
+            nativeIntegration: File(here + "/area-text-native-integration.js").fsName,
             adapter: File(here + "/adapter.jsx").fsName
         };
     }
