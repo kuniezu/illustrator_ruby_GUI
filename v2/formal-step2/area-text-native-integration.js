@@ -48,8 +48,8 @@ var FormalAreaTextNativeIntegration = (function () {
             prepared.status = "verified";
             return prepared;
         }
-        function activate(source, expectedContents, expectedNote, requestId, verified, retireIds, discardedIds) {
-            var batch, bindings, records, tx, actualSource, actualContents, actualNote, actualRequest;
+        function activate(source, expectedContents, expectedNote, requestId, verified, retireIds, discardedIds, removedLogicalSegmentIds) {
+            var batch, bindings, records, tx, actualSource, actualContents, actualNote, actualRequest, i, logicalSegmentId;
             if (!verified || verified.status !== "verified" || !verified.batch || verified.batch.status !== "verified") fail("native-integration-activation-before-verify");
             requireTransaction(verified.transaction);
             tx = verified.transaction;
@@ -61,6 +61,13 @@ var FormalAreaTextNativeIntegration = (function () {
             batch = verified.batch;
             bindings = host.bindingsByLogicalSegmentId(batch);
             records = host.recordsByPhysicalId(batch);
+            removedLogicalSegmentIds = removedLogicalSegmentIds || [];
+            for (i = 0; i < removedLogicalSegmentIds.length; i++) {
+                logicalSegmentId = removedLogicalSegmentIds[i];
+                if (typeof logicalSegmentId !== "string" || !logicalSegmentId) fail("native-integration-removal-logical-id-required");
+                if (Object.prototype.hasOwnProperty.call(bindings, logicalSegmentId)) fail("native-integration-removal-conflicts-with-binding");
+                bindings[logicalSegmentId] = null;
+            }
             return coordinator.activate(actualSource, actualContents, actualNote, actualRequest, bindings, records, retireIds || [], discardedIds || []);
         }
         function reconcileExisting(bundle, sourceText, observation, manifest) {

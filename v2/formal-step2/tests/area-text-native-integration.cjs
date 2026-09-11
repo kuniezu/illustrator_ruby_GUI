@@ -98,3 +98,30 @@ test('reconcileExisting reuses finished active manifest without creating candida
   const result=seam.reconcileExisting({annotations:[]},'source',{status:'complete',lines:[]},{operation:null,activeBindings:{a:'p1',b:'p2'}});
   assert.equal(result.status,'reused'); assert.deepEqual(result.physicalIds,['p1','p2']); assert.deepEqual(calls,['plan']);
 });
+
+test('activation seam carries explicit logical removal for a 2-to-1 collapse while preserving a peer',()=>{
+  global.FormalAreaTextNative=require('../area-text-native.js');
+  global.FormalAreaTextNativeStore=require('../area-text-native-store.js');
+  global.FormalAreaTextNativeNoteAdapter=require('../area-text-native-note-adapter.js');
+  global.FormalAreaTextNativePersistenceFacade=require('../area-text-native-persistence-facade.js');
+  const Coordinator=require('../area-text-native-transaction-coordinator.js');
+  const orchestration={planAll(){return {status:'complete'};}};
+  const source={contents:'source',note:''};
+  const first=[spec('p-old-0','segment-0','r1'),spec('p-old-1','segment-1','r1'),spec('p-peer','peer','r1')];
+  const firstSeam=Integration.create(orchestration,hostFor(first,{'segment-0':'p-old-0','segment-1':'p-old-1',peer:'p-peer'}),Coordinator);
+  let prepared=firstSeam.planAndPrepare({},source.contents,{},first,tx(source,'r1'));
+  let verified=firstSeam.verify(prepared);
+  firstSeam.activate(source,source.contents,source.note,'r1',verified,[],[]);
+  Coordinator.finish(source,source.contents,source.note,'r1');
+  const next=spec('p-new-0','segment-0','r2');
+  const nextSeam=Integration.create(orchestration,hostFor([next],{'segment-0':'p-new-0'}),Coordinator);
+  prepared=nextSeam.planAndPrepare({},source.contents,{},[next],tx(source,'r2'));
+  verified=nextSeam.verify(prepared);
+  assert.throws(()=>nextSeam.activate(source,source.contents,source.note,'r2',verified,['p-old-0','p-old-1'],[]),/retirement-not-eligible/);
+  nextSeam.activate(source,source.contents,source.note,'r2',verified,['p-old-0','p-old-1'],[],['segment-1']);
+  const state=FormalAreaTextNativeStore.read(source.note);
+  assert.equal(state.activeBindings['segment-0'],'p-new-0');
+  assert.equal(state.activeBindings['segment-1'],undefined);
+  assert.equal(state.activeBindings.peer,'p-peer');
+  assert.deepEqual(state.retirementQueue,['p-old-0','p-old-1']);
+});
