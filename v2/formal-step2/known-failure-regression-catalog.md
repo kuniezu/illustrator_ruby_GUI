@@ -1,0 +1,42 @@
+# Known failure regression catalog
+
+This catalog is the pre-runtime checklist for the practical Formal Multi flow. Each replayable failure must be caught by pure, integration, generated-bridge, or static coverage before another Illustrator run. Illustrator-only checks remain explicitly marked.
+
+| ID | Symptom | Root cause | Invariant / contract | Automated coverage | Illustrator-only check | Known checkpoint |
+| --- | --- | --- | --- | --- | --- | --- |
+| DOM-01 | AreaText creation is unstable or silently becomes PointText | TextFrame.kind conversion was treated as a safe constructor | Create a fresh rectangle/path, then doc.textFrames.areaText(path); read back AreaText kind | tests/area-text-native-static.cjs, tests/area-text-native-diagnostic.cjs, gate-0 source expansion | AreaText kind readback | native AreaText integration |
+| DOM-02 | Changing an existing AreaText width does not reflow lines | Illustrator runtime does not reliably treat width setters as actual reflow | Do not use width mutation as automated reflow proof; actual reflow is MANUAL_REQUIRED | tests/area-text-native-reflow-diagnostic.cjs, tests/gate-c.cjs, tests/gate-d.cjs | Actual 2→1 reflow only | Gate D C2 |
+| DOM-03 | Cleanup reports a stale path after areaText(path) | Illustrator may consume or invalidate the source path reference | Remove the frame; do not treat the consumed path reference as an independently owned failure | tests/area-text-native-static.cjs | Runtime cleanup observation if needed | Gate D fixture cleanup |
+| MULTI-01 | output-id-collision for foreign managed output | Ownership scan was not scoped to source and annotation | Match sourceFrameId + annotationId + renderSegmentId; ignore foreign source/annotation | tests/run.cjs ownership assertion, tests/adapter-transaction.cjs | None | ownership scan fix |
+| MULTI-02 | A wrapped annotation with two outputs is rejected | out.length > 1 was treated as collision | Multiple distinct segment IDs are valid; duplicate or malformed segment identity is rejected | tests/run.cjs, tests/adapter-transaction.cjs | None | ownership scan fix |
+| MULTI-03 | split-hint-boundary-mismatch follows failed actual reflow | DOM reflow failure was chained into renderer lifecycle | Separate actual reflow MANUAL_REQUIRED from deterministic renderer 2→1→2 simulation | tests/area-text-native-reflow-diagnostic.cjs, tests/gate-d.cjs | Actual reflow only | Gate D C2/C3 |
+| MULTI-04 | native-render-annotation-missing for a complete empty plan | Annotation lookup happened before zero-segment no-op | Complete zero-segment/suppressed plans are no-op; nonempty missing Annotation remains strict failure | tests/native-renderer.cjs | None | a053e48 |
+| ES3-01 | indexOf is not a function in runtime JSX | Node-compatible Array APIs were used in ExtendScript | Production/runtime JSX uses explicit loops and ES3-compatible constructs | extendscript-compat-lint.cjs, tests/gate-0.cjs | None | compatibility gate |
+| ES3-02 | Diagnostic JSX uses unsupported Array APIs | Diagnostics were outside the compatibility gate | Diagnostic JSX is scanned with the same denylist and grammar gate | extendscript-compat-lint.cjs, tests/gate-0.cjs | None | diagnostic compatibility gate |
+| FIT-01 | fit-line-coverage-mismatch after tracking exhaustion | Short base text and longer reading produced an undersized candidate | Keep strict full line coverage; do not accept partial coverage | tests/area-text-native.cjs, tests/area-text-native-reflow-diagnostic.cjs | Representative native fit | 1b11b80 |
+| FIT-02 | Long reading is oversized or shifted | Width was expanded without recentering; ruby size used leading/boxHeight | Use segment baseSize for default ruby font size and preserve base geometry center during width expansion | tests/native-renderer.cjs centered/baseSize assertion | Visual placement | 423864c |
+| FIT-03 | Old -400 tracking is needed to pass | Legacy clamp hid real overflow | Candidates are exactly 0,-25,-50,-75,-100; first verified fit wins | tests/area-text-native.cjs, tests/area-text-render-spec.cjs, tests/area-text-native-static.cjs | Readback of representative tracking | current native contract |
+| FIT-04 | Generic render failure hides the actionable cause | Native evidence was not propagated through BridgeTalk | Preserve structured stage/category and bounded reading/range/line/tracking/width detail | tests/persistence-adapter.cjs, tests/area-text-native-reflow-diagnostic.cjs, tests/ui.cjs | Copy console only when runtime fails | 1b11b80 |
+| LIFE-01 | retirement-not-eligible during 2→1 replacement | A disappearing logical segment was inferred only from physical IDs | Pass explicit logical removal IDs; keep the core guard strict | tests/area-text-native-integration.cjs, tests/area-text-native.cjs | None | lifecycle correction |
+| LIFE-02 | operation-cleanup-pending reaches finish | Finish ran before old owned physical cleanup and durable retirement | prepare → verify → activate → remove owned retired physicals → durable retire → finish | tests/area-text-native-integration.cjs, tests/area-text-native-transaction-coordinator.cjs, tests/area-text-native.cjs | None | lifecycle correction |
+| LIFE-03 | Activation is rolled back after cleanup failure | Cleanup failure was confused with activation failure | New active generation remains authoritative; cleanup-pending is recoverable and retryable | tests/area-text-native.cjs, tests/area-text-native-recovery.cjs | None | copy-on-write contract |
+| LIFE-04 | Re-edit proliferates managed output | Previous native manifest was read after source note overwrite | Read previous manifest before note write; one logical segment has one active generation | tests/persistence-adapter.cjs, tests/area-text-native-integration.cjs | One save → re-edit → save representative check | 423864c |
+| LIFE-05 | Save/close/reopen loses reading, hints, or ownership | Durable source note and native manifest were not restored together | Reopen reads source-side authority and reuses active physical IDs without duplicate bindings | tests/area-text-native-persistence-facade.cjs, tests/area-text-native-transaction-coordinator.cjs, tests/area-text-native-recovery.cjs | Close/reopen only when lifecycle changes | persistence checkpoint |
+| LIFE-06 | Source or unmanaged object is deleted | Retire scope was not identity-owned | Only stamped owned physical IDs may be removed | tests/area-text-native-output-identity.cjs, tests/adapter-transaction.cjs, tests/area-text-native-static.cjs | Representative source/unmanaged preservation | ownership checkpoint |
+| LIFE-07 | Duplicate active/pending ownership appears | Copy-on-write phase boundaries were bypassed | Old active stays until verified candidate activation; explicit retirement and cleanup queue remain durable | tests/area-text-native.cjs, tests/area-text-native-transaction-coordinator.cjs | None | lifecycle contract |
+| OBS-01 | render-failed or bridge:error hides the stage | BridgeTalk categories were collapsed at the palette boundary | Preserve request, bridge, observation, plan, native, and lifecycle categories in bounded logs and console | tests/persistence-adapter.cjs, tests/ui.cjs | Console copy only on failure | 1b11b80 |
+| OBS-02 | Generated BridgeTalk body breaks from a helper/variable collision | Generated body shared names in one scope | Generated body is ES3-parseable with unique helper names | tests/persistence-adapter.cjs, tests/gate-0.cjs | None | 305e8f7 |
+
+## Practical-flow audit
+
+The production bridge still performs the final BridgeTalk composition because it owns document identity and note readback. Its lifecycle calls are guarded by the same pure coordinator and integration contracts, and the generated-body ordering assertion covers the remaining hand-written boundary. A broad consolidation would expand scope without increasing the current proof, so the remaining duplication is recorded rather than redesigned.
+
+## Illustrator-only checks that remain
+
+Only the following require another compact runtime check after this regression pack is green:
+
+1. actual AreaText reflow after a real document edit;
+2. AreaText kind and visible centered ruby placement;
+3. one-generation replacement on save → re-edit → save;
+4. source/unmanaged preservation during that representative flow;
+5. copyable debug console output if a runtime failure remains.
