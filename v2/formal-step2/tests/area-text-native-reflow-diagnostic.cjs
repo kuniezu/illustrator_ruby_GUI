@@ -39,7 +39,7 @@ test('reflow diagnostic is ES3-parseable and fail-closed', () => {
   assert.doesNotMatch(source, /\.overflows\b/);
   assert.doesNotMatch(source, /\.kind\s*=/);
   assert.doesNotMatch(source, /Formal Multi Step2\.jsx/);
-  for (const token of ['fitEvidence', 'readingLength', 'rangeSpan', 'contentsLength', 'readbackPassed']) assert.match(hostSource, new RegExp(token));
+  for (const token of ['fitEvidence', 'fitEvidenceDetail', 'readingLength', 'rangeSpan', 'contentsLength', 'readbackPassed']) assert.match(hostSource, new RegExp(token));
   assert.match(backendSource, /readback:\s*readback/);
 });
 

@@ -39,6 +39,22 @@ function FormalAreaTextNativeHost(doc, layer) {
         };
     }
 
+    function fitEvidenceDetail(evidence) {
+        var lines = [], i, line;
+        if (!evidence) return "";
+        for (i = 0; i < (evidence.lines || []).length; i++) {
+            line = evidence.lines[i];
+            lines.push(String(line.start) + "-" + String(line.end) + "/" + String(line.contentsLength));
+        }
+        return "readingLength=" + String(evidence.readingLength) +
+            ";range=" + String(evidence.rangeStart) + "-" + String(evidence.rangeEnd) +
+            ";rangeSpan=" + String(evidence.rangeSpan) +
+            ";lines=" + lines.join(",") +
+            ";tracking=" + String(evidence.tracking) +
+            ";frameWidth=" + String(evidence.frameWidth) +
+            ";textPathWidth=" + String(evidence.textPathWidth);
+    }
+
     function validateBatch(renderSpecs) {
         var requestId = null, sourceFrameId = null, physical = {}, logical = {}, i, spec;
         if (!renderSpecs || typeof renderSpecs.length !== "number") throw Error("native-render-specs-required");
@@ -89,8 +105,9 @@ function FormalAreaTextNativeHost(doc, layer) {
                 result = backend.verifyCandidate(entry.candidate, entry.backendSpec);
                 if (!result.ok && result.retryable !== false) result = backend.tryTracking(entry.candidate, entry.backendSpec);
                 if (!result.ok) {
-                    var fitError = Error("native-fit-failed:" + result.reason);
-                    fitError.fitEvidence = fitEvidence(entry, result);
+                    var evidence = fitEvidence(entry, result);
+                    var fitError = Error("native-fit-failed:" + result.reason + ";" + fitEvidenceDetail(evidence));
+                    fitError.fitEvidence = evidence;
                     throw fitError;
                 }
                 observation = result.observation;
