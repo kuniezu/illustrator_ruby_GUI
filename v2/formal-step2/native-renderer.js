@@ -26,6 +26,7 @@ var FormalMultiNativeRenderer = (function () {
         for (i = 0; i < results.length; i++) {
             result = results[i];
             if (result.status !== "complete") fail("native-render-plan-incomplete");
+            if (!result.decision || !result.decision.segments || !result.decision.segments.length) continue;
             a = annotation(bundle, result.annotationId);
             if (!a) fail("native-render-annotation-missing");
             for (j = 0; j < (result.decision.segments || []).length; j++) {
