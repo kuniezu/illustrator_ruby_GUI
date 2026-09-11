@@ -7,6 +7,7 @@ const { spawnSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..', '..');
 const step2 = path.join(root, 'v2', 'formal-step2');
 const catalogPath = path.join(step2, 'known-failure-regression-catalog.md');
+const parityGatePath = path.join(step2, 'migration-parity-gate.md');
 
 const catalogIds = [
   'DOM-01', 'DOM-02', 'DOM-03',
@@ -43,6 +44,17 @@ const coverageMap = {
 };
 
 const executedFiles = {};
+const parityDimensions = [
+  'Geometry semantics',
+  'Appearance/baseSize semantics',
+  'Logical/physical identity',
+  'Persistence read/write ordering',
+  'Copy-on-write lifecycle',
+  'Manual adjustment semantics',
+  'Source/unmanaged preservation',
+  'Structured diagnostics',
+  'ExtendScript compatibility'
+];
 
 function run(label, args) {
   process.stdout.write('\n[minimum-pack] ' + label + '\n');
@@ -57,6 +69,19 @@ const catalog = fs.readFileSync(catalogPath, 'utf8');
 for (let i = 0; i < catalogIds.length; i++) {
   if (catalog.indexOf(catalogIds[i]) < 0) throw new Error('catalog entry missing: ' + catalogIds[i]);
 }
+const parityGate = fs.readFileSync(parityGatePath, 'utf8');
+if (parityGate.indexOf('old contract -> new path -> regression evidence') < 0) {
+  throw new Error('migration-parity gate mapping rule missing');
+}
+for (let i = 0; i < parityDimensions.length; i++) {
+  if (parityGate.indexOf(parityDimensions[i]) < 0) {
+    throw new Error('migration-parity contract dimension missing: ' + parityDimensions[i]);
+  }
+}
+if (parityGate.indexOf('minimum pack must statically assert') < 0) {
+  throw new Error('migration-parity minimum-pack requirement missing');
+}
+process.stdout.write('\n[minimum-pack] migration-parity gate PASS (9 contract dimensions)\n');
 
 run('native renderer and centered/baseSize geometry', [
   '--test', path.join(step2, 'tests', 'native-renderer.cjs'),
