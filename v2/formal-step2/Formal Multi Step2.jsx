@@ -39,7 +39,7 @@
     function run() {
         var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint, renderSources, stageFile;
         var editor, readingInput, enabledCheck, confirmedCheck, selectedText;
-        var saveButton, closeButton, splitButton, mergeButton, stateText, savePending = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, i;
+        var saveButton, closeButton, splitButton, mergeButton, previousReviewButton, nextReviewButton, suppressButton, reenableButton, stateText, savePending = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, i;
 
         if (!app.documents.length) fail("AIファイルを開いてください");
         documentRef = app.activeDocument;
@@ -85,6 +85,10 @@
         actions.orientation = "row";
         splitButton = actions.add("button", undefined, "局所分割");
         mergeButton = actions.add("button", undefined, "隣接結合");
+        previousReviewButton = actions.add("button", undefined, "前の未解決");
+        nextReviewButton = actions.add("button", undefined, "次の未解決");
+        suppressButton = actions.add("button", undefined, "抑制");
+        reenableButton = actions.add("button", undefined, "再有効化");
         saveButton = actions.add("button", undefined, "保存");
         closeButton = actions.add("button", undefined, "閉じる");
         stateText = dialog.add("statictext", undefined, reResolution ? "状態: source変更を再解決済み / unresolved=" + reResolution.unresolved.length + "件（保存で新snapshotを確定）" : "状態: 読み込み完了");
@@ -107,6 +111,59 @@
             readingInput.text = occurrence.reading;
             enabledCheck.value = occurrence.enabled;
             confirmedCheck.value = occurrence.readingConfirmed;
+            updateReviewControls();
+        }
+
+        function currentOccurrenceId() { return currentIndex < 0 ? null : bundle.occurrences[currentIndex].occurrenceId; }
+        function reviewResults() {
+            var results = [], occurrence;
+            for (var j = 0; j < bundle.occurrences.length; j++) {
+                occurrence = bundle.occurrences[j];
+                results.push({ annotationId: occurrence.occurrenceId, status: FormalMultiWorkflow.occurrenceStatus(occurrence) });
+            }
+            return results;
+        }
+        function reviewQueue() { return FormalMultiWorkflow.reviewQueue(bundle, reviewResults()); }
+        function findOccurrenceIndex(occurrenceId) {
+            var j;
+            for (j = 0; j < bundle.occurrences.length; j++) if (bundle.occurrences[j].occurrenceId === occurrenceId) return j;
+            return -1;
+        }
+        function updateReviewControls() {
+            var occurrence = currentIndex < 0 ? null : bundle.occurrences[currentIndex];
+            var queue = reviewQueue();
+            previousReviewButton.enabled = !savePending && queue.length > 0;
+            nextReviewButton.enabled = !savePending && queue.length > 0;
+            suppressButton.enabled = !savePending && !!occurrence && occurrence.enabled && !occurrence.unsupported;
+            reenableButton.enabled = !savePending && !!occurrence && !occurrence.enabled && !occurrence.unsupported;
+        }
+        function selectOccurrence(occurrenceId) {
+            var index = findOccurrenceIndex(occurrenceId);
+            if (index < 0) return false;
+            list.selection = index;
+            loadEditor(index);
+            return true;
+        }
+        function navigateReview(direction) {
+            var target;
+            try {
+                if (savePending) return;
+                saveEditor();
+                target = FormalMultiWorkflow.navigate(reviewQueue(), currentOccurrenceId(), direction);
+                if (target && selectOccurrence(target)) stateText.text = "状態: 未解決レビュー / " + (direction < 0 ? "前" : "次") + "へ移動しました";
+                else stateText.text = "状態: 未解決レビュー / これ以上ありません";
+            } catch (error) { stateText.text = "状態: レビュー移動失敗 / " + (error.message || error); }
+        }
+        function setCurrentEnabled(enabled) {
+            var id;
+            try {
+                if (savePending || currentIndex < 0) return;
+                saveEditor(); id = currentOccurrenceId();
+                bundle = FormalMultiWorkflow.setOccurrenceEnabled(bundle, id, enabled);
+                editRevision++; bundle.revision = editRevision;
+                refreshList(); selectOccurrence(id);
+                stateText.text = enabled ? "状態: 再有効化しました。未解決ならレビュー対象へ戻ります" : "状態: 抑制しました。未解決レビューから除外しました";
+            } catch (error) { stateText.text = "状態: 抑制状態変更失敗 / " + (error.message || error); }
         }
 
         var listRefreshGuard = { suppress: false };
@@ -159,7 +216,12 @@
             confirmedCheck.enabled = !value;
             splitButton.enabled = !value;
             mergeButton.enabled = !value;
+            updateReviewControls();
         }
+        previousReviewButton.onClick = function () { navigateReview(-1); };
+        nextReviewButton.onClick = function () { navigateReview(1); };
+        suppressButton.onClick = function () { setCurrentEnabled(false); };
+        reenableButton.onClick = function () { setCurrentEnabled(true); };
         saveButton.onClick = function () {
             var result, requestId, requestRevision = null;
             if (savePending) return;

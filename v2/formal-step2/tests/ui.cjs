@@ -85,6 +85,16 @@ check('guards ScriptUI refresh re-entry and pending changes',
   source.indexOf('FormalMultiUiRefresh.ignoreChange(listRefreshGuard, savePending)') >= 0 &&
   source.indexOf('FormalMultiUiRefresh.refresh(list, bundle.occurrences') >= 0 &&
   source.indexOf('refreshList(); stateText.text = "状態: 保存完了') >= 0);
+check('provides unresolved review navigation and explicit suppress/re-enable',
+  source.indexOf('前の未解決') >= 0 &&
+  source.indexOf('次の未解決') >= 0 &&
+  source.indexOf('抑制') >= 0 &&
+  source.indexOf('再有効化') >= 0 &&
+  source.indexOf('FormalMultiWorkflow.reviewQueue') >= 0 &&
+  source.indexOf('FormalMultiWorkflow.navigate') >= 0 &&
+  source.indexOf('FormalMultiWorkflow.setOccurrenceEnabled') >= 0 &&
+  source.indexOf('function selectOccurrence') >= 0 &&
+  source.indexOf('function updateReviewControls') >= 0);
 check('guards unsupported entry paths and exposes a disposable stage file',
   source.indexOf('resolveMultiFrame') >= 0 &&
   saveClickBody.indexOf('source.kind') < 0 &&
