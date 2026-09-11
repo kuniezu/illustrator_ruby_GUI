@@ -6,6 +6,7 @@ test('persistence diagnostic never touches an existing user document',()=>{const
 test('managed inventory uses canonical identity parsing and reports mismatch detail',()=>{const s=source();assert.ok(s.includes('FormalAreaTextNativeOutputIdentity.parse(text(target.textFrames[i].note))'));assert.equal(s.includes('formal-step2-output:v1;'),false);assert.ok(s.includes('managed-frame-inventory-mismatch;expected='));});
 test('bookkeeping files keep the temporary header-only contract across Windows EOL',()=>{const read=file=>fs.readFileSync(file,'utf8').replace(/\r\n/g,'\n');assert.equal(read(path.join(root,'v2/formal-step2/04_Work整理結果/01_次これやって.md')),'# 次これやって\n');assert.equal(read(path.join(root,'v2/formal-step2/04_Work整理結果/02_今これやったよ.md')),'# 今これやったよ\n');});
 test('persistence diagnostic retires only owned generations after activation',()=>{const s=source();assert.ok(s.includes('stageBatch("persist-r2"'));assert.ok(s.includes('activateVerified(staged, [oldId, "persist-a2"], ["persist-a-1"])'));assert.equal(s.includes('retireIds[1] === "persist-a2"'),false);assert.ok(s.includes('finishActivated(staged)'));assert.ok(s.includes('removeOwned(oldId, doc)'));assert.ok(s.includes('copy-on-write-after-reopen'));});
+test('persistence diagnostic avoids unsupported array prototype helpers',()=>{assert.equal(source().includes('.indexOf('),false);});
 test('pure manifest lifecycle exercises pending, verified, active, retirement boundaries',()=>{
   const Native=require('../area-text-native.js');
   let m=Native.createManifest();
