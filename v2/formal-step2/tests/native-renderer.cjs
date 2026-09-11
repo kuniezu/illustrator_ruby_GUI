@@ -37,6 +37,19 @@ test('native renderer skips complete empty plans without annotations while rende
   assert.equal(result.specs.length, 1);
 });
 
+test('native renderer widens a short-base long-reading candidate from ruby size', () => {
+  const plan = {
+    status: 'complete',
+    results: [
+      { annotationId: 'a1', status: 'complete', decision: { segments: [{ renderSegmentId: 'segment-1', reading: 'こんかい', geometry: { left: 10, top: 20, width: 96, baseSize: 96, leading: 110 } }] } }
+    ]
+  };
+  const result = Renderer.createSpecs(bundle(), plan, 'request-long-reading', 'RubyFont');
+  assert.equal(result.specs[0].appearance.fontSize, 55);
+  assert.equal(result.specs[0].geometry.autoWidth, 220);
+  assert.equal(result.specs[0].finalWidth, 220);
+});
+
 test('native renderer still rejects a nonempty plan entry without its annotation', () => {
   const plan = {
     status: 'complete',

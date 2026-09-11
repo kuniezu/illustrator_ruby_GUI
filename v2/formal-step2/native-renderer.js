@@ -20,6 +20,10 @@ var FormalMultiNativeRenderer = (function () {
         height = geometry.leading > 0 ? geometry.leading : (geometry.baseSize > 0 ? geometry.baseSize : 1);
         return { autoLeft: geometry.left, autoTop: geometry.top, autoWidth: geometry.width, boxHeight: height };
     }
+    function rubyWidth(geometry, reading, fontSize) {
+        var estimated = String(reading == null ? "" : reading).length * fontSize;
+        return estimated > geometry.autoWidth ? estimated : geometry.autoWidth;
+    }
     function createSpecs(bundle, plan, requestId, sourceFontName) {
         var specs = [], desiredLogicalSegmentIds = [], results = plan && (plan.results || plan.plans) || [], i, j, result, a, segment, id, geometry, appearance;
         if (!plan || plan.status !== "complete") return { status: plan && plan.status || "failed", specs: [], desiredLogicalSegmentIds: [] };
@@ -34,6 +38,7 @@ var FormalMultiNativeRenderer = (function () {
                 id = logicalId(result.annotationId, segment.renderSegmentId);
                 geometry = geometryOf(segment);
                 appearance = FormalAppearance.normalize(a.appearance, geometry.boxHeight, sourceFontName);
+                geometry.autoWidth = rubyWidth(geometry, segment.reading, appearance.fontSize);
                 specs.push(FormalAreaTextRenderSpec.create({
                     sourceFrameId: bundle.sourceFrameId,
                     annotationId: result.annotationId,
