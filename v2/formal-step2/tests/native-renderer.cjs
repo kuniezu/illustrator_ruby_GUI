@@ -45,9 +45,11 @@ test('native renderer widens a short-base long-reading candidate from ruby size'
     ]
   };
   const result = Renderer.createSpecs(bundle(), plan, 'request-long-reading', 'RubyFont');
-  assert.equal(result.specs[0].appearance.fontSize, 55);
-  assert.equal(result.specs[0].geometry.autoWidth, 220);
-  assert.equal(result.specs[0].finalWidth, 220);
+  assert.equal(result.specs[0].appearance.fontSize, 48);
+  assert.equal(result.specs[0].geometry.autoLeft, -38);
+  assert.equal(result.specs[0].geometry.autoWidth, 192);
+  assert.equal(result.specs[0].finalLeft, -38);
+  assert.equal(result.specs[0].finalWidth, 192);
 });
 
 test('native renderer still rejects a nonempty plan entry without its annotation', () => {

@@ -18,7 +18,7 @@ var FormalMultiNativeRenderer = (function () {
         var geometry = segment && segment.geometry, height;
         if (!geometry || typeof geometry.left !== "number" || typeof geometry.top !== "number" || typeof geometry.width !== "number" || geometry.width <= 0) fail("native-render-geometry-unavailable");
         height = geometry.leading > 0 ? geometry.leading : (geometry.baseSize > 0 ? geometry.baseSize : 1);
-        return { autoLeft: geometry.left, autoTop: geometry.top, autoWidth: geometry.width, boxHeight: height };
+        return { autoLeft: geometry.left, autoTop: geometry.top, autoWidth: geometry.width, boxHeight: height, baseSize: geometry.baseSize };
     }
     function rubyWidth(geometry, reading, fontSize) {
         var estimated = String(reading == null ? "" : reading).length * fontSize;
@@ -37,8 +37,11 @@ var FormalMultiNativeRenderer = (function () {
                 segment = result.decision.segments[j];
                 id = logicalId(result.annotationId, segment.renderSegmentId);
                 geometry = geometryOf(segment);
-                appearance = FormalAppearance.normalize(a.appearance, geometry.boxHeight, sourceFontName);
-                geometry.autoWidth = rubyWidth(geometry, segment.reading, appearance.fontSize);
+                appearance = FormalAppearance.normalize(a.appearance, geometry.baseSize > 0 ? geometry.baseSize : geometry.boxHeight, sourceFontName);
+                if (rubyWidth(geometry, segment.reading, appearance.fontSize) > geometry.autoWidth) {
+                    geometry.autoLeft -= (rubyWidth(geometry, segment.reading, appearance.fontSize) - geometry.autoWidth) / 2;
+                    geometry.autoWidth = rubyWidth(geometry, segment.reading, appearance.fontSize);
+                }
                 specs.push(FormalAreaTextRenderSpec.create({
                     sourceFrameId: bundle.sourceFrameId,
                     annotationId: result.annotationId,
