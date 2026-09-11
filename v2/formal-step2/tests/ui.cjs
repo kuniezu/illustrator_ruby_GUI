@@ -95,6 +95,11 @@ check('provides unresolved review navigation and explicit suppress/re-enable',
   source.indexOf('FormalMultiWorkflow.setOccurrenceEnabled') >= 0 &&
   source.indexOf('function selectOccurrence') >= 0 &&
   source.indexOf('function updateReviewControls') >= 0);
+check('provides bounded copyable debug console and preserves exact save failure category',
+  source.indexOf('debug console: copyable / max 40 records') >= 0 &&
+  source.indexOf('function showDiagnostics(values)') >= 0 &&
+  source.indexOf('while (debugLines.length > 40)') >= 0 &&
+  source.indexOf('value.reason') >= 0);
 check('guards unsupported entry paths and exposes a disposable stage file',
   source.indexOf('resolveMultiFrame') >= 0 &&
   saveClickBody.indexOf('source.kind') < 0 &&
