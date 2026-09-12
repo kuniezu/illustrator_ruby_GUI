@@ -99,7 +99,9 @@ var FormalAreaTextRenderSpec = (function () {
                 autoLeft: number(geometry.autoLeft, "render-spec-auto-left", false),
                 autoTop: number(geometry.autoTop, "render-spec-auto-top", false),
                 autoWidth: number(geometry.autoWidth, "render-spec-auto-width", true),
-                boxHeight: number(geometry.boxHeight, "render-spec-box-height", true)
+                boxHeight: number(geometry.boxHeight, "render-spec-box-height", true),
+                measuredTop: geometry.measuredTop === null || geometry.measuredTop === undefined ? null : number(geometry.measuredTop, "render-spec-measured-top", false),
+                gap: geometry.gap === null || geometry.gap === undefined ? null : number(geometry.gap, "render-spec-gap", false)
             },
             composerPolicy: copyComposer(input.composerPolicy)
         };
@@ -140,6 +142,8 @@ var FormalAreaTextRenderSpec = (function () {
             top: spec.finalTop,
             width: spec.finalWidth,
             height: spec.finalHeight,
+            measuredTop: spec.geometry.measuredTop,
+            gap: spec.geometry.gap,
             appearance: {
                 fontName: spec.appearance.fontName,
                 fontSize: spec.appearance.fontSize

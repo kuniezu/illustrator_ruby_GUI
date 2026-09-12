@@ -11,6 +11,21 @@ function FormalAreaTextNativeBackend(doc, layer) {
     }
     function text(value) { return String(value == null ? "" : value); }
     function readOptional(fn) { try { return fn(); } catch (ignore) { return null; } }
+    function bounds(frame) { var value = readOptional(function () { return frame.visibleBounds; }); if (!value || value.length < 4) value = readOptional(function () { return frame.geometricBounds; }); return value; }
+    function applyVerticalPlacement(candidate, spec) {
+        var value, desiredBottom, deltaY, after, residual;
+        if (spec.measuredTop === null || spec.gap === null) return { applied: false, residual: null };
+        value = bounds(candidate.frame);
+        if (!value || value.length < 4) throw Error("ruby-bounds-unavailable");
+        desiredBottom = spec.measuredTop + spec.gap;
+        deltaY = desiredBottom - value[3];
+        candidate.frame.top += deltaY;
+        after = bounds(candidate.frame);
+        if (!after || after.length < 4) throw Error("ruby-bounds-unavailable-after-fit");
+        residual = after[3] - desiredBottom;
+        if (Math.abs(residual) > .5) throw Error("ruby-bottom-gap-unverified");
+        return { applied: true, desiredBottom: desiredBottom, residual: residual, measuredTop: spec.measuredTop, gap: spec.gap };
+    }
 
     function createCandidate(spec) {
         var path = null, frame = null;
@@ -170,7 +185,7 @@ function FormalAreaTextNativeBackend(doc, layer) {
 
     function sameConfiguredNumber(actual, expected) { return expected === null ? true : sameNumber(actual, expected); }
 
-    function verifyReadback(observation, spec, expectedTracking) {
+    function verifyReadback(observation, spec, expectedTracking, vertical) {
         var expectedJustification = spec.singleCharacter ? Justification.CENTER : justificationValue(spec.composerPolicy.justification), expectedSingle = spec.singleCharacter ? Justification.CENTER : justificationValue(spec.composerPolicy.singleWordJustification), observedWidth = observation.textPathWidth !== null ? observation.textPathWidth : observation.frameWidth, observedHeight = observation.textPathHeight !== null ? observation.textPathHeight : observation.frameHeight;
         if (observation.areaTextKind !== TextType.AREATEXT) return { ok: false, reason: "style-area-text-kind-mismatch", retryable: false };
         if (observation.fontName === null || (spec.appearance.fontName && observation.fontName !== spec.appearance.fontName)) return { ok: false, reason: "style-font-mismatch", retryable: false };
@@ -179,18 +194,18 @@ function FormalAreaTextNativeBackend(doc, layer) {
         if (observation.justification !== expectedJustification || observation.singleWordJustification !== expectedSingle) return { ok: false, reason: "style-justification-mismatch", retryable: false };
         if (!sameConfiguredNumber(observation.minimumGlyphScaling, spec.composerPolicy.minimumGlyphScaling) || !sameConfiguredNumber(observation.desiredGlyphScaling, spec.composerPolicy.desiredGlyphScaling) || !sameConfiguredNumber(observation.maximumGlyphScaling, spec.composerPolicy.maximumGlyphScaling) || !sameConfiguredNumber(observation.minimumLetterSpacing, spec.composerPolicy.minimumLetterSpacing) || !sameConfiguredNumber(observation.desiredLetterSpacing, spec.composerPolicy.desiredLetterSpacing) || !sameConfiguredNumber(observation.maximumLetterSpacing, spec.composerPolicy.maximumLetterSpacing) || !sameConfiguredNumber(observation.minimumWordSpacing, spec.composerPolicy.minimumWordSpacing) || !sameConfiguredNumber(observation.desiredWordSpacing, spec.composerPolicy.desiredWordSpacing) || !sameConfiguredNumber(observation.maximumWordSpacing, spec.composerPolicy.maximumWordSpacing)) return { ok: false, reason: "style-composer-mismatch", retryable: false };
         if (!sameNumber(observation.tracking, expectedTracking)) return { ok: false, reason: "style-tracking-mismatch", retryable: false };
-        if (!sameNumber(observation.frameLeft, spec.left) || !sameNumber(observation.frameTop, spec.top) || !sameNumber(observedWidth, spec.width) || !sameNumber(observedHeight, spec.height)) return { ok: false, reason: "geometry-readback-mismatch", retryable: false };
+        if (!sameNumber(observation.frameLeft, spec.left) || (!vertical.applied && !sameNumber(observation.frameTop, spec.top)) || !sameNumber(observedWidth, spec.width) || !sameNumber(observedHeight, spec.height)) return { ok: false, reason: "geometry-readback-mismatch", retryable: false };
         return { ok: true, reason: "readback-match", retryable: false };
     }
 
     function verifyCandidate(candidate, spec, expectedTracking) {
-        var observation = stableObservation(candidate), fit, readback;
+        var observation = stableObservation(candidate), fit, readback, vertical = candidate.verticalPlacement || { applied: false, residual: null };
         if (typeof FormalAreaTextNative === "undefined") throw Error("area-text-native-core-unavailable");
         expectedTracking = expectedTracking == null ? 0 : expectedTracking;
-        readback = verifyReadback(observation, spec, expectedTracking);
+        readback = verifyReadback(observation, spec, expectedTracking, vertical);
         if (!readback.ok) { readback.observation = observation; return readback; }
         fit = FormalAreaTextNative.verifyOneLineFit(observation, text(spec.reading));
-        return { ok: fit.ok, reason: fit.reason, retryable: fit.retryable === true, observation: observation, readback: readback, fit: fit };
+        return { ok: fit.ok, reason: fit.reason, retryable: fit.retryable === true, observation: observation, readback: readback, fit: fit, verticalPlacement: vertical };
     }
 
     function tryTracking(candidate, spec) {
@@ -223,6 +238,7 @@ function FormalAreaTextNativeBackend(doc, layer) {
         var candidate = createCandidate(spec);
         try {
             applyTypography(candidate, spec);
+            candidate.verticalPlacement = applyVerticalPlacement(candidate, spec);
             return candidate;
         } catch (e) {
             disposeCandidate(candidate);

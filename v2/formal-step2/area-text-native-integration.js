@@ -24,7 +24,7 @@ var FormalAreaTextNativeIntegration = (function () {
     function create(orchestration, host, coordinator) {
         if (!orchestration || typeof orchestration.planAll !== "function") fail("native-integration-orchestration-required");
         if (!host || typeof host.prepareAll !== "function" || typeof host.verifyAll !== "function") fail("native-integration-host-required");
-        if (!coordinator || typeof coordinator.begin !== "function" || typeof coordinator.verify !== "function" || typeof coordinator.activate !== "function") fail("native-integration-coordinator-required");
+        if (!coordinator || typeof coordinator.begin !== "function" || typeof coordinator.verify !== "function" || typeof coordinator.abort !== "function" || typeof coordinator.activate !== "function") fail("native-integration-coordinator-required");
         function planAndPrepare(bundle, sourceText, observation, renderSpecs, transaction) {
             var plan = orchestration.planAll(bundle, sourceText, observation), batch, tx, begun;
             if (!plan || plan.status !== "complete") return { status: plan && plan.status || "failed", plan: plan, batch: null };
@@ -32,7 +32,12 @@ var FormalAreaTextNativeIntegration = (function () {
             tx = transaction;
             begun = coordinator.begin(tx.source, tx.expectedContents, tx.expectedNote, tx.requestId, candidateIds(renderSpecs));
             advanceExpectedState(tx, begun);
-            batch = host.prepareAll(renderSpecs);
+            try { batch = host.prepareAll(renderSpecs); }
+            catch (error) {
+                coordinator.abort(tx.source, tx.expectedContents, tx.expectedNote, tx.requestId, error.cleanupPendingIds || []);
+                error.lifecycleAborted = true;
+                throw error;
+            }
             return { status: "prepared", plan: plan, batch: batch, transaction: tx, durableBegin: begun };
         }
         function verify(prepared) {
@@ -40,13 +45,26 @@ var FormalAreaTextNativeIntegration = (function () {
             if (!prepared || !prepared.batch || prepared.batch.status !== "prepared") fail("native-integration-not-prepared");
             requireTransaction(prepared.transaction);
             tx = prepared.transaction;
-            prepared.batch = host.verifyAll(prepared.batch);
+            try { prepared.batch = host.verifyAll(prepared.batch); }
+            catch (error) {
+                coordinator.abort(tx.source, tx.expectedContents, tx.expectedNote, tx.requestId, error.cleanupPendingIds || []);
+                error.lifecycleAborted = true;
+                throw error;
+            }
             if (!prepared.batch || prepared.batch.status !== "verified") fail("native-integration-not-verified");
             durable = coordinator.verify(tx.source, tx.expectedContents, tx.expectedNote, tx.requestId);
             advanceExpectedState(tx, durable);
             prepared.durableVerify = durable;
             prepared.status = "verified";
             return prepared;
+        }
+        function abort(prepared, reason) {
+            var tx, pending = reason && reason.cleanupPendingIds || [];
+            if (!prepared || !prepared.transaction) return { status: "not-started", cleanupPendingIds: pending };
+            tx = prepared.transaction;
+            if (prepared.batch && prepared.batch.status === "prepared") host.disposeAll(prepared.batch);
+            pending = (prepared.batch && prepared.batch.cleanupPendingIds) || pending;
+            return coordinator.abort(tx.source, tx.expectedContents, tx.expectedNote, tx.requestId, pending);
         }
         function activate(source, expectedContents, expectedNote, requestId, verified, retireIds, discardedIds, removedLogicalSegmentIds) {
             var batch, bindings, records, tx, actualSource, actualContents, actualNote, actualRequest, i, logicalSegmentId;
@@ -77,7 +95,7 @@ var FormalAreaTextNativeIntegration = (function () {
             for (key in manifest.activeBindings) if (Object.prototype.hasOwnProperty.call(manifest.activeBindings, key)) { active[key] = manifest.activeBindings[key]; physicalIds.push(manifest.activeBindings[key]); }
             return { status: "reused", plan: plan, activeBindings: active, physicalIds: physicalIds };
         }
-        return { planAndPrepare: planAndPrepare, verify: verify, activate: activate, reconcileExisting: reconcileExisting };
+        return { planAndPrepare: planAndPrepare, verify: verify, abort: abort, activate: activate, reconcileExisting: reconcileExisting };
     }
     return { create: create };
 }());

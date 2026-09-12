@@ -89,6 +89,16 @@ test('native renderer transition removes replaced logical bindings and preserves
   const previous = Native.createManifest();
   previous.activeBindings = { 'a1:segment-1': 'old-a', 'b1:segment-1': 'peer-b' };
   const result = Renderer.transition(previous, ['a1:segment-1'], [{ logicalSegmentId: 'a1:segment-1', physicalId: 'new-a' }]);
-  assert.deepEqual(result.removedLogicalSegmentIds, ['a1:segment-1', 'b1:segment-1']);
+  assert.deepEqual(result.removedLogicalSegmentIds, ['b1:segment-1']);
   assert.deepEqual(result.retiredPhysicalIds, ['old-a', 'peer-b']);
+});
+
+test('native renderer allocates a collision-safe physical id after palette restart', () => {
+  const previous = Native.createManifest();
+  previous.activeBindings = { 'a1:segment-1': 'formal-native-restarted-0' };
+  previous.renderRecords['formal-native-restarted-0'] = { physicalId: 'formal-native-restarted-0' };
+  const plan = { status: 'complete', results: [{ annotationId: 'a1', status: 'complete', decision: { segments: [{ renderSegmentId: 'segment-1', reading: 'かな', geometry: { left: 10, top: 20, width: 40, baseSize: 18, leading: 22 } }] } }] };
+  const result = Renderer.createSpecs(bundle(), plan, 'restarted', 'RubyFont', previous);
+  assert.notEqual(result.specs[0].physicalId, 'formal-native-restarted-0');
+  assert.match(result.specs[0].physicalId, /^formal-native-restarted-0-1$/);
 });

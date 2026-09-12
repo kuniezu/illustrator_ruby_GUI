@@ -36,6 +36,7 @@ test('integration seam enforces durable begin, prepare, host verify, durable ver
   const coordinator={
     begin(source){calls.push('begin');source.note='after-begin';return {status:'success',sourceContents:source.contents,note:source.note};},
     verify(source){calls.push('durable-verify');source.note='after-verify';return {status:'success',sourceContents:source.contents,note:source.note};},
+    abort(){calls.push('abort');return {status:'success'};},
     activate(){calls.push('activate');return {status:'success'};}
   };
   const seam=Integration.create(orchestration,host,coordinator);
@@ -115,7 +116,7 @@ test('practical lifecycle replay replaces one logical segment and finishes witho
 
 test('incomplete plan stops before durable begin or candidate preparation',()=>{
   let begun=0,prepared=0;
-  const seam=Integration.create({planAll(){return {status:'unresolved'};}},{prepareAll(){prepared++;},verifyAll(){}},{begin(){begun++;},verify(){},activate(){}});
+  const seam=Integration.create({planAll(){return {status:'unresolved'};}},{prepareAll(){prepared++;},verifyAll(){}},{begin(){begun++;},verify(){},abort(){},activate(){}});
   const result=seam.planAndPrepare({},'text',{},[],{source:{contents:'text',note:''},requestId:'r',expectedContents:'text',expectedNote:''});
   assert.equal(result.status,'unresolved');assert.equal(begun,0);assert.equal(prepared,0);
 });
@@ -131,9 +132,24 @@ test('integration source remains outside production entrypoints',()=>{
 test('reconcileExisting reuses finished active manifest without creating candidates',()=>{
   const calls=[];
   const orchestration={planAll(){calls.push('plan');return {status:'complete',results:[]};}};
-  const seam=Integration.create(orchestration,{prepareAll(){throw Error('must-not-prepare');},verifyAll(){},bindingsByLogicalSegmentId(){return {};},recordsByPhysicalId(){return {}; }},{begin(){throw Error('must-not-begin');},verify(){},activate(){}});
+  const seam=Integration.create(orchestration,{prepareAll(){throw Error('must-not-prepare');},verifyAll(){},bindingsByLogicalSegmentId(){return {};},recordsByPhysicalId(){return {}; }},{begin(){throw Error('must-not-begin');},verify(){},abort(){},activate(){}});
   const result=seam.reconcileExisting({annotations:[]},'source',{status:'complete',lines:[]},{operation:null,activeBindings:{a:'p1',b:'p2'}});
   assert.equal(result.status,'reused'); assert.deepEqual(result.physicalIds,['p1','p2']); assert.deepEqual(calls,['plan']);
+});
+
+test('pre-activation failure aborts durable operation',()=>{
+  global.FormalAreaTextNative=require('../area-text-native.js');
+  global.FormalAreaTextNativeStore=require('../area-text-native-store.js');
+  global.FormalAreaTextNativeNoteAdapter=require('../area-text-native-note-adapter.js');
+  global.FormalAreaTextNativePersistenceFacade=require('../area-text-native-persistence-facade.js');
+  const Coordinator=require('../area-text-native-transaction-coordinator.js');
+  const source={contents:'source',note:''}, candidate=spec('p-failed','segment','request-failed');
+  const orchestration={planAll(){return {status:'complete'};}};
+  const host={prepareAll(){const error=Error('candidate-prepare-failed');error.cleanupPendingIds=['p-failed'];throw error;},verifyAll(){},disposeAll(){}};
+  const seam=Integration.create(orchestration,host,Coordinator);
+  assert.throws(()=>seam.planAndPrepare({},source.contents,{},[candidate],tx(source,'request-failed')),/candidate-prepare-failed/);
+  const state=FormalAreaTextNativeStore.read(source.note);
+  assert.equal(state.operation,null);assert.deepEqual(state.cleanupQueue,['p-failed']);
 });
 
 test('activation seam carries explicit logical removal for a 2-to-1 collapse while preserving a peer',()=>{

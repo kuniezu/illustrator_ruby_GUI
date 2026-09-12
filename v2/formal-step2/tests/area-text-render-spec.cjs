@@ -34,6 +34,13 @@ test('backend spec uses final rectangle geometry rather than mutable frame resiz
   assert.deepEqual(b.composerPolicy.trackingCandidates,[0,-25,-50,-75,-100]);
 });
 
+test('vertical placement target survives RenderSpec/backendSpec',()=>{
+  const x=input();x.geometry.measuredTop=20;x.geometry.gap=2;
+  const s=S.create(x),b=S.backendSpec(s);
+  assert.equal(s.geometry.measuredTop,20);assert.equal(s.geometry.gap,2);
+  assert.equal(b.measuredTop,20);assert.equal(b.gap,2);
+});
+
 test('render spec refuses missing identity and invalid dimensions',()=>{
   let x=input();x.meta.physicalId='';assert.throws(()=>S.create(x),/render-spec-identity-required/);
   x=input();x.geometry.autoWidth=0;assert.throws(()=>S.create(x),/render-spec-auto-width-invalid/);

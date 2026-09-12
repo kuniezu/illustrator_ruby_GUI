@@ -66,6 +66,11 @@ function FormalAreaTextNativeHost(doc, layer) {
             if (requestId !== spec.requestId) throw Error("render-spec-request-mismatch");
             if (sourceFrameId !== spec.sourceFrameId) throw Error("render-spec-source-mismatch");
             if (physical[spec.physicalId]) throw Error("render-spec-physical-duplicate");
+            if (typeof FormalAreaTextNativeOutputIdentity !== "undefined" && doc && doc.textFrames) {
+                var existing = FormalAreaTextNativeOutputIdentity.resolve(doc.textFrames, spec.sourceFrameId, spec.physicalId);
+                if (existing.status === "found") throw Error("native-host-physical-id-already-owned:" + spec.physicalId);
+                if (existing.status === "duplicate") throw Error("native-host-physical-id-duplicate:" + spec.physicalId);
+            }
             if (logical[spec.logicalSegmentId]) throw Error("render-spec-logical-duplicate");
             physical[spec.physicalId] = true;
             logical[spec.logicalSegmentId] = true;
@@ -92,6 +97,7 @@ function FormalAreaTextNativeHost(doc, layer) {
             disposeAll(batch);
             e.cleanupPendingIds = batch.cleanupPendingIds || [];
             e.cleanupFailed = batch.cleanupFailed === true;
+            e.cleanupEvidence = { pendingIds: e.cleanupPendingIds, cleanupFailed: e.cleanupFailed };
             throw e;
         }
     }
@@ -130,7 +136,8 @@ function FormalAreaTextNativeHost(doc, layer) {
                     fontSize: observation.fontSize,
                     justification: justificationString(observation.justification),
                     singleWordJustification: justificationString(observation.singleWordJustification),
-                    fitReason: result.reason
+                    fitReason: result.reason,
+                    verticalPlacement: result.verticalPlacement || { applied: false, residual: null }
                 });
             }
             batch.records = records;
@@ -140,6 +147,7 @@ function FormalAreaTextNativeHost(doc, layer) {
             disposeAll(batch);
             e.cleanupPendingIds = batch.cleanupPendingIds || [];
             e.cleanupFailed = batch.cleanupFailed === true;
+            e.cleanupEvidence = { pendingIds: e.cleanupPendingIds, cleanupFailed: e.cleanupFailed };
             throw e;
         }
     }

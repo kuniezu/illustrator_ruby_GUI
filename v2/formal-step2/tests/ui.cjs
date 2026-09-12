@@ -62,7 +62,7 @@ check('keeps persistence strategies inside one save action',
 check('binds pending completion to request and revision',
   source.indexOf('activeSaveRequestId') >= 0 &&
   source.indexOf('requestRevision = bundle.revision') >= 0 &&
-  source.indexOf('requestId !== activeSaveRequestId') >= 0 &&
+  source.indexOf('requestId !== activeSaveRequestToken') >= 0 &&
   source.indexOf('stageFile.fsName, requestId') >= 0);
 check('connects projection to the existing observed renderer contract',
   source.indexOf('FormalMultiPersistenceAdapter.save') >= 0 &&
@@ -132,7 +132,7 @@ check('uses click-selected UTF-16 boundaries for short and long split runs',
   source.indexOf('occurrence.unsupported) fail("unsupported-occurrence-cannot-split")') >= 0);
 check('recovers from a save-preparation exception',
   source.indexOf('requestRevision = null') >= 0 &&
-  source.indexOf('if (requestId === activeSaveRequestId) { setSavePending(false)') >= 0);
+  source.indexOf('if (requestId === activeSaveRequestToken) { setSavePending(false)') >= 0);
 check('freezes the supported Multi boundary',
   source.indexOf('resolveMultiFrame') >= 0 &&
   source.indexOf('occurrence.unsupported') >= 0 &&

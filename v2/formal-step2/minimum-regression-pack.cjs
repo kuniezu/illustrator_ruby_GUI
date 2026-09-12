@@ -14,8 +14,8 @@ const catalogIds = [
   'MULTI-01', 'MULTI-02', 'MULTI-03', 'MULTI-04',
   'ES3-01', 'ES3-02',
   'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04',
-  'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07',
-  'OBS-01', 'OBS-02'
+  'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12',
+  'OBS-01', 'OBS-02', 'OBS-03'
 ];
 
 const coverageMap = {
@@ -39,8 +39,14 @@ const coverageMap = {
   'LIFE-05': ['v2/formal-step2/tests/area-text-native-transaction-coordinator.cjs', 'persisted state survives restart'],
   'LIFE-06': ['v2/formal-step2/tests/adapter-transaction.cjs', 'foreign identity preservation'],
   'LIFE-07': ['v2/formal-step2/tests/area-text-native.cjs', 'copy-on-write ownership guards'],
+  'LIFE-08': ['v2/formal-step2/tests/native-renderer.cjs', 'native renderer transition removes replaced logical bindings and preserves peers', 'native renderer transition removes replaced logical bindings and preserves peers'],
+  'LIFE-09': ['v2/formal-step2/tests/native-renderer.cjs', 'native renderer allocates a collision-safe physical id after palette restart', 'native renderer allocates a collision-safe physical id after palette restart'],
+  'LIFE-10': ['v2/formal-step2/tests/area-text-native-integration.cjs', 'pre-activation failure aborts durable operation', 'pre-activation failure aborts durable operation'],
+  'LIFE-11': ['v2/formal-step2/tests/area-text-native-recovery.cjs', 'activated cleanup keeps new active authority', 'activated restart prioritizes durable discarded cleanup after reload'],
+  'LIFE-12': ['v2/formal-step2/tests/area-text-render-spec.cjs', 'vertical placement target survives RenderSpec/backendSpec', 'vertical placement target survives RenderSpec/backendSpec'],
   'OBS-01': ['v2/formal-step2/tests/persistence-adapter.cjs', 'stage/category propagation'],
   'OBS-02': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated body parse'],
+  'OBS-03': ['v2/formal-step2/tests/persistence-adapter.cjs', 'cleanup evidence is present in practical lifecycle failure', 'generated bridge preserves cleanup evidence in lifecycle failure'],
 };
 
 const executedFiles = {};
@@ -81,11 +87,18 @@ for (let i = 0; i < parityDimensions.length; i++) {
 if (parityGate.indexOf('minimum pack must statically assert') < 0) {
   throw new Error('migration-parity minimum-pack requirement missing');
 }
+for (let i = 0; i < parityDimensions.length; i++) {
+  const row = parityGate.indexOf('| ' + parityDimensions[i] + ' |');
+  if (row < 0 || parityGate.indexOf('[x]', row) < 0 || parityGate.indexOf('tests/', row) < 0) {
+    throw new Error('migration-parity evidence missing: ' + parityDimensions[i]);
+  }
+}
 process.stdout.write('\n[minimum-pack] migration-parity gate PASS (9 contract dimensions)\n');
 
 run('native renderer and centered/baseSize geometry', [
   '--test', path.join(step2, 'tests', 'native-renderer.cjs'),
-  path.join(step2, 'tests', 'area-text-native.cjs')
+  path.join(step2, 'tests', 'area-text-native.cjs'),
+  path.join(step2, 'tests', 'area-text-render-spec.cjs')
 ]);
 run('practical bridge ordering and structured diagnostics', [
   '--test', path.join(step2, 'tests', 'persistence-adapter.cjs'),
@@ -119,6 +132,10 @@ for (let i = 0; i < catalogIds.length; i++) {
   const mapping = coverageMap[id];
   if (!mapping) throw new Error('coverage map entry missing: ' + id);
   if (!executedFiles[mapping[0]]) throw new Error('coverage anchor was not executed: ' + id + ' -> ' + mapping[0]);
+  if (mapping[2]) {
+    const evidence = fs.readFileSync(path.join(root, mapping[0]), 'utf8');
+    if (evidence.indexOf(mapping[2]) < 0) throw new Error('assertion marker missing: ' + id + ' -> ' + mapping[2]);
+  }
 }
-process.stdout.write('\n[minimum-pack] coverage map PASS (' + String(catalogIds.length) + ' IDs)\n');
+process.stdout.write('\n[minimum-pack] coverage map PASS (' + String(catalogIds.length) + ' IDs with assertion markers)\n');
 process.stdout.write('\n[minimum-pack] PASS\n');

@@ -189,6 +189,18 @@ var FormalAreaTextNative = (function () {
         return out;
     }
 
+    function abortOperation(state, requestId, cleanupIds) {
+        var out = cloneManifest(state), id = String(requestId || ""), pending;
+        if (!out.operation || out.operation.requestId !== id) throw Error("operation-request-mismatch");
+        if (out.operation.phase !== "prepare" && out.operation.phase !== "verified") throw Error("operation-abort-phase-invalid");
+        pending = unique(cleanupIds || []);
+        for (var i = 0; i < pending.length; i++) if (!contains(out.operation.candidateIds || [], pending[i])) throw Error("abort-cleanup-not-owned");
+        out.cleanupQueue = unique(out.cleanupQueue.concat(pending));
+        out.operation = null;
+        out.manifestRevision++;
+        return out;
+    }
+
     function markRetired(state, removedIds) {
         var out = cloneManifest(state), removed = unique(removedIds || []), next = [], i, key;
         for (i = 0; i < removed.length; i++) {
@@ -320,6 +332,7 @@ var FormalAreaTextNative = (function () {
         cloneManifest: cloneManifest,
         beginOperation: beginOperation,
         markVerified: markVerified,
+        abortOperation: abortOperation,
         activate: activate,
         markRetired: markRetired,
         markDiscardedCleaned: markDiscardedCleaned,

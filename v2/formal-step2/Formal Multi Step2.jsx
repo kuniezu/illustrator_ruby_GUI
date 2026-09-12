@@ -53,7 +53,7 @@
     function run() {
         var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint, renderSources, stageFile;
         var editor, readingInput, enabledCheck, confirmedCheck, selectedText, debugText, debugLines = [];
-        var saveButton, closeButton, splitButton, mergeButton, previousReviewButton, nextReviewButton, suppressButton, reenableButton, stateText, savePending = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, i;
+        var saveButton, closeButton, splitButton, mergeButton, previousReviewButton, nextReviewButton, suppressButton, reenableButton, stateText, savePending = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, activeSaveRequestToken = "", i;
 
         if (!app.documents.length) fail("AIファイルを開いてください");
         documentRef = app.activeDocument;
@@ -251,7 +251,8 @@
             var result, requestId, requestRevision = null;
             if (savePending) return;
             setSavePending(true);
-            requestId = ++activeSaveRequestId;
+            requestId = "save-" + new Date().getTime() + "-" + (++activeSaveRequestId);
+            activeSaveRequestToken = requestId;
             try {
                 saveEditor();
                 requestRevision = bundle.revision;
@@ -259,13 +260,13 @@
                 bundle = FormalMultiProjection.project(bundle);
                 bundle.renderStatus = "complete";
                 result = FormalMultiPersistenceAdapter.saveRendered(bundle.textSnapshot, cachedNote, bundle, sourceIdentity, FormalMultiRenderer.specifications(bundle), renderSources, {
-                    pending: function (diagnostics) { if (requestId !== activeSaveRequestId || requestRevision !== bundle.revision) return; showDiagnostics(diagnostics); stateText.text = "状態: 保存経路Bを実行中 / stage=" + stageFile.fsName + " / " + diagnostics.join(" | "); },
-                    success: function (value) { if (requestId !== activeSaveRequestId || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(value.diagnostics); if (value.reason) showDiagnostics("reason=" + value.reason); cachedNote = value.note; refreshList(); stateText.text = value.renderStatus === "failed" ? "状態: " + (value.reason || "render-failed") + " / 読みの情報は保持しています" : "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
-                    failure: function (diagnostics) { if (requestId !== activeSaveRequestId || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(diagnostics); stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
+                    pending: function (diagnostics) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; showDiagnostics(diagnostics); stateText.text = "状態: 保存経路Bを実行中 / stage=" + stageFile.fsName + " / " + diagnostics.join(" | "); },
+                    success: function (value) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(value.diagnostics); if (value.reason) showDiagnostics("reason=" + value.reason); if (value.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = value.note; refreshList(); stateText.text = value.renderStatus === "failed" ? "状態: " + (value.reason || "render-failed") + " / 読みの情報は保持しています" : "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
+                    failure: function (diagnostics) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(diagnostics); stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
                 }, undefined, stageFile.fsName, requestId);
-                if(result.status === "success" && requestId === activeSaveRequestId && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / " + result.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; }
-                else if(result.status === "failed" && requestId === activeSaveRequestId && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }
-            } catch (error) { if (requestId === activeSaveRequestId) { setSavePending(false); showDiagnostics("palette=" + (error.message || error)); stateText.text = "状態: error / " + (error.message || error); } }
+                if(result.status === "success" && requestId === activeSaveRequestToken && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); if (result.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / " + result.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; }
+                else if(result.status === "failed" && requestId === activeSaveRequestToken && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }
+            } catch (error) { if (requestId === activeSaveRequestToken) { setSavePending(false); showDiagnostics("palette=" + (error.message || error)); stateText.text = "状態: error / " + (error.message || error); } }
         };
         closeButton.onClick = function () { dialog.close(); };
         if (bundle.occurrences.length) { list.selection = 0; loadEditor(0); }

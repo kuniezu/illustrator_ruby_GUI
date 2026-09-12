@@ -13,20 +13,35 @@ var FormalMultiNativeRenderer = (function () {
         return false;
     }
     function logicalId(annotationId, renderSegmentId) { return annotationId + ":" + renderSegmentId; }
-    function physicalId(requestId, index) { return "formal-native-" + requestId + "-" + index; }
+    function physicalId(requestId, index, occupied) {
+        var base = "formal-native-" + requestId + "-" + index, candidate = base, suffix = 1;
+        while (occupied[candidate]) { candidate = base + "-" + suffix; suffix++; }
+        occupied[candidate] = true;
+        return candidate;
+    }
+    function occupyManifestIds(manifest, occupied) {
+        var key, i, operation = manifest && manifest.operation;
+        manifest = manifest || {};
+        for (key in (manifest.activeBindings || {})) if (own(manifest.activeBindings, key)) occupied[manifest.activeBindings[key]] = true;
+        for (i = 0; i < (manifest.retirementQueue || []).length; i++) occupied[manifest.retirementQueue[i]] = true;
+        for (i = 0; i < (manifest.cleanupQueue || []).length; i++) occupied[manifest.cleanupQueue[i]] = true;
+        for (key in (manifest.renderRecords || {})) if (own(manifest.renderRecords, key)) occupied[key] = true;
+        for (i = 0; operation && i < (operation.candidateIds || []).length; i++) occupied[operation.candidateIds[i]] = true;
+    }
     function geometryOf(segment) {
         var geometry = segment && segment.geometry, height;
         if (!geometry || typeof geometry.left !== "number" || typeof geometry.top !== "number" || typeof geometry.width !== "number" || geometry.width <= 0) fail("native-render-geometry-unavailable");
         height = geometry.leading > 0 ? geometry.leading : (geometry.baseSize > 0 ? geometry.baseSize : 1);
-        return { autoLeft: geometry.left, autoTop: geometry.top, autoWidth: geometry.width, boxHeight: height, baseSize: geometry.baseSize };
+        return { autoLeft: geometry.left, autoTop: geometry.top, autoWidth: geometry.width, boxHeight: height, baseSize: geometry.baseSize, measuredTop: typeof geometry.measuredTop === "number" ? geometry.measuredTop : null, gap: typeof geometry.gap === "number" ? geometry.gap : null };
     }
     function rubyWidth(geometry, reading, fontSize) {
         var estimated = String(reading == null ? "" : reading).length * fontSize;
         return estimated > geometry.autoWidth ? estimated : geometry.autoWidth;
     }
-    function createSpecs(bundle, plan, requestId, sourceFontName) {
-        var specs = [], desiredLogicalSegmentIds = [], results = plan && (plan.results || plan.plans) || [], i, j, result, a, segment, id, geometry, appearance;
+    function createSpecs(bundle, plan, requestId, sourceFontName, previousManifest) {
+        var specs = [], desiredLogicalSegmentIds = [], occupied = {}, results = plan && (plan.results || plan.plans) || [], i, j, result, a, segment, id, geometry, appearance;
         if (!plan || plan.status !== "complete") return { status: plan && plan.status || "failed", specs: [], desiredLogicalSegmentIds: [] };
+        occupyManifestIds(previousManifest, occupied);
         for (i = 0; i < results.length; i++) {
             result = results[i];
             if (result.status !== "complete") fail("native-render-plan-incomplete");
@@ -49,7 +64,7 @@ var FormalMultiNativeRenderer = (function () {
                     reading: segment.reading,
                     appearance: appearance,
                     geometry: geometry,
-                    meta: { requestId: requestId, generationId: "generation-" + requestId, physicalId: physicalId(requestId, specs.length) }
+                    meta: { requestId: requestId, generationId: "generation-" + requestId, physicalId: physicalId(requestId, specs.length, occupied) }
                 }));
                 desiredLogicalSegmentIds.push(id);
             }
@@ -63,7 +78,8 @@ var FormalMultiNativeRenderer = (function () {
         for (i = 0; i < specs.length; i++) bindings[specs[i].logicalSegmentId] = specs[i].physicalId;
         for (key in previousManifest.activeBindings) if (own(previousManifest.activeBindings, key)) {
             physical = previousManifest.activeBindings[key];
-            if (!desired[key] || bindings[key] !== physical) { removedLogicalSegmentIds.push(key); retired.push(physical); }
+            if (!desired[key]) { removedLogicalSegmentIds.push(key); retired.push(physical); }
+            else if (bindings[key] !== physical) { retired.push(physical); }
         }
         return { bindings: bindings, retiredPhysicalIds: retired, removedLogicalSegmentIds: removedLogicalSegmentIds };
     }

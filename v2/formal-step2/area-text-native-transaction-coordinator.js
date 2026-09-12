@@ -23,6 +23,9 @@ var FormalAreaTextNativeTransactionCoordinator = (function () {
     function verify(source, expectedContents, expectedNote, requestId) {
         return persist(source, expectedContents, expectedNote, "markVerified", [requestId]);
     }
+    function abort(source, expectedContents, expectedNote, requestId, cleanupIds) {
+        return persist(source, expectedContents, expectedNote, "abortOperation", [requestId, cleanupIds || []]);
+    }
     function activate(source, expectedContents, expectedNote, requestId, bindings, records, retireIds, discardedIds) {
         return persist(source, expectedContents, expectedNote, "activate", [requestId, bindings, records, retireIds, discardedIds]);
     }
@@ -35,6 +38,6 @@ var FormalAreaTextNativeTransactionCoordinator = (function () {
     function finish(source, expectedContents, expectedNote, requestId) {
         return persist(source, expectedContents, expectedNote, "finishOperation", [requestId]);
     }
-    return { begin: begin, verify: verify, activate: activate, retire: retire, cleanupDiscarded: cleanupDiscarded, finish: finish };
+    return { begin: begin, verify: verify, abort: abort, activate: activate, retire: retire, cleanupDiscarded: cleanupDiscarded, finish: finish };
 }());
 if (typeof module !== "undefined") module.exports = FormalAreaTextNativeTransactionCoordinator;
