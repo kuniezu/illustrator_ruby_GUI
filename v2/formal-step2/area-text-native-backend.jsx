@@ -11,20 +11,39 @@ function FormalAreaTextNativeBackend(doc, layer) {
     }
     function text(value) { return String(value == null ? "" : value); }
     function readOptional(fn) { try { return fn(); } catch (ignore) { return null; } }
-    function bounds(frame) { var value = readOptional(function () { return frame.visibleBounds; }); if (!value || value.length < 4) value = readOptional(function () { return frame.geometricBounds; }); return value; }
+    function glyphInkBounds(candidate) {
+        var duplicate = null, outline = null, value = null, cleanupFailure = null, error;
+        if (!candidate || !candidate.frame || typeof candidate.frame.duplicate !== "function") throw Error("ruby-glyph-measurement-unavailable");
+        try {
+            duplicate = candidate.frame.duplicate();
+            if (!duplicate || typeof duplicate.createOutline !== "function") throw Error("ruby-glyph-outline-unavailable");
+            outline = duplicate.createOutline();
+            value = readOptional(function () { return outline.visibleBounds; });
+            if (!value || value.length < 4) value = readOptional(function () { return outline.geometricBounds; });
+            if (!value || value.length < 4) throw Error("ruby-glyph-bounds-unavailable");
+            return value;
+        } finally {
+            try { if (outline && outline.parent && typeof outline.remove === "function") outline.remove(); } catch (outlineError) { cleanupFailure = outlineError; }
+            try { if (duplicate && duplicate.parent && typeof duplicate.remove === "function") duplicate.remove(); } catch (duplicateError) { cleanupFailure = duplicateError; }
+            if (cleanupFailure) {
+                error = Error("ruby-glyph-cleanup-failed");
+                error.cleanupPendingIds = [candidate.physicalId || "temporary-glyph-measurement"];
+                error.cleanupEvidence = String(cleanupFailure);
+                throw error;
+            }
+        }
+    }
     function applyVerticalPlacement(candidate, spec) {
         var value, desiredBottom, deltaY, after, residual;
         if (spec.measuredTop === null || spec.gap === null) return { applied: false, residual: null };
-        value = bounds(candidate.frame);
-        if (!value || value.length < 4) throw Error("ruby-bounds-unavailable");
+        value = glyphInkBounds(candidate);
         desiredBottom = spec.measuredTop + spec.gap;
         deltaY = desiredBottom - value[3];
         candidate.frame.top += deltaY;
-        after = bounds(candidate.frame);
-        if (!after || after.length < 4) throw Error("ruby-bounds-unavailable-after-fit");
+        after = glyphInkBounds(candidate);
         residual = after[3] - desiredBottom;
         if (Math.abs(residual) > .5) throw Error("ruby-bottom-gap-unverified");
-        return { applied: true, desiredBottom: desiredBottom, residual: residual, measuredTop: spec.measuredTop, gap: spec.gap };
+        return { applied: true, desiredBottom: desiredBottom, residual: residual, measuredTop: spec.measuredTop, gap: spec.gap, measurement: "glyph-ink-outline" };
     }
 
     function createCandidate(spec) {
@@ -199,9 +218,15 @@ function FormalAreaTextNativeBackend(doc, layer) {
     }
 
     function verifyCandidate(candidate, spec, expectedTracking) {
-        var observation = stableObservation(candidate), fit, readback, vertical = candidate.verticalPlacement || { applied: false, residual: null };
+        var observation = stableObservation(candidate), fit, readback, vertical = candidate.verticalPlacement || { applied: false, residual: null }, fresh, desiredBottom;
         if (typeof FormalAreaTextNative === "undefined") throw Error("area-text-native-core-unavailable");
         expectedTracking = expectedTracking == null ? 0 : expectedTracking;
+        if (vertical.applied) {
+            fresh = glyphInkBounds(candidate);
+            desiredBottom = spec.measuredTop + spec.gap;
+            vertical.residual = fresh[3] - desiredBottom;
+            if (Math.abs(vertical.residual) > .5) throw Error("ruby-bottom-gap-unverified");
+        }
         readback = verifyReadback(observation, spec, expectedTracking, vertical);
         if (!readback.ok) { readback.observation = observation; return readback; }
         fit = FormalAreaTextNative.verifyOneLineFit(observation, text(spec.reading));
