@@ -13,7 +13,7 @@ const catalogIds = [
   'DOM-01', 'DOM-02', 'DOM-03',
   'MULTI-01', 'MULTI-02', 'MULTI-03', 'MULTI-04',
   'ES3-01', 'ES3-02',
-  'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04', 'FIT-05', 'FIT-06',
+  'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04', 'FIT-05', 'FIT-06', 'FIT-07',
   'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12',
   'OBS-01', 'OBS-02', 'OBS-03'
 ];
@@ -34,6 +34,7 @@ const coverageMap = {
   'FIT-04': ['v2/formal-step2/tests/persistence-adapter.cjs', 'structured failure detail'],
   'FIT-05': ['v2/formal-step2/tests/native-renderer.cjs', 'native renderer tunes the default vertical gap while preserving measured glyph target', 'native renderer tunes the default vertical gap while preserving measured glyph target'],
   'FIT-06': ['v2/formal-step2/tests/area-text-native-backend.cjs', 'native vertical placement uses glyph ink when AreaText box is much taller than ruby'],
+  'FIT-07': ['v2/formal-step2/tests/area-text-native-backend.cjs', 'createOutline consumes the duplicate without false cleanup failure', 'assert.equal(duplicateRemoved, 0);'],
   'LIFE-01': ['v2/formal-step2/tests/area-text-native-integration.cjs', 'explicit logical removal'],
   'LIFE-02': ['v2/formal-step2/tests/area-text-native-transaction-coordinator.cjs', 'cleanup pending before finish'],
   'LIFE-03': ['v2/formal-step2/tests/area-text-native-recovery.cjs', 'new active remains authoritative'],

@@ -46,6 +46,7 @@ test('native vertical placement uses glyph ink when AreaText box is much taller 
       const temporary = {
         parent: {},
         createOutline() {
+          this.parent = null;
           return {
             parent: {},
             visibleBounds: [0, frame.top + 65, 20, frame.top + 75],
@@ -90,7 +91,7 @@ test('native vertical placement uses glyph ink when AreaText box is much taller 
   assert.equal(candidate.verticalPlacement.residual, 0);
   assert.equal(frame.top, 17);
   assert.equal(outlineRemoved, 2);
-  assert.equal(duplicateRemoved, 2);
+  assert.equal(duplicateRemoved, 0);
 
   frame.duplicate = function () {
     return {
@@ -107,4 +108,11 @@ test('native vertical placement uses glyph ink when AreaText box is much taller 
     assert.match(error.cleanupEvidence, /outline-remove-failed/);
     return true;
   });
+});
+
+test('createOutline consumes the duplicate without false cleanup failure', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'area-text-native-backend.jsx'), 'utf8');
+  assert.match(source, /outlined = false/);
+  assert.match(source, /outlined = true/);
+  assert.match(source, /if \(!outlined\) try/);
 });

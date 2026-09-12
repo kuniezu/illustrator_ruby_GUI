@@ -12,19 +12,20 @@ function FormalAreaTextNativeBackend(doc, layer) {
     function text(value) { return String(value == null ? "" : value); }
     function readOptional(fn) { try { return fn(); } catch (ignore) { return null; } }
     function glyphInkBounds(candidate) {
-        var duplicate = null, outline = null, value = null, cleanupFailure = null, error;
+        var duplicate = null, outline = null, value = null, cleanupFailure = null, error, outlined = false;
         if (!candidate || !candidate.frame || typeof candidate.frame.duplicate !== "function") throw Error("ruby-glyph-measurement-unavailable");
         try {
             duplicate = candidate.frame.duplicate();
             if (!duplicate || typeof duplicate.createOutline !== "function") throw Error("ruby-glyph-outline-unavailable");
             outline = duplicate.createOutline();
+            outlined = true;
             value = readOptional(function () { return outline.visibleBounds; });
             if (!value || value.length < 4) value = readOptional(function () { return outline.geometricBounds; });
             if (!value || value.length < 4) throw Error("ruby-glyph-bounds-unavailable");
             return value;
         } finally {
             try { if (outline && outline.parent && typeof outline.remove === "function") outline.remove(); } catch (outlineError) { cleanupFailure = outlineError; }
-            try { if (duplicate && duplicate.parent && typeof duplicate.remove === "function") duplicate.remove(); } catch (duplicateError) { cleanupFailure = duplicateError; }
+            if (!outlined) try { if (duplicate && duplicate.parent && typeof duplicate.remove === "function") duplicate.remove(); } catch (duplicateError) { cleanupFailure = duplicateError; }
             if (cleanupFailure) {
                 error = Error("ruby-glyph-cleanup-failed");
                 error.cleanupPendingIds = [candidate.physicalId || "temporary-glyph-measurement"];
