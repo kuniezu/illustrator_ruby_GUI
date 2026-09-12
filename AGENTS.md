@@ -16,8 +16,9 @@
 
 ### Worker start
 
-- When the user says only `続けてください`, read `01_次これやって.md` first and use only its `dispatch_id`, state, target branch, base HEAD, work items, and stop condition.
-- Verify the current branch and HEAD against the file before changing code. If they materially differ, STOP and report the mismatch; do not fall back to Issue comments or remembered instructions.
+- When the user says only `続けてください`, first refresh the local target branch from remote before reading any handoff file: run `git fetch origin`, confirm the worktree is clean, and if the current target branch is behind `origin/<branch>` with no local divergence, fast-forward it with `git pull --ff-only`. If the worktree is dirty or the branch has diverged, STOP and report instead of guessing or using stale local files.
+- After remote synchronization, read `01_次これやって.md` and use only its `dispatch_id`, state, target branch, base/current HEAD, work items, and stop condition.
+- Verify the current branch and HEAD against the refreshed file before changing code. If they materially differ after the allowed fast-forward, STOP and report the mismatch; do not fall back to Issue comments or remembered instructions.
 - If `state` is `USER_RUNTIME_REQUIRED`, `STOP`, or otherwise not executable, do not resume older work.
 - If `02_今これやったよ.md` already reports the same `dispatch_id` as completed, do not execute it again.
 
