@@ -13,6 +13,12 @@ var FormalMultiNativeRenderer = (function () {
         return false;
     }
     function logicalId(annotationId, renderSegmentId) { return annotationId + ":" + renderSegmentId; }
+    function tunedGap(geometry, appearance) {
+        var legacyGapEm = .15, nativeDefaultGapEm = .1, gapEm;
+        if (!geometry || typeof geometry.gap !== "number" || typeof geometry.baseSize !== "number" || geometry.baseSize <= 0) return geometry ? geometry.gap : null;
+        gapEm = appearance && typeof appearance.gapEm === "number" && appearance.gapEm >= 0 ? appearance.gapEm : legacyGapEm;
+        return gapEm === legacyGapEm ? geometry.baseSize * nativeDefaultGapEm : geometry.gap * gapEm / legacyGapEm;
+    }
     function physicalId(requestId, index, occupied) {
         var base = "formal-native-" + requestId + "-" + index, candidate = base, suffix = 1;
         while (occupied[candidate]) { candidate = base + "-" + suffix; suffix++; }
@@ -53,6 +59,7 @@ var FormalMultiNativeRenderer = (function () {
                 id = logicalId(result.annotationId, segment.renderSegmentId);
                 geometry = geometryOf(segment);
                 appearance = FormalAppearance.normalize(a.appearance, geometry.baseSize > 0 ? geometry.baseSize : geometry.boxHeight, sourceFontName);
+                geometry.gap = tunedGap(geometry, appearance);
                 if (rubyWidth(geometry, segment.reading, appearance.fontSize) > geometry.autoWidth) {
                     geometry.autoLeft -= (rubyWidth(geometry, segment.reading, appearance.fontSize) - geometry.autoWidth) / 2;
                     geometry.autoWidth = rubyWidth(geometry, segment.reading, appearance.fontSize);

@@ -8,7 +8,7 @@ The change record must map each row as **old contract -> new path -> regression 
 
 | Contract dimension | Old contract -> new path -> regression evidence | Complete |
 | --- | --- | --- |
-| Geometry semantics | legacy adapter `geometry.left/width/measuredTop/gap` -> `native-renderer.js` -> `tests/native-renderer.cjs`, `tests/area-text-render-spec.cjs`, `tests/area-text-native-static.cjs` | [x] |
+| Geometry semantics | legacy adapter `geometry.left/width/measuredTop/gap` -> `native-renderer.js` with native default gap tuning -> `tests/native-renderer.cjs`, `tests/area-text-render-spec.cjs`, `tests/area-text-native-static.cjs` | [x] |
 | Appearance/baseSize semantics | legacy `normalizedAppearance`/`baseSize` -> `native-renderer.js` + RenderSpec -> `tests/native-renderer.cjs` | [x] |
 | Logical/physical identity | legacy managed-item identity -> native manifest/output identity -> `tests/native-renderer.cjs`, `tests/area-text-native-integration.cjs`, `tests/area-text-native-static.cjs` | [x] |
 | Persistence read/write ordering | legacy source-note commit -> generated bridge read-before-write + facade -> `tests/persistence-adapter.cjs`, `tests/area-text-native-persistence-facade.cjs` | [x] |

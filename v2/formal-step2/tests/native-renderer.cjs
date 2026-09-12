@@ -75,6 +75,23 @@ test('native renderer preserves centered baseSize geometry through backend and m
   assert.equal(spec.finalHeight, 110);
 });
 
+test('native renderer tunes the default vertical gap while preserving measured glyph target', () => {
+  const custom = bundle();
+  const plan = {
+    status: 'complete',
+    results: [
+      { annotationId: 'a1', status: 'complete', decision: { segments: [{ renderSegmentId: 'segment-1', reading: 'かな', geometry: { left: 10, top: 30, width: 40, baseSize: 100, leading: 110, measuredTop: 20, gap: 15 } }] } }
+    ]
+  };
+  const result = Renderer.createSpecs(custom, plan, 'request-gap', 'RubyFont');
+  const spec = result.specs[0];
+  const backend = RenderSpec.backendSpec(spec);
+  assert.equal(spec.geometry.measuredTop, 20);
+  assert.equal(spec.geometry.gap, 10);
+  assert.equal(backend.measuredTop, 20);
+  assert.equal(backend.gap, 10);
+});
+
 test('native renderer still rejects a nonempty plan entry without its annotation', () => {
   const plan = {
     status: 'complete',
