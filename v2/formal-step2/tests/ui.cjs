@@ -101,6 +101,9 @@ check('separates input-ready from render-unresolved and carries planner boundari
   source.indexOf('FormalMultiWorkflow.applyRenderResults') >= 0 &&
   source.indexOf('FormalSplitBoundaryUi.choose(occurrence.surface, occurrence.renderBoundaries)') >= 0 &&
   source.indexOf('value.renderStatus === "failed" || value.renderStatus === "unresolved"') >= 0);
+check('keeps planner boundaries available after no-op split save',
+  source.indexOf('saveEditor(); occurrence=bundle.occurrences[currentIndex]') >= 0 &&
+  source.indexOf('occurrence.renderBoundaries && occurrence.renderBoundaries.length ? FormalSplitBoundaryUi.choose(occurrence.surface, occurrence.renderBoundaries)') > source.indexOf('saveEditor(); occurrence=bundle.occurrences[currentIndex]'));
 check('reconciles the immediate palette bundle from the persisted callback note',
   source.indexOf('persisted = FormalMultiStore.read(value.note)') >= 0 &&
   source.indexOf('if (persisted) bundle = persisted') >= 0);

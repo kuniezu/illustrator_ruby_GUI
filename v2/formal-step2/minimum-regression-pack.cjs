@@ -15,7 +15,7 @@ const catalogIds = [
   'ES3-01', 'ES3-02',
   'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04', 'FIT-05', 'FIT-06', 'FIT-07',
   'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12',
-  'OBS-01', 'OBS-02', 'OBS-03', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05'
+  'OBS-01', 'OBS-02', 'OBS-03', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06'
 ];
 
 const coverageMap = {
@@ -55,6 +55,7 @@ const coverageMap = {
   'STATE-03': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated bridge reports render-failure note only after persisted readback'],
   'STATE-04': ['v2/formal-step2/tests/multi.cjs', 'persisted planner state keeps complete, pending, and unresolved occurrences identical after reopen'],
   'STATE-05': ['v2/formal-step2/tests/persistence-adapter.cjs', 'all noncomplete render paths normalize stale occurrence evidence and require exact readback'],
+  'STATE-06': ['v2/formal-step2/tests/workflow.cjs', 'no-op occurrence editor commit preserves unresolved render evidence'],
 };
 
 const executedFiles = {};
@@ -128,6 +129,7 @@ run('static DOM and practical ownership assertions', [
 run('multi segmentation and diagnostic UI contracts', [
   '--test',
   path.join(step2, 'tests', 'multi.cjs'),
+  path.join(step2, 'tests', 'workflow.cjs'),
   path.join(step2, 'tests', 'multi-renderer.cjs'),
   path.join(step2, 'tests', 'orchestration.cjs'),
   path.join(step2, 'tests', 'ui.cjs')

@@ -8,18 +8,19 @@ var FormalMultiWorkflow = (function () {
     function occurrence(bundle, occurrenceId) { for (var i=0;i<(bundle.occurrences||[]).length;i++) if (bundle.occurrences[i].occurrenceId===occurrenceId) return bundle.occurrences[i]; return null; }
     function validHiragana(value) { return /^[\u3041-\u3096\u309D-\u309F]*$/.test(value); }
     function setOccurrenceReading(bundle, occurrenceId, reading, confirmed) {
-        var next=FormalMulti.clone(bundle), target=occurrence(next,occurrenceId), value=String(reading);
+        var next=FormalMulti.clone(bundle), target=occurrence(next,occurrenceId), value=String(reading), previousReading, previousConfirmed, nextConfirmed, changed;
         if (!target) fail("long-text-occurrence-missing");
         if (!validHiragana(value)) fail("reading-hiragana-only");
-        target.reading=value; target.readingConfirmed=confirmed!==false&&value.length>0;
-        target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[];
+        previousReading=target.reading; previousConfirmed=target.readingConfirmed===true; nextConfirmed=confirmed!==false&&value.length>0; changed=value!==previousReading||nextConfirmed!==previousConfirmed;
+        target.reading=value; target.readingConfirmed=nextConfirmed;
+        if (changed) { target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; }
         return FormalMulti.validate(next);
     }
     function setOccurrenceEnabled(bundle, occurrenceId, enabled) {
-        var next=FormalMulti.clone(bundle), target=occurrence(next,occurrenceId);
+        var next=FormalMulti.clone(bundle), target=occurrence(next,occurrenceId), nextEnabled, changed;
         if (!target) fail("long-text-occurrence-missing");
-        target.enabled=!!enabled;
-        if (!target.enabled) { target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; }
+        nextEnabled=!!enabled; changed=target.enabled!==nextEnabled; target.enabled=nextEnabled;
+        if (changed&&!target.enabled) { target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; }
         return FormalMulti.validate(next);
     }
     function occurrenceStatus(occurrence) {
