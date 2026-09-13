@@ -14,8 +14,8 @@ const catalogIds = [
   'MULTI-01', 'MULTI-02', 'MULTI-03', 'MULTI-04',
   'ES3-01', 'ES3-02',
   'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04', 'FIT-05', 'FIT-06', 'FIT-07',
-  'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12', 'LIFE-13', 'LIFE-14',
-  'OBS-01', 'OBS-02', 'OBS-03', 'OBS-04', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12', 'STATE-13'
+  'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12', 'LIFE-13', 'LIFE-14', 'LIFE-15',
+  'OBS-01', 'OBS-02', 'OBS-03', 'OBS-04', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12', 'STATE-13', 'STATE-14'
 ];
 
 const coverageMap = {
@@ -49,6 +49,7 @@ const coverageMap = {
   'LIFE-12': ['v2/formal-step2/tests/area-text-render-spec.cjs', 'vertical placement target survives RenderSpec/backendSpec', 'vertical placement target survives RenderSpec/backendSpec'],
   'LIFE-13': ['v2/formal-step2/tests/terminal-recovery-state-machine.cjs', 'executable terminal recovery clears discarded and retirement queues before the next request'],
   'LIFE-14': ['v2/formal-step2/tests/persistence-adapter.cjs', 'lifecycleAborted'],
+  'LIFE-15': ['v2/formal-step2/tests/terminal-recovery-state-machine.cjs', 'production-equivalent converge aborts prepare state and clears its discarded queue before next begin'],
   'OBS-01': ['v2/formal-step2/tests/persistence-adapter.cjs', 'stage/category propagation'],
   'OBS-02': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated body parse'],
   'OBS-03': ['v2/formal-step2/tests/persistence-adapter.cjs', 'cleanup evidence is present in practical lifecycle failure', 'generated bridge preserves cleanup evidence in lifecycle failure'],
@@ -66,6 +67,7 @@ const coverageMap = {
   'STATE-11': ['v2/formal-step2/tests/workflow.cjs', 'semantic occurrence edits reset frame render status while no-op commits preserve it'],
   'STATE-12': ['v2/formal-step2/tests/persistence-adapter.cjs', 'runtime source preflight includes every evaluated dependency'],
   'STATE-13': ['v2/formal-step2/tests/workflow.cjs', 'long-text suppression and re-enable use occurrence review queue without changing siblings'],
+  'STATE-14': ['v2/formal-step2/tests/persistence-adapter.cjs', 'native.recovery'],
 };
 
 const executedFiles = {};

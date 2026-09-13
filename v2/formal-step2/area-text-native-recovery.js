@@ -110,6 +110,25 @@ var FormalAreaTextNativeRecovery = (function () {
         if (plan.action === "prepare-candidates") nextState = markVerified(state, requestId);
         return activate(sourceFrameId, nextState, requestId, prepared.bindings, prepared.records, prepared.retireIds || [], prepared.discardedIds || [], resolver, activation);
     }
-    return { restart: restart, resume: resume, execute: execute, validateActivation: validateActivation, validateOperationCandidates: validateOperationCandidates, discardedCleanup: discardedCleanup, canFinish: canFinish, activate: activate };
+    function stateKey(state) {
+        var operation = state && state.operation, phase = operation ? operation.phase + ":" + operation.requestId + ":" + (operation.candidateIds || []).join(",") : "none";
+        return phase + "|r=" + String(state && state.manifestRevision) + "|retire=" + (state && state.retirementQueue || []).join(",") + "|cleanup=" + (state && state.cleanupQueue || []).join(",");
+    }
+    function converge(state, sourceFrameId, resolver, step, limit) {
+        var current = state, maximum = limit == null ? 8 : Number(limit), i, plan, next;
+        if (!isFinite(maximum) || maximum < 1 || Math.floor(maximum) !== maximum) fail("native-recovery-limit-invalid");
+        for (i = 0; i < maximum; i++) {
+            plan = restart(current, sourceFrameId, resolver);
+            if (plan.action === "idle") return { action: "idle", state: current, steps: i };
+            if (typeof step !== "function") fail("native-recovery-step-required");
+            next = step(plan, current);
+            if (!next || stateKey(next) === stateKey(current)) fail("native-recovery-no-progress");
+            current = next;
+        }
+        plan = restart(current, sourceFrameId, resolver);
+        if (plan.action !== "idle") fail("native-recovery-loop-limit");
+        return { action: "idle", state: current, steps: maximum };
+    }
+    return { restart: restart, resume: resume, execute: execute, converge: converge, validateActivation: validateActivation, validateOperationCandidates: validateOperationCandidates, discardedCleanup: discardedCleanup, canFinish: canFinish, activate: activate };
 }());
 if (typeof module !== "undefined") module.exports = FormalAreaTextNativeRecovery;

@@ -13,22 +13,21 @@ function activatedState(){
 }
 
 test('executable terminal recovery clears discarded and retirement queues before the next request',()=>{
-  let state=activatedState(), inventory={old:'found',discarded:'found'};
+  let state=activatedState(), inventory={old:'found',discarded:'found'}, calls=[];
   const resolve=(source,id)=>({status:id==='p-old'?inventory.old:id==='p-discard'?inventory.discarded:'missing'});
-  let action=R.restart(state,'source',resolve);
-  assert.equal(action.action,'cleanup-discarded');
-  inventory.discarded='missing';
-  state=N.markDiscardedCleaned(state,action.found.concat(action.missing));
-  action=R.restart(state,'source',resolve);
-  assert.equal(action.action,'cleanup-retirement');
-  inventory.old='missing';
-  state=N.markRetired(state,action.found.concat(action.missing));
-  action=R.restart(state,'source',resolve);
-  assert.equal(action.action,'finish-operation');
-  state=N.finishOperation(state,action.requestId);
+  const result=R.converge(state,'source',resolve,(action,current)=>{let ids=(action.found||[]).concat(action.missing||[]);calls.push(action.action);if(action.action==='cleanup-discarded'){inventory.discarded='missing';return N.markDiscardedCleaned(current,ids);}if(action.action==='cleanup-retirement'){inventory.old='missing';return N.markRetired(current,ids);}if(action.action==='finish-operation')return N.finishOperation(current,action.requestId);throw Error('unexpected-action:'+action.action);},8);
+  state=result.state;
+  assert.deepEqual(calls,['cleanup-discarded','cleanup-retirement','finish-operation']);
+  assert.equal(result.steps,3);
   assert.equal(N.recoveryState(state),'finished/recoverable');
   state=N.beginOperation(state,'third',['p-next']);
   assert.equal(state.operation.requestId,'third');
+});
+
+test('production-equivalent converge aborts prepare state and clears its discarded queue before next begin',()=>{
+  let state=N.beginOperation(N.createManifest(),'prepare-request',['p-candidate']);
+  const result=R.converge(state,'source',(source,id)=>({status:'missing'}),(action,current)=>{const ids=(action.found||[]).concat(action.missing||[]);assert.equal(action.action,'prepare-candidates');current=N.abortOperation(current,action.requestId,ids);return N.markDiscardedCleaned(current,ids);},8);
+  assert.equal(result.state.operation,null);assert.deepEqual(result.state.cleanupQueue,[]);assert.equal(N.beginOperation(result.state,'next-request',['p-next']).operation.requestId,'next-request');
 });
 
 test('executable recovery keeps duplicate ownership fail-closed',()=>{
