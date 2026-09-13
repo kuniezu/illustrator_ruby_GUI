@@ -15,7 +15,7 @@ const catalogIds = [
   'ES3-01', 'ES3-02',
   'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04', 'FIT-05', 'FIT-06', 'FIT-07',
   'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12',
-  'OBS-01', 'OBS-02', 'OBS-03'
+  'OBS-01', 'OBS-02', 'OBS-03', 'STATE-01'
 ];
 
 const coverageMap = {
@@ -50,6 +50,7 @@ const coverageMap = {
   'OBS-01': ['v2/formal-step2/tests/persistence-adapter.cjs', 'stage/category propagation'],
   'OBS-02': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated body parse'],
   'OBS-03': ['v2/formal-step2/tests/persistence-adapter.cjs', 'cleanup evidence is present in practical lifecycle failure', 'generated bridge preserves cleanup evidence in lifecycle failure'],
+  'STATE-01': ['v2/formal-step2/tests/multi.cjs', 'confirmed reading crossing actual line boundary remains unresolved and local split children need reread'],
 };
 
 const executedFiles = {};
@@ -122,6 +123,7 @@ run('static DOM and practical ownership assertions', [
 ]);
 run('multi segmentation and diagnostic UI contracts', [
   '--test',
+  path.join(step2, 'tests', 'multi.cjs'),
   path.join(step2, 'tests', 'multi-renderer.cjs'),
   path.join(step2, 'tests', 'orchestration.cjs'),
   path.join(step2, 'tests', 'ui.cjs')

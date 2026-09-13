@@ -25,6 +25,7 @@ var FormalMultiRenderer = (function () {
                 continue;
             }
             result = FormalMultiOrchestration.planOne(bundle, annotation.annotationId, sourceText, observation);
+            result.occurrenceId = occurrence.occurrenceId;
             result.appearance = annotation.appearance;
             plans.push(result);
             if (result.status !== "complete") return { status: result.status, plans: plans };

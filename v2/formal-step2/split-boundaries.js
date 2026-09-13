@@ -21,12 +21,14 @@ var FormalSplitBoundaryUi = (function () {
         for (labelIndex = 0; labelIndex < result.length; labelIndex++) result[labelIndex].label = "[" + (labelIndex + 1) + "] " + result[labelIndex].label;
         return result;
     }
-    function choose(text) {
+    function contains(values, value) { var i; for (i = 0; i < (values || []).length; i++) if (values[i] === value) return true; return false; }
+    function choose(text, suggested) {
         var dialog = new Window("dialog", "局所分割境界"), list, actions, ok, cancel, items, result = [], i;
         list = dialog.add("listbox", undefined, [], {multiselect: true});
         list.preferredSize = [520, 360];
         items = boundaryItems(text);
         for (i = 0; i < items.length; i++) list.add("item", items[i].label);
+        for (i = 0; i < items.length; i++) if (contains(suggested, items[i].offset)) list.items[i].selected = true;
         actions = dialog.add("group");
         ok = actions.add("button", undefined, "決定", {name: "ok"});
         cancel = actions.add("button", undefined, "キャンセル", {name: "cancel"});

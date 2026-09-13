@@ -95,6 +95,12 @@ check('provides unresolved review navigation and explicit suppress/re-enable',
   source.indexOf('FormalMultiWorkflow.setOccurrenceEnabled') >= 0 &&
   source.indexOf('function selectOccurrence') >= 0 &&
   source.indexOf('function updateReviewControls') >= 0);
+check('separates input-ready from render-unresolved and carries planner boundaries to local split',
+  source.indexOf('FormalMultiWorkflow.renderStatus(occurrence)') >= 0 &&
+  source.indexOf('render-" + render') >= 0 &&
+  source.indexOf('FormalMultiWorkflow.applyRenderResults') >= 0 &&
+  source.indexOf('FormalSplitBoundaryUi.choose(occurrence.surface, occurrence.renderBoundaries)') >= 0 &&
+  source.indexOf('value.renderStatus === "failed" || value.renderStatus === "unresolved"') >= 0);
 check('provides bounded copyable debug console and preserves exact save failure category',
   source.indexOf('debug console: copyable / max 40 records') >= 0 &&
   source.indexOf('function showDiagnostics(values)') >= 0 &&

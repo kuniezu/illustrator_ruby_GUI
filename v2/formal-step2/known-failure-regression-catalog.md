@@ -35,6 +35,7 @@ This catalog is the pre-runtime checklist for the practical Formal Multi flow. E
 | OBS-01 | render-failed or bridge:error hides the stage | BridgeTalk categories were collapsed at the palette boundary | Preserve request, bridge, observation, plan, native, and lifecycle categories in bounded logs and console | tests/persistence-adapter.cjs, tests/ui.cjs | Console copy only on failure | 1b11b80 |
 | OBS-02 | Generated BridgeTalk body breaks from a helper/variable collision | Generated body shared names in one scope | Generated body is ES3-parseable with unique helper names | tests/persistence-adapter.cjs, tests/gate-0.cjs | None | 305e8f7 |
 | OBS-03 | Candidate cleanup evidence disappears into generic native failure | Host cleanup result was not propagated through practical bridge | cleanupPending IDs and structured evidence reach lifecycle failure diagnostics | tests/area-text-native-static.cjs, tests/persistence-adapter.cjs | Copy console if cleanup remains | P1 closure |
+| STATE-01 | UI reports an input-ready occurrence as render-ready after planner rejection | Input confirmation and actual line-boundary render planning were represented by one status | Preserve input readiness, retain planner status/reasons/boundaries per occurrence, and distinguish persisted transport success from render success | tests/multi.cjs, tests/multi-renderer.cjs, tests/ui.cjs | None; runtime remains user-owned | gate-d-render-state-split-repair-20260913-0152 |
 
 ## P1 migration-parity additions
 

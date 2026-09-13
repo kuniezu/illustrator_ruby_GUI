@@ -20,7 +20,7 @@
 /* Minimal scalable long-text shell. Logical occurrences stay separate from render segments. */
 (function () {
     function fail(message) { throw Error(message); }
-    function statusText(occurrence) { return occurrence.unsupported ? "unsupported" : FormalMultiWorkflow.occurrenceStatus(occurrence); }
+    function statusText(occurrence) { var render=FormalMultiWorkflow.renderStatus(occurrence); if (occurrence.unsupported) return "unsupported"; if (render && render!=="complete") return "render-" + render + (occurrence.renderReasons.length ? ":" + occurrence.renderReasons.join(",") : ""); return FormalMultiWorkflow.occurrenceStatus(occurrence); }
     function sourceKindText(source) { return source.kind === TextType.POINTTEXT ? "POINTTEXT" : "AREATEXT"; }
     function listText(occurrence) {
         return occurrence.start + ".." + occurrence.end + "  " + occurrence.surface + "  [" + statusText(occurrence) + "]";
@@ -144,7 +144,7 @@
             var results = [], occurrence;
             for (var j = 0; j < bundle.occurrences.length; j++) {
                 occurrence = bundle.occurrences[j];
-                results.push({ annotationId: occurrence.occurrenceId, status: FormalMultiWorkflow.occurrenceStatus(occurrence) });
+                results.push({ annotationId: occurrence.occurrenceId, status: occurrence.renderStatus === "unresolved" ? "unresolved" : FormalMultiWorkflow.occurrenceStatus(occurrence) });
             }
             return results;
         }
@@ -208,7 +208,7 @@
                 if(savePending || currentIndex<0) return;
                 saveEditor(); occurrence=bundle.occurrences[currentIndex];
                 if(occurrence.unsupported) fail("unsupported-occurrence-cannot-split");
-                boundaries=FormalSplitBoundaryUi.choose(occurrence.surface);
+                boundaries=occurrence.renderBoundaries && occurrence.renderBoundaries.length ? FormalSplitBoundaryUi.choose(occurrence.surface, occurrence.renderBoundaries) : FormalSplitBoundaryUi.choose(occurrence.surface);
                 if(boundaries===null) return;
                 if(!boundaries.length) fail("分割境界を1つ以上選択してください");
                 bundle=FormalMulti.replaceOccurrences(bundle, FormalLongText.splitAt(bundle, occurrence.occurrenceId, boundaries).occurrences); editRevision++; bundle.revision=editRevision; currentIndex=Math.min(currentIndex,bundle.occurrences.length-1); refreshList(); stateText.text="状態: occurrenceを局所分割しました。各readingを確認して保存してください";
@@ -258,10 +258,9 @@
                 requestRevision = bundle.revision;
                 stageFile = File(Folder.temp.fsName + "/formal-multi-host-" + new Date().getTime() + "-" + requestId + ".log");
                 bundle = FormalMultiProjection.project(bundle);
-                bundle.renderStatus = "complete";
                 result = FormalMultiPersistenceAdapter.saveRendered(bundle.textSnapshot, cachedNote, bundle, sourceIdentity, FormalMultiRenderer.specifications(bundle), renderSources, {
                     pending: function (diagnostics) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; showDiagnostics(diagnostics); stateText.text = "状態: 保存経路Bを実行中 / stage=" + stageFile.fsName + " / " + diagnostics.join(" | "); },
-                    success: function (value) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(value.diagnostics); if (value.reason) showDiagnostics("reason=" + value.reason); if (value.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = value.note; refreshList(); stateText.text = value.renderStatus === "failed" ? "状態: " + (value.reason || "render-failed") + " / 読みの情報は保持しています" : "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
+                    success: function (value) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(value.diagnostics); if (value.reason) showDiagnostics("reason=" + value.reason); if (value.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = value.note; if (value.renderResults) bundle = FormalMultiWorkflow.applyRenderResults(bundle, value.renderResults, value.renderStatus || "unresolved"); refreshList(); stateText.text = value.renderStatus === "failed" || value.renderStatus === "unresolved" ? "状態: 保存済み / render未解決: " + (value.reason || "planner-unresolved") + " / 読みの情報は保持しています" : "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
                     failure: function (diagnostics) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(diagnostics); stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
                 }, undefined, stageFile.fsName, requestId);
                 if(result.status === "success" && requestId === activeSaveRequestToken && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); if (result.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / " + result.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; }

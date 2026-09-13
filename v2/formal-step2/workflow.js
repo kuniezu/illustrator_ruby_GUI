@@ -12,12 +12,14 @@ var FormalMultiWorkflow = (function () {
         if (!target) fail("long-text-occurrence-missing");
         if (!validHiragana(value)) fail("reading-hiragana-only");
         target.reading=value; target.readingConfirmed=confirmed!==false&&value.length>0;
+        target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[];
         return FormalMulti.validate(next);
     }
     function setOccurrenceEnabled(bundle, occurrenceId, enabled) {
         var next=FormalMulti.clone(bundle), target=occurrence(next,occurrenceId);
         if (!target) fail("long-text-occurrence-missing");
         target.enabled=!!enabled;
+        if (!target.enabled) { target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; }
         return FormalMulti.validate(next);
     }
     function occurrenceStatus(occurrence) {
@@ -26,9 +28,16 @@ var FormalMultiWorkflow = (function () {
         if (!occurrence.readingConfirmed||!occurrence.reading) return "unresolved";
         return "ready";
     }
+    function renderStatus(occurrence) { return occurrence.renderStatus && occurrence.renderStatus!=="pending" ? occurrence.renderStatus : null; }
+    function applyRenderResults(bundle, results, status) {
+        var next=FormalMulti.clone(bundle), i, j, item, target;
+        for (i=0;i<next.occurrences.length;i++) { target=next.occurrences[i]; target.renderStatus=status||"pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; }
+        for (i=0;i<(results||[]).length;i++) { item=results[i]; for(j=0;j<next.occurrences.length;j++) if(item.occurrenceId===next.occurrences[j].occurrenceId||item.annotationId===next.occurrences[j].occurrenceId) { target=next.occurrences[j]; target.renderStatus=item.status||status||"pending"; target.renderReasons=(item.reasons||[]).slice(0); target.renderBoundaries=(item.boundaries||[]).slice(0); target.renderUnresolvedBoundaries=(item.unresolvedBoundaries||[]).slice(0); } }
+        return FormalMulti.validate(next);
+    }
     function findSelection(bundle, sourceFrameId, sourceText, start, end) { var found=null, i, a; if(typeof start!=="number"||typeof end!=="number") return null; for(i=0;i<bundle.annotations.length;i++){a=bundle.annotations[i];if(a.sourceFrameId===sourceFrameId&&a.anchor.startHint===start&&a.anchor.baseText===sourceText.substring(start,end)){if(found)fail("ambiguous-selection-match");found=a.annotationId;}} return found; }
     function reviewQueue(bundle, results) { var queue=[],i,j,items=bundle.occurrences||bundle.annotations; for(i=0;i<items.length;i++)for(j=0;j<results.length;j++)if((results[j].annotationId===items[i].annotationId||results[j].annotationId===items[i].occurrenceId)&&results[j].status==="unresolved"&&items[i].enabled!==false&&!items[i].unsupported){queue.push(items[i].occurrenceId||items[i].annotationId);break;} return queue; }
     function navigate(queue, currentId, direction) { var i; for(i=0;i<queue.length;i++)if(queue[i]===currentId){i+=direction;return i>=0&&i<queue.length?queue[i]:null;} return queue.length?(direction>0?queue[0]:queue[queue.length-1]):null; }
-    return {addSelection:addSelection,setReading:setReading,setEnabled:setEnabled,setOccurrenceReading:setOccurrenceReading,setOccurrenceEnabled:setOccurrenceEnabled,occurrenceStatus:occurrenceStatus,findSelection:findSelection,reviewQueue:reviewQueue,navigate:navigate,validHiragana:validHiragana};
+    return {addSelection:addSelection,setReading:setReading,setEnabled:setEnabled,setOccurrenceReading:setOccurrenceReading,setOccurrenceEnabled:setOccurrenceEnabled,occurrenceStatus:occurrenceStatus,renderStatus:renderStatus,applyRenderResults:applyRenderResults,findSelection:findSelection,reviewQueue:reviewQueue,navigate:navigate,validHiragana:validHiragana};
 }());
 if(typeof module!=="undefined")module.exports=FormalMultiWorkflow;
