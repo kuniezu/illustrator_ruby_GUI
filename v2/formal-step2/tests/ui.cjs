@@ -101,6 +101,9 @@ check('separates input-ready from render-unresolved and carries planner boundari
   source.indexOf('FormalMultiWorkflow.applyRenderResults') >= 0 &&
   source.indexOf('FormalSplitBoundaryUi.choose(occurrence.surface, occurrence.renderBoundaries)') >= 0 &&
   source.indexOf('value.renderStatus === "failed" || value.renderStatus === "unresolved"') >= 0);
+check('reconciles the immediate palette bundle from the persisted callback note',
+  source.indexOf('persisted = FormalMultiStore.read(value.note)') >= 0 &&
+  source.indexOf('if (persisted) bundle = persisted') >= 0);
 check('provides bounded copyable debug console and preserves exact save failure category',
   source.indexOf('debug console: copyable / max 40 records') >= 0 &&
   source.indexOf('function showDiagnostics(values)') >= 0 &&
