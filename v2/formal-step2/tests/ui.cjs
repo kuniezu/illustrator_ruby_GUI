@@ -10,6 +10,17 @@ function check(name, condition) {
   console.log('PASS ' + name);
 }
 
+function saveControls(savePending, retryBlocked) {
+  return {save:!savePending && !retryBlocked, close:!savePending || retryBlocked, editor:!savePending && !retryBlocked};
+}
+
+const pendingControls = saveControls(true, false);
+const blockedControls = saveControls(false, true);
+check('retry blocked state keeps close escape enabled while disabling save/editor',
+  pendingControls.save === false && pendingControls.close === false && pendingControls.editor === false &&
+  blockedControls.save === false && blockedControls.close === true && blockedControls.editor === false &&
+  source.indexOf('function setRetryBlocked') >= 0 && source.indexOf('setRetryBlocked(true)') >= 0);
+
 check('includes long-text model and multi namespace',
   source.indexOf('#include "../formal-step1/core.js"') >= 0 &&
   source.indexOf('#include "../formal-step1/store.js"') >= 0 &&

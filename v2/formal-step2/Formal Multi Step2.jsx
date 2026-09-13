@@ -58,7 +58,7 @@
     function run() {
         var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, nativeManifest, dialog, list, info, hint, renderSources, stageFile;
         var editor, readingInput, enabledCheck, confirmedCheck, selectedText, debugText, debugLines = [];
-        var saveButton, closeButton, splitButton, mergeButton, previousReviewButton, nextReviewButton, suppressButton, reenableButton, stateText, savePending = false, transportUncertain = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, activeSaveRequestToken = "", i;
+        var saveButton, closeButton, splitButton, mergeButton, previousReviewButton, nextReviewButton, suppressButton, reenableButton, stateText, savePending = false, transportUncertain = false, retryBlocked = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, activeSaveRequestToken = "", i;
 
         if (!app.documents.length) fail("AIファイルを開いてください");
         documentRef = app.activeDocument;
@@ -163,10 +163,10 @@
         function updateReviewControls() {
             var occurrence = currentIndex < 0 ? null : bundle.occurrences[currentIndex];
             var queue = reviewQueue();
-            previousReviewButton.enabled = !savePending && queue.length > 0;
-            nextReviewButton.enabled = !savePending && queue.length > 0;
-            suppressButton.enabled = !savePending && !!occurrence && occurrence.enabled && !occurrence.unsupported;
-            reenableButton.enabled = !savePending && !!occurrence && !occurrence.enabled && !occurrence.unsupported;
+            previousReviewButton.enabled = !savePending && !retryBlocked && queue.length > 0;
+            nextReviewButton.enabled = !savePending && !retryBlocked && queue.length > 0;
+            suppressButton.enabled = !savePending && !retryBlocked && !!occurrence && occurrence.enabled && !occurrence.unsupported;
+            reenableButton.enabled = !savePending && !retryBlocked && !!occurrence && !occurrence.enabled && !occurrence.unsupported;
         }
         function selectOccurrence(occurrenceId) {
             var index = findOccurrenceIndex(occurrenceId);
@@ -245,9 +245,15 @@
             readingInput.enabled = !value;
             enabledCheck.enabled = !value;
             confirmedCheck.enabled = !value;
-            splitButton.enabled = !value;
-            mergeButton.enabled = !value;
+            splitButton.enabled = !value && !retryBlocked;
+            mergeButton.enabled = !value && !retryBlocked;
             updateReviewControls();
+        }
+        function setRetryBlocked(value) {
+            retryBlocked = !!value;
+            transportUncertain = retryBlocked;
+            setSavePending(false);
+            closeButton.enabled = true;
         }
         previousReviewButton.onClick = function () { navigateReview(-1); };
         nextReviewButton.onClick = function () { navigateReview(1); };
@@ -267,7 +273,7 @@
                 result = FormalMultiPersistenceAdapter.saveRendered(bundle.textSnapshot, cachedNote, bundle, sourceIdentity, FormalMultiRenderer.specifications(bundle), renderSources, {
                     pending: function (diagnostics) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; showDiagnostics(diagnostics); stateText.text = "状態: 保存経路Bを実行中 / stage=" + stageFile.fsName + " / " + diagnostics.join(" | "); },
                     success: function (value) { var persisted; if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(value.diagnostics); if (value.reason) showDiagnostics("reason=" + value.reason); if (value.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = value.note; persisted = FormalMultiStore.read(value.note); if (persisted) bundle = persisted; else if (value.renderResults) bundle = FormalMultiWorkflow.applyRenderResults(bundle, value.renderResults, value.renderStatus || "unresolved"); refreshList(); stateText.text = value.renderStatus === "failed" || value.renderStatus === "unresolved" ? "状態: 保存済み / render未解決: " + (value.reason || "planner-unresolved") + " / 読みの情報は保持しています" : "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
-                    failure: function (diagnostics) { var persisted, blocked = diagnostics && diagnostics.retrySafe === false, uncertain = diagnostics && diagnostics.kind === "transport-uncertain", reason = diagnostics && diagnostics.reason ? diagnostics.reason : diagnostics, failureText; if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(true); if (diagnostics && diagnostics.noteVerified === true) { cachedNote = diagnostics.note; persisted = FormalMultiStore.read(cachedNote); if (persisted) { bundle = persisted; refreshList(); } } if (blocked) { transportUncertain = true; saveButton.enabled = false; showDiagnostics(reason || "retry is blocked"); stateText.text = uncertain ? "状態: 結果不確定 / 再保存を停止しました。閉じて再同期・recovery後に再開してください" : "状態: recovery blocked / 再保存を停止しました。閉じて再同期・recovery後に再開してください"; return; } setSavePending(false); showDiagnostics(reason); failureText = reason instanceof Array ? reason.join(" | ") : String(reason); stateText.text = "状態: 保存失敗 / " + failureText; alert("Formal Step 2 保存に失敗しました。\n" + failureText); }
+                    failure: function (diagnostics) { var persisted, blocked = diagnostics && diagnostics.retrySafe === false, uncertain = diagnostics && diagnostics.kind === "transport-uncertain", reason = diagnostics && diagnostics.reason ? diagnostics.reason : diagnostics, failureText; if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(true); if (diagnostics && diagnostics.noteVerified === true) { cachedNote = diagnostics.note; persisted = FormalMultiStore.read(cachedNote); if (persisted) { bundle = persisted; refreshList(); } } if (blocked) { setRetryBlocked(true); showDiagnostics(reason || "retry is blocked"); stateText.text = uncertain ? "状態: 結果不確定 / 再保存を停止しました。閉じて再同期・recovery後に再開してください" : "状態: recovery blocked / 再保存を停止しました。閉じて再同期・recovery後に再開してください"; return; } setSavePending(false); showDiagnostics(reason); failureText = reason instanceof Array ? reason.join(" | ") : String(reason); stateText.text = "状態: 保存失敗 / " + failureText; alert("Formal Step 2 保存に失敗しました。\n" + failureText); }
                 }, undefined, stageFile.fsName, requestId);
                 if(result.status === "success" && requestId === activeSaveRequestToken && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); if (result.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / " + result.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; }
                 else if(result.status === "failed" && requestId === activeSaveRequestToken && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }
