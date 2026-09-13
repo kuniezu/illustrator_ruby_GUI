@@ -152,6 +152,20 @@ test('pre-activation failure aborts durable operation',()=>{
   assert.equal(state.operation,null);assert.deepEqual(state.cleanupQueue,['p-failed']);
 });
 
+test('verify failure owns one dispose and one durable abort for outer catch handoff',()=>{
+  const calls=[];
+  const source={contents:'source',note:''};
+  const coordinator={begin(){calls.push('begin');source.note='begun';return {status:'success',sourceContents:'source',note:'begun'};},verify(){calls.push('verify');},abort(){calls.push('abort');return {status:'success'};},activate(){}};
+  const host={prepareAll(){calls.push('prepare');return {status:'prepared'};},verifyAll(){calls.push('host-verify');throw Error('verify-failed');},disposeAll(){calls.push('dispose');}};
+  const seam=Integration.create({planAll(){return {status:'complete'};}},host,coordinator);
+  const prepared=seam.planAndPrepare({},'source',{},[{physicalId:'candidate'}],tx(source,'request'));
+  let error;
+  try { seam.verify(prepared); } catch (caught) { error=caught; }
+  assert.equal(error.lifecycleAborted,true);
+  seam.abort(prepared,error);
+  assert.deepEqual(calls,['begin','prepare','host-verify','dispose','abort']);
+});
+
 test('activation seam carries explicit logical removal for a 2-to-1 collapse while preserving a peer',()=>{
   global.FormalAreaTextNative=require('../area-text-native.js');
   global.FormalAreaTextNativeStore=require('../area-text-native-store.js');

@@ -20,7 +20,7 @@ var FormalMultiWorkflow = (function () {
         var next=FormalMulti.clone(bundle), target=occurrence(next,occurrenceId), nextEnabled, changed;
         if (!target) fail("long-text-occurrence-missing");
         nextEnabled=!!enabled; changed=target.enabled!==nextEnabled; target.enabled=nextEnabled;
-        if (changed&&!target.enabled) { target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; next.renderStatus="pending"; }
+        if (changed) { target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; next.renderStatus="pending"; }
         return FormalMulti.validate(next);
     }
     function occurrenceStatus(occurrence) {

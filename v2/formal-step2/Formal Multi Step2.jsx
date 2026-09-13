@@ -16,6 +16,8 @@
 #include "ui-refresh.js"
 #include "selection-adapter.jsx"
 #include "persistence-adapter.jsx"
+#include "area-text-native.js"
+#include "area-text-native-store.js"
 
 /* Minimal scalable long-text shell. Logical occurrences stay separate from render segments. */
 (function () {
@@ -47,14 +49,15 @@
             nativeBackend: File(here + "/area-text-native-backend.jsx").fsName,
             nativeHost: File(here + "/area-text-native-host.jsx").fsName,
             nativeIntegration: File(here + "/area-text-native-integration.js").fsName,
+            nativeRecovery: File(here + "/area-text-native-recovery.js").fsName,
             adapter: File(here + "/adapter.jsx").fsName
         };
     }
 
     function run() {
-        var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, dialog, list, info, hint, renderSources, stageFile;
+        var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, nativeManifest, dialog, list, info, hint, renderSources, stageFile;
         var editor, readingInput, enabledCheck, confirmedCheck, selectedText, debugText, debugLines = [];
-        var saveButton, closeButton, splitButton, mergeButton, previousReviewButton, nextReviewButton, suppressButton, reenableButton, stateText, savePending = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, activeSaveRequestToken = "", i;
+        var saveButton, closeButton, splitButton, mergeButton, previousReviewButton, nextReviewButton, suppressButton, reenableButton, stateText, savePending = false, transportUncertain = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, activeSaveRequestToken = "", i;
 
         if (!app.documents.length) fail("AIファイルを開いてください");
         documentRef = app.activeDocument;
@@ -70,6 +73,7 @@
         else bundle = stored || FormalMulti.createFrame(picked.text);
         if (!bundle.occurrences) bundle.occurrences = FormalLongText.extract(picked.text).occurrences;
         bundle = FormalMulti.validate(bundle);
+        nativeManifest = FormalAreaTextNativeStore.read(cachedNote);
         editRevision = bundle.revision;
 
         dialog = new Window("palette", "Formal Step 2 - Long Text");
@@ -106,7 +110,7 @@
         reenableButton = actions.add("button", undefined, "再有効化");
         saveButton = actions.add("button", undefined, "保存");
         closeButton = actions.add("button", undefined, "閉じる");
-        stateText = dialog.add("statictext", undefined, reResolution ? "状態: source変更を再解決済み / unresolved=" + reResolution.unresolved.length + "件（保存で新snapshotを確定）" : "状態: 読み込み完了");
+        stateText = dialog.add("statictext", undefined, nativeManifest && FormalAreaTextNative.recoveryState(nativeManifest) !== "finished/recoverable" ? "状態: native recovery pending / 保存経路で先に復旧します" : (reResolution ? "状態: source変更を再解決済み / unresolved=" + reResolution.unresolved.length + "件（保存で新snapshotを確定）" : "状態: 読み込み完了"));
         stateText.characters = 90;
         debugText = dialog.add("edittext", undefined, "debug console: copyable / max 40 records", {multiline: true, scrolling: true});
         debugText.preferredSize = [720, 90];
@@ -234,7 +238,7 @@
         };
         function setSavePending(value) {
             savePending = value;
-            saveButton.enabled = !value;
+            saveButton.enabled = !value && !transportUncertain;
             closeButton.enabled = !value;
             list.enabled = !value;
             readingInput.enabled = !value;
@@ -250,7 +254,7 @@
         reenableButton.onClick = function () { setCurrentEnabled(true); };
         saveButton.onClick = function () {
             var result, requestId, requestRevision = null;
-            if (savePending) return;
+            if (savePending || transportUncertain) return;
             setSavePending(true);
             requestId = "save-" + new Date().getTime() + "-" + (++activeSaveRequestId);
             activeSaveRequestToken = requestId;
@@ -262,7 +266,7 @@
                 result = FormalMultiPersistenceAdapter.saveRendered(bundle.textSnapshot, cachedNote, bundle, sourceIdentity, FormalMultiRenderer.specifications(bundle), renderSources, {
                     pending: function (diagnostics) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; showDiagnostics(diagnostics); stateText.text = "状態: 保存経路Bを実行中 / stage=" + stageFile.fsName + " / " + diagnostics.join(" | "); },
                     success: function (value) { var persisted; if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(value.diagnostics); if (value.reason) showDiagnostics("reason=" + value.reason); if (value.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = value.note; persisted = FormalMultiStore.read(value.note); if (persisted) bundle = persisted; else if (value.renderResults) bundle = FormalMultiWorkflow.applyRenderResults(bundle, value.renderResults, value.renderStatus || "unresolved"); refreshList(); stateText.text = value.renderStatus === "failed" || value.renderStatus === "unresolved" ? "状態: 保存済み / render未解決: " + (value.reason || "planner-unresolved") + " / 読みの情報は保持しています" : "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
-                    failure: function (diagnostics) { var persisted; if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); if (diagnostics && diagnostics.noteVerified === true) { cachedNote = diagnostics.note; persisted = FormalMultiStore.read(cachedNote); if (persisted) { bundle = persisted; refreshList(); } diagnostics = diagnostics.diagnostics || []; } showDiagnostics(diagnostics); stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
+                    failure: function (diagnostics) { var persisted, uncertain = diagnostics && diagnostics.kind === "transport-uncertain"; if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); if (diagnostics && diagnostics.noteVerified === true) { cachedNote = diagnostics.note; persisted = FormalMultiStore.read(cachedNote); if (persisted) { bundle = persisted; refreshList(); } diagnostics = diagnostics.diagnostics || []; } if (uncertain) { transportUncertain = true; saveButton.enabled = false; showDiagnostics(diagnostics.reason || "transport result uncertain"); stateText.text = "状態: 結果不確定 / 再保存を停止しました。閉じて再同期・recovery後に再開してください"; return; } showDiagnostics(diagnostics); stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
                 }, undefined, stageFile.fsName, requestId);
                 if(result.status === "success" && requestId === activeSaveRequestToken && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); if (result.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / " + result.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; }
                 else if(result.status === "failed" && requestId === activeSaveRequestToken && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }

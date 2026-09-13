@@ -47,7 +47,9 @@ var FormalAreaTextNativeIntegration = (function () {
             tx = prepared.transaction;
             try { prepared.batch = host.verifyAll(prepared.batch); }
             catch (error) {
+                if (prepared.batch && prepared.batch.status === "prepared" && typeof host.disposeAll === "function") host.disposeAll(prepared.batch);
                 coordinator.abort(tx.source, tx.expectedContents, tx.expectedNote, tx.requestId, error.cleanupPendingIds || []);
+                prepared.lifecycleAborted = true;
                 error.lifecycleAborted = true;
                 throw error;
             }
@@ -61,6 +63,7 @@ var FormalAreaTextNativeIntegration = (function () {
         function abort(prepared, reason) {
             var tx, pending = reason && reason.cleanupPendingIds || [];
             if (!prepared || !prepared.transaction) return { status: "not-started", cleanupPendingIds: pending };
+            if (prepared.lifecycleAborted) return { status: "already-aborted", cleanupPendingIds: pending };
             tx = prepared.transaction;
             if (prepared.batch && prepared.batch.status === "prepared") host.disposeAll(prepared.batch);
             pending = (prepared.batch && prepared.batch.cleanupPendingIds) || pending;
