@@ -239,7 +239,7 @@ var FormalAreaTextNative = (function () {
         if (state.operation) {
             if (state.operation.phase === "prepare") return "prepare";
             if (state.operation.phase === "verified") return "verified";
-            if (state.operation.phase === "activated") return state.retirementQueue && state.retirementQueue.length > 0 ? "activated-cleanup-pending" : "activated-clean";
+            if (state.operation.phase === "activated") return (state.retirementQueue && state.retirementQueue.length > 0) || (state.cleanupQueue && state.cleanupQueue.length > 0) ? "activated-cleanup-pending" : "activated-clean";
             return "unknown-operation-phase";
         }
         return state.retirementQueue && state.retirementQueue.length > 0 || state.cleanupQueue && state.cleanupQueue.length > 0 ? "activated-cleanup-pending" : "finished/recoverable";

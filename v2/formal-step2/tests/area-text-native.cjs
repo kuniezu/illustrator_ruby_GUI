@@ -128,6 +128,14 @@ test('discarded activation ids become durable cleanup and can be acknowledged',(
   s=N.markDiscardedCleaned(s,['p2']);assert.deepEqual(s.cleanupQueue,[]);assert.equal(N.recoveryState(s),'activated-clean');
 });
 
+test('activated recovery state includes cleanupQueue-only pending work',()=>{
+  let s=N.beginOperation(N.createManifest(),'r1',['p1','discarded']);s=N.markVerified(s,'r1');
+  s=N.activate(s,'r1',{s1:'p1'},{p1:{physicalId:'p1',requestId:'r1',logicalSegmentId:'s1'}},[],['discarded']);
+  s.retirementQueue=[];
+  assert.deepEqual(s.cleanupQueue,['discarded']);
+  assert.equal(N.recoveryState(s),'activated-cleanup-pending');
+});
+
 test('same request is idempotent only for the same candidate plan',()=>{
   let s=N.beginOperation(N.createManifest(),'r1',['p1']);
   assert.doesNotThrow(()=>N.beginOperation(s,'r1',['p1']));

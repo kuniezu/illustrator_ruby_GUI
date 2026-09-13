@@ -9,6 +9,14 @@ var FormalAreaTextNativeRecoveryRuntime = (function () {
             return step(action, current);
         }, limit == null ? 8 : limit);
     }
-    return { converge: converge };
+    function classifyFailure(error, readAuthoritative) {
+        var reason = error && error.message ? String(error.message) : String(error), snapshot = null;
+        if (typeof readAuthoritative === "function") {
+            try { snapshot = readAuthoritative(); } catch (ignore) { snapshot = null; }
+        }
+        if (snapshot && snapshot.noteVerified === true) return {kind: "recovery", reason: reason, note: snapshot.note, noteVerified: true, retrySafe: false};
+        return {kind: "transport-uncertain", reason: "recovery-state-uncertain:" + reason, note: null, noteVerified: false, retrySafe: false};
+    }
+    return { converge: converge, classifyFailure: classifyFailure };
 }());
 if (typeof module !== "undefined") module.exports = FormalAreaTextNativeRecoveryRuntime;
