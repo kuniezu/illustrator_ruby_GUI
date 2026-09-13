@@ -33,6 +33,7 @@
             orchestration: File(here + "/orchestration.js").fsName,
             appearance: File(here + "/appearance.js").fsName,
             multi: File(here + "/multi.js").fsName,
+            multiStore: File(here + "/multi-store.js").fsName,
             projection: File(here + "/projection.js").fsName,
             multiRenderer: File(here + "/multi-renderer.js").fsName,
             nativeRenderer: File(here + "/native-renderer.js").fsName,
