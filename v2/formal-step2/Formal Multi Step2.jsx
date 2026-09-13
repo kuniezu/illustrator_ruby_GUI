@@ -212,7 +212,7 @@
                 boundaries=occurrence.renderBoundaries && occurrence.renderBoundaries.length ? FormalSplitBoundaryUi.choose(occurrence.surface, occurrence.renderBoundaries) : FormalSplitBoundaryUi.choose(occurrence.surface);
                 if(boundaries===null) return;
                 if(!boundaries.length) fail("分割境界を1つ以上選択してください");
-                bundle=FormalMulti.replaceOccurrences(bundle, FormalLongText.splitAt(bundle, occurrence.occurrenceId, boundaries).occurrences); editRevision++; bundle.revision=editRevision; currentIndex=Math.min(currentIndex,bundle.occurrences.length-1); refreshList(); stateText.text="状態: occurrenceを局所分割しました。各readingを確認して保存してください";
+                bundle=FormalMulti.replaceOccurrences(bundle, FormalLongText.splitAt(bundle, occurrence.occurrenceId, boundaries).occurrences); bundle.renderStatus="pending"; editRevision++; bundle.revision=editRevision; currentIndex=Math.min(currentIndex,bundle.occurrences.length-1); refreshList(); stateText.text="状態: occurrenceを局所分割しました。各readingを確認して保存してください";
             } catch(error) { stateText.text="状態: 分割失敗 / "+(error.message||error); }
         };
         mergeButton.onClick = function () {
@@ -221,7 +221,7 @@
                 if(savePending || currentIndex<0 || currentIndex+1>=bundle.occurrences.length) return;
                 saveEditor(); first=bundle.occurrences[currentIndex]; second=bundle.occurrences[currentIndex+1];
                 if(!sameLocalRoot(first,second)) fail("隣接する同一local lineageだけ結合できます");
-                bundle=FormalMulti.replaceOccurrences(bundle, FormalLongText.mergeAdjacent(bundle,[first.occurrenceId,second.occurrenceId]).occurrences); editRevision++; bundle.revision=editRevision; refreshList(); stateText.text="状態: occurrenceを局所結合しました。readingを確認して保存してください";
+                bundle=FormalMulti.replaceOccurrences(bundle, FormalLongText.mergeAdjacent(bundle,[first.occurrenceId,second.occurrenceId]).occurrences); bundle.renderStatus="pending"; editRevision++; bundle.revision=editRevision; refreshList(); stateText.text="状態: occurrenceを局所結合しました。readingを確認して保存してください";
             } catch(error) { stateText.text="状態: 結合失敗 / "+(error.message||error); }
         }
 
@@ -262,7 +262,7 @@
                 result = FormalMultiPersistenceAdapter.saveRendered(bundle.textSnapshot, cachedNote, bundle, sourceIdentity, FormalMultiRenderer.specifications(bundle), renderSources, {
                     pending: function (diagnostics) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; showDiagnostics(diagnostics); stateText.text = "状態: 保存経路Bを実行中 / stage=" + stageFile.fsName + " / " + diagnostics.join(" | "); },
                     success: function (value) { var persisted; if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(value.diagnostics); if (value.reason) showDiagnostics("reason=" + value.reason); if (value.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = value.note; persisted = FormalMultiStore.read(value.note); if (persisted) bundle = persisted; else if (value.renderResults) bundle = FormalMultiWorkflow.applyRenderResults(bundle, value.renderResults, value.renderStatus || "unresolved"); refreshList(); stateText.text = value.renderStatus === "failed" || value.renderStatus === "unresolved" ? "状態: 保存済み / render未解決: " + (value.reason || "planner-unresolved") + " / 読みの情報は保持しています" : "状態: 保存完了 / " + value.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; },
-                    failure: function (diagnostics) { if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); showDiagnostics(diagnostics); stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
+                    failure: function (diagnostics) { var persisted; if (requestId !== activeSaveRequestToken || requestRevision !== bundle.revision) return; setSavePending(false); if (diagnostics && diagnostics.noteVerified === true) { cachedNote = diagnostics.note; persisted = FormalMultiStore.read(cachedNote); if (persisted) { bundle = persisted; refreshList(); } diagnostics = diagnostics.diagnostics || []; } showDiagnostics(diagnostics); stateText.text = "状態: 保存失敗 / " + diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + diagnostics.join("\n")); }
                 }, undefined, stageFile.fsName, requestId);
                 if(result.status === "success" && requestId === activeSaveRequestToken && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); if (result.noteVerified !== true) { stateText.text = "状態: 保存失敗 / persisted note readback未確認"; return; } cachedNote = result.note; refreshList(); stateText.text = "状態: 保存完了 / " + result.strategy + " / Annotation=" + bundle.annotations.length + "件（再実行で復元）"; }
                 else if(result.status === "failed" && requestId === activeSaveRequestToken && requestRevision === bundle.revision) { setSavePending(false); showDiagnostics(result.diagnostics); stateText.text = "状態: 保存失敗 / " + result.diagnostics.join(" | "); alert("Formal Step 2 保存に失敗しました。\n" + result.diagnostics.join("\n")); }

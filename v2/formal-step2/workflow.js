@@ -13,14 +13,14 @@ var FormalMultiWorkflow = (function () {
         if (!validHiragana(value)) fail("reading-hiragana-only");
         previousReading=target.reading; previousConfirmed=target.readingConfirmed===true; nextConfirmed=confirmed!==false&&value.length>0; changed=value!==previousReading||nextConfirmed!==previousConfirmed;
         target.reading=value; target.readingConfirmed=nextConfirmed;
-        if (changed) { target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; }
+        if (changed) { target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; next.renderStatus="pending"; }
         return FormalMulti.validate(next);
     }
     function setOccurrenceEnabled(bundle, occurrenceId, enabled) {
         var next=FormalMulti.clone(bundle), target=occurrence(next,occurrenceId), nextEnabled, changed;
         if (!target) fail("long-text-occurrence-missing");
         nextEnabled=!!enabled; changed=target.enabled!==nextEnabled; target.enabled=nextEnabled;
-        if (changed&&!target.enabled) { target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; }
+        if (changed&&!target.enabled) { target.renderStatus="pending"; target.renderReasons=[]; target.renderBoundaries=[]; target.renderUnresolvedBoundaries=[]; next.renderStatus="pending"; }
         return FormalMulti.validate(next);
     }
     function occurrenceStatus(occurrence) {

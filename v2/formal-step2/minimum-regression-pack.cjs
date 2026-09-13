@@ -15,7 +15,7 @@ const catalogIds = [
   'ES3-01', 'ES3-02',
   'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04', 'FIT-05', 'FIT-06', 'FIT-07',
   'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12',
-  'OBS-01', 'OBS-02', 'OBS-03', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07'
+  'OBS-01', 'OBS-02', 'OBS-03', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12'
 ];
 
 const coverageMap = {
@@ -57,6 +57,11 @@ const coverageMap = {
   'STATE-05': ['v2/formal-step2/tests/persistence-adapter.cjs', 'all noncomplete render paths normalize stale occurrence evidence and require exact readback'],
   'STATE-06': ['v2/formal-step2/tests/workflow.cjs', 'no-op occurrence editor commit preserves unresolved render evidence'],
   'STATE-07': ['v2/formal-step2/tests/orchestration.cjs', 'split-hint-required exposes the exact planner boundaries at orchestration level'],
+  'STATE-08': ['v2/formal-step2/tests/persistence-adapter.cjs', 'terminal native success writes complete render evidence after finish'],
+  'STATE-09': ['v2/formal-step2/tests/persistence-adapter.cjs', 'native lifecycle failure returns the authoritative note for palette retry'],
+  'STATE-10': ['v2/formal-step2/tests/persistence-adapter.cjs', 'native lifecycle failure returns the authoritative note for palette retry'],
+  'STATE-11': ['v2/formal-step2/tests/workflow.cjs', 'semantic occurrence edits reset frame render status while no-op commits preserve it'],
+  'STATE-12': ['v2/formal-step2/tests/persistence-adapter.cjs', 'runtime source preflight includes every evaluated dependency'],
 };
 
 const executedFiles = {};

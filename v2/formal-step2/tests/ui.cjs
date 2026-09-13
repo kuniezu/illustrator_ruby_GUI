@@ -107,6 +107,10 @@ check('keeps planner boundaries available after no-op split save',
 check('reconciles the immediate palette bundle from the persisted callback note',
   source.indexOf('persisted = FormalMultiStore.read(value.note)') >= 0 &&
   source.indexOf('if (persisted) bundle = persisted') >= 0);
+check('reconciles authoritative persisted note after lifecycle failure',
+  source.indexOf('diagnostics.noteVerified === true') >= 0 &&
+  source.indexOf('cachedNote = diagnostics.note') >= 0 &&
+  source.indexOf('FormalMultiStore.read(cachedNote)') >= 0);
 check('provides bounded copyable debug console and preserves exact save failure category',
   source.indexOf('debug console: copyable / max 40 records') >= 0 &&
   source.indexOf('function showDiagnostics(values)') >= 0 &&
