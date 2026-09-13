@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const N=require('../area-text-native.js'),R=require('../area-text-native-recovery.js');
+const N=require('../area-text-native.js'),R=require('../area-text-native-recovery.js');global.FormalAreaTextNativeRecovery=R;const Runtime=require('../area-text-native-recovery-runtime.js');
 
 function activatedState(){
   let state=N.createManifest();
@@ -15,7 +15,7 @@ function activatedState(){
 test('executable terminal recovery clears discarded and retirement queues before the next request',()=>{
   let state=activatedState(), inventory={old:'found',discarded:'found'}, calls=[];
   const resolve=(source,id)=>({status:id==='p-old'?inventory.old:id==='p-discard'?inventory.discarded:'missing'});
-  const result=R.converge(state,'source',resolve,(action,current)=>{let ids=(action.found||[]).concat(action.missing||[]);calls.push(action.action);if(action.action==='cleanup-discarded'){inventory.discarded='missing';return N.markDiscardedCleaned(current,ids);}if(action.action==='cleanup-retirement'){inventory.old='missing';return N.markRetired(current,ids);}if(action.action==='finish-operation')return N.finishOperation(current,action.requestId);throw Error('unexpected-action:'+action.action);},8);
+  const result=Runtime.converge(state,'source',resolve,(action,current)=>{let ids=(action.found||[]).concat(action.missing||[]);calls.push(action.action);if(action.action==='cleanup-discarded'){inventory.discarded='missing';return N.markDiscardedCleaned(current,ids);}if(action.action==='cleanup-retirement'){inventory.old='missing';return N.markRetired(current,ids);}if(action.action==='finish-operation')return N.finishOperation(current,action.requestId);throw Error('unexpected-action:'+action.action);},null,8);
   state=result.state;
   assert.deepEqual(calls,['cleanup-discarded','cleanup-retirement','finish-operation']);
   assert.equal(result.steps,3);
@@ -26,7 +26,7 @@ test('executable terminal recovery clears discarded and retirement queues before
 
 test('production-equivalent converge aborts prepare state and clears its discarded queue before next begin',()=>{
   let state=N.beginOperation(N.createManifest(),'prepare-request',['p-candidate']);
-  const result=R.converge(state,'source',(source,id)=>({status:'missing'}),(action,current)=>{const ids=(action.found||[]).concat(action.missing||[]);assert.equal(action.action,'prepare-candidates');current=N.abortOperation(current,action.requestId,ids);return N.markDiscardedCleaned(current,ids);},8);
+  const result=Runtime.converge(state,'source',(source,id)=>({status:'missing'}),(action,current)=>{const ids=(action.found||[]).concat(action.missing||[]);assert.equal(action.action,'prepare-candidates');current=N.abortOperation(current,action.requestId,ids);return N.markDiscardedCleaned(current,ids);},null,8);
   assert.equal(result.state.operation,null);assert.deepEqual(result.state.cleanupQueue,[]);assert.equal(N.beginOperation(result.state,'next-request',['p-next']).operation.requestId,'next-request');
 });
 

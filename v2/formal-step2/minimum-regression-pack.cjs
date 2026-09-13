@@ -14,8 +14,8 @@ const catalogIds = [
   'MULTI-01', 'MULTI-02', 'MULTI-03', 'MULTI-04',
   'ES3-01', 'ES3-02',
   'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04', 'FIT-05', 'FIT-06', 'FIT-07',
-  'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12', 'LIFE-13', 'LIFE-14', 'LIFE-15',
-  'OBS-01', 'OBS-02', 'OBS-03', 'OBS-04', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12', 'STATE-13', 'STATE-14'
+  'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12', 'LIFE-13', 'LIFE-14', 'LIFE-15', 'LIFE-16',
+  'OBS-01', 'OBS-02', 'OBS-03', 'OBS-04', 'OBS-05', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12', 'STATE-13', 'STATE-14'
 ];
 
 const coverageMap = {
@@ -50,10 +50,12 @@ const coverageMap = {
   'LIFE-13': ['v2/formal-step2/tests/terminal-recovery-state-machine.cjs', 'executable terminal recovery clears discarded and retirement queues before the next request'],
   'LIFE-14': ['v2/formal-step2/tests/persistence-adapter.cjs', 'lifecycleAborted'],
   'LIFE-15': ['v2/formal-step2/tests/terminal-recovery-state-machine.cjs', 'production-equivalent converge aborts prepare state and clears its discarded queue before next begin'],
+  'LIFE-16': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated practical recovery uses the shared executable runtime helper and action diagnostics'],
   'OBS-01': ['v2/formal-step2/tests/persistence-adapter.cjs', 'stage/category propagation'],
   'OBS-02': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated body parse'],
   'OBS-03': ['v2/formal-step2/tests/persistence-adapter.cjs', 'cleanup evidence is present in practical lifecycle failure', 'generated bridge preserves cleanup evidence in lifecycle failure'],
   'OBS-04': ['v2/formal-step2/tests/persistence-adapter.cjs', 'transport error is indeterminate and cannot be treated as safe retry'],
+  'OBS-05': ['v2/formal-step2/tests/terminal-recovery-state-machine.cjs', 'executable recovery keeps duplicate ownership fail-closed'],
   'STATE-01': ['v2/formal-step2/tests/multi.cjs', 'confirmed reading crossing actual line boundary remains unresolved and local split children need reread'],
   'STATE-02': ['v2/formal-step2/tests/persistence-adapter.cjs', 'planner render evidence is written into the durable multi note before callback'],
   'STATE-03': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated bridge reports render-failure note only after persisted readback'],

@@ -50,6 +50,7 @@
             nativeHost: File(here + "/area-text-native-host.jsx").fsName,
             nativeIntegration: File(here + "/area-text-native-integration.js").fsName,
             nativeRecovery: File(here + "/area-text-native-recovery.js").fsName,
+            nativeRecoveryRuntime: File(here + "/area-text-native-recovery-runtime.js").fsName,
             adapter: File(here + "/adapter.jsx").fsName
         };
     }
