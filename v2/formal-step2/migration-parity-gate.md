@@ -22,6 +22,10 @@ The change record must map each row as **old contract -> new path -> regression 
 
 Before the first runtime use of the changed path, the author records the mapping above in the durable work log and adds or updates the relevant minimum-pack anchor. The minimum pack must statically assert that this gate and all nine contract dimensions remain present. Illustrator-only behavior remains a separate runtime checkpoint and cannot be claimed by this document.
 
+## Status propagation rule
+
+Item status and aggregate status are separate contracts. `complete` items may produce native specs when they have segments; `hidden` plus `hidden-confirmed`, `segments=[]`, and `source-overset-hidden` is valid durable no-output; `unresolved` and `failed` remain aggregate blockers. Native consumers must validate the hidden tuple explicitly rather than treating every item status other than `complete` as equivalent or accepting malformed hidden input.
+
 ## P2 decisions recorded
 
 - Manual adjustment is authoritative user state (`manualDeltaX` / `widthScale`); tracking is only the bounded fit fallback `0,-25,-50,-75,-100` and never a replacement for manual adjustment.

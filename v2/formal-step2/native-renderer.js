@@ -13,6 +13,9 @@ var FormalMultiNativeRenderer = (function () {
         return false;
     }
     function logicalId(annotationId, renderSegmentId) { return annotationId + ":" + renderSegmentId; }
+    function confirmedHidden(result) {
+        return result && result.status === "hidden" && result.outcome === "hidden-confirmed" && result.decision && result.decision.segments && result.decision.segments.length === 0 && result.reasons && result.reasons.length === 1 && result.reasons[0] === "source-overset-hidden";
+    }
     function tunedGap(geometry, appearance) {
         var legacyGapEm = .15, nativeDefaultGapEm = .1, gapEm;
         if (!geometry || typeof geometry.gap !== "number" || typeof geometry.baseSize !== "number" || geometry.baseSize <= 0) return geometry ? geometry.gap : null;
@@ -50,6 +53,10 @@ var FormalMultiNativeRenderer = (function () {
         occupyManifestIds(previousManifest, occupied);
         for (i = 0; i < results.length; i++) {
             result = results[i];
+            if (result.status === "hidden") {
+                if (!confirmedHidden(result)) fail("native-render-hidden-contract-invalid");
+                continue;
+            }
             if (result.status !== "complete") fail("native-render-plan-incomplete");
             if (!result.decision || !result.decision.segments || !result.decision.segments.length) continue;
             a = annotation(bundle, result.annotationId);

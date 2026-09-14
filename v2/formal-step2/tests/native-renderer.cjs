@@ -37,6 +37,33 @@ test('native renderer skips complete empty plans without annotations while rende
   assert.equal(result.specs.length, 1);
 });
 
+function hiddenResult(annotationId = 'hidden-1') {
+  return { annotationId, status: 'hidden', outcome: 'hidden-confirmed', decision: { status: 'complete', segments: [] }, reasons: ['source-overset-hidden'] };
+}
+
+test('native renderer accepts confirmed hidden siblings as valid no-output items', () => {
+  const visible = { annotationId: 'a1', status: 'complete', decision: { segments: [{ renderSegmentId: 'segment-1', reading: 'かな', geometry: { left: 10, top: 20, width: 40, baseSize: 18, leading: 22 } }] } };
+  const result = Renderer.createSpecs(bundle(), { status: 'complete', results: [visible, hiddenResult()] }, 'request-hidden', 'RubyFont');
+  assert.equal(result.status, 'complete');
+  assert.deepEqual(result.desiredLogicalSegmentIds, ['a1:segment-1']);
+  assert.equal(result.specs.length, 1);
+});
+
+test('native renderer accepts hidden-only plans without creating physical output', () => {
+  const result = Renderer.createSpecs(bundle(), { status: 'complete', results: [hiddenResult()] }, 'request-hidden-only', 'RubyFont');
+  assert.equal(result.status, 'complete');
+  assert.deepEqual(result.specs, []);
+  assert.deepEqual(result.desiredLogicalSegmentIds, []);
+});
+
+test('native renderer rejects malformed hidden items and contradictory blockers', () => {
+  const malformed = hiddenResult();
+  malformed.decision.segments = [{ renderSegmentId: 'unexpected', reading: 'かな' }];
+  assert.throws(() => Renderer.createSpecs(bundle(), { status: 'complete', results: [malformed] }, 'request-invalid-hidden', 'RubyFont'), /native-render-hidden-contract-invalid/);
+  assert.throws(() => Renderer.createSpecs(bundle(), { status: 'complete', results: [{ annotationId: 'a1', status: 'unresolved', decision: { segments: [] } }] }, 'request-invalid-unresolved', 'RubyFont'), /native-render-plan-incomplete/);
+  assert.throws(() => Renderer.createSpecs(bundle(), { status: 'complete', results: [{ annotationId: 'a1', status: 'failed', decision: { segments: [] } }] }, 'request-invalid-failed', 'RubyFont'), /native-render-plan-incomplete/);
+});
+
 test('native renderer widens a short-base long-reading candidate from ruby size', () => {
   const plan = {
     status: 'complete',
@@ -108,6 +135,14 @@ test('native renderer transition removes replaced logical bindings and preserves
   const result = Renderer.transition(previous, ['a1:segment-1'], [{ logicalSegmentId: 'a1:segment-1', physicalId: 'new-a' }]);
   assert.deepEqual(result.removedLogicalSegmentIds, ['b1:segment-1']);
   assert.deepEqual(result.retiredPhysicalIds, ['old-a', 'peer-b']);
+});
+
+test('native renderer transition retires hidden output without retiring visible peers', () => {
+  const previous = Native.createManifest();
+  previous.activeBindings = { 'hidden-1:segment-1': 'old-hidden', 'a1:segment-1': 'visible-peer' };
+  const result = Renderer.transition(previous, ['a1:segment-1'], [{ logicalSegmentId: 'a1:segment-1', physicalId: 'new-visible' }]);
+  assert.deepEqual(result.removedLogicalSegmentIds, ['hidden-1:segment-1']);
+  assert.deepEqual(result.retiredPhysicalIds, ['old-hidden', 'visible-peer']);
 });
 
 test('native renderer allocates a collision-safe physical id after palette restart', () => {

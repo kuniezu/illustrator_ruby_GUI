@@ -137,6 +137,36 @@ test('reconcileExisting reuses finished active manifest without creating candida
   assert.equal(result.status,'reused'); assert.deepEqual(result.physicalIds,['p1','p2']); assert.deepEqual(calls,['plan']);
 });
 
+test('hidden-only complete plan executes zero-candidate lifecycle and removes prior output',()=>{
+  global.FormalAreaTextNative=require('../area-text-native.js');
+  global.FormalAreaTextNativeStore=require('../area-text-native-store.js');
+  global.FormalAreaTextNativeNoteAdapter=require('../area-text-native-note-adapter.js');
+  global.FormalAreaTextNativePersistenceFacade=require('../area-text-native-persistence-facade.js');
+  const Coordinator=require('../area-text-native-transaction-coordinator.js');
+  const source={contents:'source',note:''};
+  const previous=FormalAreaTextNative.createManifest();
+  previous.activeBindings={'hidden-1:segment-1':'old-hidden'};
+  previous.renderRecords['old-hidden']=spec('old-hidden','hidden-1:segment-1','old-request');
+  source.note=FormalAreaTextNativeStore.write(source.note,previous);
+  const calls=[];
+  const seam=Integration.create({planAll(){calls.push('plan');return {status:'complete',results:[{annotationId:'hidden-1',status:'hidden',outcome:'hidden-confirmed',decision:{status:'complete',segments:[]},reasons:['source-overset-hidden']}]};}}, {
+    prepareAll(specs){calls.push('prepare:'+specs.length);return {status:'prepared',specs};},
+    verifyAll(batch){calls.push('verify');batch.status='verified';batch.records=[];return batch;},
+    bindingsByLogicalSegmentId(){return {};},
+    recordsByPhysicalId(){return {};}
+  }, Coordinator);
+  let prepared=seam.planAndPrepare({},source.contents,{},[],tx(source,'hidden-only'));
+  let verified=seam.verify(prepared);
+  seam.activate(source,source.contents,source.note,'hidden-only',verified,['old-hidden'],[] ,['hidden-1:segment-1']);
+  const state=FormalAreaTextNativeStore.read(source.note);
+  assert.deepEqual(calls,['plan','prepare:0','verify']);
+  assert.deepEqual(state.activeBindings,{});
+  assert.deepEqual(state.retirementQueue,['old-hidden']);
+  Coordinator.retire(source,source.contents,source.note,['old-hidden']);
+  Coordinator.finish(source,source.contents,source.note,'hidden-only');
+  assert.equal(FormalAreaTextNativeStore.read(source.note).operation,null);
+});
+
 test('pre-activation failure aborts durable operation',()=>{
   global.FormalAreaTextNative=require('../area-text-native.js');
   global.FormalAreaTextNativeStore=require('../area-text-native-store.js');

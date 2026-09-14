@@ -15,7 +15,7 @@ const catalogIds = [
   'ES3-01', 'ES3-02',
   'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04', 'FIT-05', 'FIT-06', 'FIT-07',
   'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12', 'LIFE-13', 'LIFE-14', 'LIFE-15', 'LIFE-16', 'LIFE-17',
-  'OBS-01', 'OBS-02', 'OBS-03', 'OBS-04', 'OBS-05', 'OBS-06', 'OBS-07', 'OBS-08', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12', 'STATE-13', 'STATE-14', 'STATE-15', 'STATE-16', 'STATE-17', 'STATE-18'
+  'OBS-01', 'OBS-02', 'OBS-03', 'OBS-04', 'OBS-05', 'OBS-06', 'OBS-07', 'OBS-08', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12', 'STATE-13', 'STATE-14', 'STATE-15', 'STATE-16', 'STATE-17', 'STATE-18', 'STATE-19'
 ];
 
 const coverageMap = {
@@ -79,6 +79,7 @@ const coverageMap = {
   'STATE-17': ['v2/formal-step2/tests/ui.cjs', 'blocked UI-equivalent transition preserves revision and cannot re-fire save'],
   'LIFE-18': ['v2/formal-step2/tests/multi-renderer.cjs', 'hidden sibling is non-blocking and visible sibling still reaches renderer'],
   'STATE-18': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated terminal persistence retains confirmed hidden occurrence evidence'],
+  'STATE-19': ['v2/formal-step2/tests/native-renderer.cjs', 'native renderer accepts confirmed hidden siblings as valid no-output items', 'native renderer accepts confirmed hidden siblings as valid no-output items'],
 };
 
 const executedFiles = {};
