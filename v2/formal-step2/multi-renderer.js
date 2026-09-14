@@ -16,7 +16,7 @@ var FormalMultiRenderer = (function () {
     }
 
     function plan(bundle, sourceText, observation) {
-        var plans = [], i, occurrence, annotation, result;
+        var plans = [], i, occurrence, annotation, result, hasFailed = false, hasUnresolved = false;
         for (i = 0; i < bundle.occurrences.length; i++) {
             occurrence = bundle.occurrences[i];
             annotation = findAnnotation(bundle, FormalMultiProjection.id(bundle, occurrence));
@@ -28,9 +28,10 @@ var FormalMultiRenderer = (function () {
             result.occurrenceId = occurrence.occurrenceId;
             result.appearance = annotation.appearance;
             plans.push(result);
-            if (result.status !== "complete" && result.status !== "hidden") return { status: result.status, plans: plans };
+            if (result.status === "failed") hasFailed = true;
+            else if (result.status !== "complete" && result.status !== "hidden") hasUnresolved = true;
         }
-        return { status: "complete", plans: plans };
+        return { status: hasFailed ? "failed" : (hasUnresolved ? "unresolved" : "complete"), plans: plans };
     }
 
     function render(bundle, sourceText, observation, adapter) {
