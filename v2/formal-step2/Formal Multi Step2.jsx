@@ -32,6 +32,7 @@
         return {
             step1: File(here.parent + "/formal-step1/core.js").fsName,
             segments: File(here + "/segments.js").fsName,
+            longText: File(here + "/occurrences.js").fsName,
             orchestration: File(here + "/orchestration.js").fsName,
             appearance: File(here + "/appearance.js").fsName,
             multi: File(here + "/multi.js").fsName,
@@ -57,7 +58,7 @@
 
     function run() {
         var documentRef, picked, source, sourceIdentity, cachedNote, stored, bundle, reResolution, nativeManifest, dialog, list, info, hint, renderSources, stageFile;
-        var editor, readingInput, enabledCheck, confirmedCheck, selectedText, debugText, debugLines = [];
+        var editor, readingInput, enabledCheck, confirmedCheck, selectedText, debugText, debugLines = [], lastDiagnosticSequence = [];
         var saveButton, closeButton, splitButton, mergeButton, previousReviewButton, nextReviewButton, suppressButton, reenableButton, stateText, savePending = false, transportUncertain = false, retryBlocked = false, currentIndex = -1, editRevision, activeSaveRequestId = 0, activeSaveRequestToken = "", i;
 
         if (!app.documents.length) fail("AIファイルを開いてください");
@@ -118,8 +119,13 @@
         debugText.readonly = true;
 
         function showDiagnostics(values) {
-            var j, item;
-            if (values instanceof Array) for (j = 0; j < values.length; j++) debugLines.push(String(values[j]));
+            var j, item, common = 0, next = [];
+            if (values instanceof Array) {
+                for (j = 0; j < values.length; j++) next.push(String(values[j]));
+                while (common < lastDiagnosticSequence.length && common < next.length && lastDiagnosticSequence[common] === next[common]) common++;
+                for (j = common; j < next.length; j++) debugLines.push(next[j]);
+                lastDiagnosticSequence = next;
+            }
             else if (values !== undefined && values !== null) debugLines.push(String(values));
             while (debugLines.length > 40) debugLines.shift();
             debugText.text = debugLines.join("\n");
@@ -277,6 +283,7 @@
             activeSaveRequestToken = requestId;
             try {
                 saveEditor();
+                lastDiagnosticSequence = [];
                 requestRevision = bundle.revision;
                 stageFile = File(Folder.temp.fsName + "/formal-multi-host-" + new Date().getTime() + "-" + requestId + ".log");
                 bundle = FormalMultiProjection.project(bundle);
