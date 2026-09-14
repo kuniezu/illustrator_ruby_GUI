@@ -28,7 +28,7 @@ var FormalMultiRenderer = (function () {
             result.occurrenceId = occurrence.occurrenceId;
             result.appearance = annotation.appearance;
             plans.push(result);
-            if (result.status !== "complete") return { status: result.status, plans: plans };
+            if (result.status !== "complete" && result.status !== "hidden") return { status: result.status, plans: plans };
         }
         return { status: "complete", plans: plans };
     }
