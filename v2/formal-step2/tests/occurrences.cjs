@@ -51,6 +51,21 @@ test('merge concatenates child readings and clears confirmation', () => {
   assert.equal(b.occurrences[0].readingConfirmed, false);
 });
 
+test('known split blocker rejects merge without mutating the source bundle', () => {
+  let b = M.extract('徳川家康');
+  b.occurrences[0].renderStatus='unresolved';
+  b.occurrences[0].renderReasons=['split-hint-required'];
+  b.occurrences[0].renderBoundaries=[2];
+  b.occurrences[0].renderUnresolvedBoundaries=[2];
+  b = M.splitAt(b, b.occurrences[0].occurrenceId, [2]);
+  b = M.setGroupReading(b, b.occurrences[0].groupId, 'とく', true);
+  b = M.setGroupReading(b, b.occurrences[1].groupId, 'いえやす', true);
+  const before = JSON.stringify(b);
+  assert.equal(M.wouldRestoreSplitBlocker(b, b.occurrences.map(x=>x.occurrenceId)), true);
+  assert.throws(() => M.mergeAdjacent(b, b.occurrences.map(x=>x.occurrenceId)), /merge-would-restore-split-blocker/);
+  assert.equal(JSON.stringify(b), before);
+});
+
 test('split and merge keep empty readings empty and unconfirmed', () => {
   let b=M.extract('徳川家康'); b=M.splitAt(b,b.occurrences[0].occurrenceId,[2]);
   assert.deepEqual(b.occurrences.map(x=>x.reading),['','']);

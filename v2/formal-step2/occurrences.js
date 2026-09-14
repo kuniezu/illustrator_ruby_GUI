@@ -21,13 +21,22 @@ var FormalLongText = (function () {
         return point>=0x20000&&point<=0x323af;
     }
     function cloneOccurrence(occurrence) {
+        var guard=occurrence.splitGuard;
         return {occurrenceId: occurrence.occurrenceId, start: occurrence.start, end: occurrence.end,
             surface: occurrence.surface, groupId: occurrence.groupId, visible: occurrence.visible,
             enabled: occurrence.enabled, reading: occurrence.reading, readingConfirmed: occurrence.readingConfirmed,
             lineage: occurrence.lineage.slice(0), unsupported: !!occurrence.unsupported,
             renderStatus: occurrence.renderStatus || "pending", renderReasons: (occurrence.renderReasons || []).slice(0),
             renderBoundaries: (occurrence.renderBoundaries || []).slice(0),
-            renderUnresolvedBoundaries: (occurrence.renderUnresolvedBoundaries || []).slice(0)};
+            renderUnresolvedBoundaries: (occurrence.renderUnresolvedBoundaries || []).slice(0),
+            splitGuard: guard ? {reason:guard.reason,boundaries:(guard.boundaries||[]).slice(0),unresolvedBoundaries:(guard.unresolvedBoundaries||[]).slice(0)} : null};
+    }
+    function knownSplitGuard(occurrence) {
+        var reasons=occurrence.renderReasons||[], i;
+        if (occurrence.splitGuard && occurrence.splitGuard.reason) return {reason:occurrence.splitGuard.reason,boundaries:(occurrence.splitGuard.boundaries||[]).slice(0),unresolvedBoundaries:(occurrence.splitGuard.unresolvedBoundaries||[]).slice(0)};
+        if (occurrence.renderStatus!=="unresolved" || !occurrence.renderBoundaries || !occurrence.renderBoundaries.length) return null;
+        for(i=0;i<reasons.length;i++) if(reasons[i]==="split-hint-required") return {reason:"split-hint-required",boundaries:occurrence.renderBoundaries.slice(0),unresolvedBoundaries:(occurrence.renderUnresolvedBoundaries||[]).slice(0)};
+        return null;
     }
     function clone(bundle) {
         var occurrences = [], i;
@@ -77,7 +86,7 @@ var FormalLongText = (function () {
         points.push(source.end - source.start);
         for (i = 0; i < points.length - 1; i++) {
             start = source.start + points[i]; end = source.start + points[i + 1];
-            part = cloneOccurrence(source); part.occurrenceId = occurrenceId + "-split-" + i; part.start = start; part.end = end; part.surface = next.textSnapshot.substring(start, end); part.groupId = "occurrence-group-" + part.occurrenceId; part.lineage = source.lineage.concat([source.occurrenceId]); if (source.reading) { part.reading = source.reading; part.readingConfirmed = false; } else { part.reading = ""; part.readingConfirmed = false; } part.renderStatus="pending"; part.renderReasons=[]; part.renderBoundaries=[]; part.renderUnresolvedBoundaries=[]; pieces.push(part);
+            part = cloneOccurrence(source); part.occurrenceId = occurrenceId + "-split-" + i; part.start = start; part.end = end; part.surface = next.textSnapshot.substring(start, end); part.groupId = "occurrence-group-" + part.occurrenceId; part.lineage = source.lineage.concat([source.occurrenceId]); if (source.reading) { part.reading = source.reading; part.readingConfirmed = false; } else { part.reading = ""; part.readingConfirmed = false; } part.renderStatus="pending"; part.renderReasons=[]; part.renderBoundaries=[]; part.renderUnresolvedBoundaries=[]; part.splitGuard=knownSplitGuard(source); pieces.push(part);
         }
         next.occurrences.splice.apply(next.occurrences, [index, 1].concat(pieces));
         return validate(next);
@@ -89,6 +98,7 @@ var FormalLongText = (function () {
         for (i = 0; i < next.occurrences.length; i++) if (ids[next.occurrences[i].occurrenceId]) selected.push(next.occurrences[i]);
         if (selected.length !== occurrenceIds.length) fail("occurrence-missing");
         for (i = 1; i < selected.length; i++) if (selected[i - 1].end !== selected[i].start) fail("merge-requires-contiguous-ranges");
+        for (i = 0; i < selected.length; i++) if (selected[i].splitGuard && selected[i].splitGuard.reason === "split-hint-required") fail("merge-would-restore-split-blocker");
         merged = cloneOccurrence(selected[0]); merged.end = selected[selected.length - 1].end; merged.surface = next.textSnapshot.substring(merged.start, merged.end); merged.groupId = selected[0].groupId; merged.lineage = [];
         for (i = 0; i < selected.length; i++) merged.lineage = merged.lineage.concat(selected[i].lineage);
         merged.reading = ""; merged.readingConfirmed = false; merged.renderStatus="pending"; merged.renderReasons=[]; merged.renderBoundaries=[]; merged.renderUnresolvedBoundaries=[];
@@ -97,6 +107,13 @@ var FormalLongText = (function () {
         next.occurrences.push(merged); next.occurrences.sort(function (a, b) { return a.start - b.start; });
         return validate(next);
     }
+    function wouldRestoreSplitBlocker(bundle, occurrenceIds) {
+        var i, j, ids={}, occurrence;
+        if (!occurrenceIds || occurrenceIds.length<2) return false;
+        for(i=0;i<occurrenceIds.length;i++) ids[occurrenceIds[i]]=true;
+        for(i=0;i<bundle.occurrences.length;i++) if(ids[bundle.occurrences[i].occurrenceId]) { occurrence=bundle.occurrences[i]; if(occurrence.splitGuard && occurrence.splitGuard.reason==="split-hint-required") return true; }
+        return false;
+    }
     function setGroupReading(bundle, groupId, reading, confirmed) {
         var next = clone(bundle), i, occurrence;
         for (i = 0; i < next.occurrences.length; i++) if (next.occurrences[i].groupId === groupId) {
@@ -104,6 +121,6 @@ var FormalLongText = (function () {
         }
         return validate(next);
     }
-    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence, unsupportedKanjiAt:unsupportedKanjiAt, variationSelectorLength:variationSelectorLength};
+    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, wouldRestoreSplitBlocker:wouldRestoreSplitBlocker, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence, unsupportedKanjiAt:unsupportedKanjiAt, variationSelectorLength:variationSelectorLength};
 }());
 if (typeof module !== "undefined") module.exports = FormalLongText;

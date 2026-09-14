@@ -230,7 +230,9 @@
             var first, second;
             try {
                 if(savePending || currentIndex<0 || currentIndex+1>=bundle.occurrences.length) return;
-                saveEditor(); first=bundle.occurrences[currentIndex]; second=bundle.occurrences[currentIndex+1];
+                first=bundle.occurrences[currentIndex]; second=bundle.occurrences[currentIndex+1];
+                if(FormalLongText.wouldRestoreSplitBlocker(bundle,[first.occurrenceId,second.occurrenceId])) fail("merge-would-restore-split-blocker");
+                saveEditor();
                 if(!sameLocalRoot(first,second)) fail("隣接する同一local lineageだけ結合できます");
                 bundle=FormalMulti.replaceOccurrences(bundle, FormalLongText.mergeAdjacent(bundle,[first.occurrenceId,second.occurrenceId]).occurrences); bundle.renderStatus="pending"; editRevision++; bundle.revision=editRevision; refreshList(); stateText.text="状態: occurrenceを局所結合しました。readingを確認して保存してください";
             } catch(error) { stateText.text="状態: 結合失敗 / "+(error.message||error); }
