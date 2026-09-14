@@ -115,6 +115,10 @@ check('separates input-ready from render-unresolved and carries planner boundari
   source.indexOf('FormalMultiWorkflow.applyRenderResults') >= 0 &&
   source.indexOf('FormalSplitBoundaryUi.choose(occurrence.surface, occurrence.renderBoundaries)') >= 0 &&
   source.indexOf('value.renderStatus === "failed" || value.renderStatus === "unresolved"') >= 0);
+check('durable pending never falls back to input ready',
+  (() => { function statusTextEquivalent(o) { let input = o.unsupported ? 'unsupported' : !o.enabled ? 'suppressed' : !o.readingConfirmed || !o.reading ? 'unresolved' : 'ready'; if (input === 'unsupported' || input === 'suppressed' || input === 'unresolved') return input; if (o.renderStatus) return o.renderStatus === 'complete' ? 'render-complete' : 'render-' + o.renderStatus; return input; } return statusTextEquivalent({enabled:true,readingConfirmed:true,reading:'こう',renderStatus:'pending'}) === 'render-pending' && statusTextEquivalent({enabled:true,readingConfirmed:true,reading:'こう',renderStatus:'unresolved'}) === 'render-unresolved' && statusTextEquivalent({enabled:true,readingConfirmed:true,reading:'こう',renderStatus:'hidden'}) === 'render-hidden' && statusTextEquivalent({enabled:true,readingConfirmed:true,reading:'こう',renderStatus:'complete'}) === 'render-complete' && statusTextEquivalent({enabled:true,readingConfirmed:false,reading:'こう',renderStatus:'pending'}) === 'unresolved'; })() &&
+  source.indexOf('var render=occurrence.renderStatus||FormalMultiWorkflow.renderStatus(occurrence)') >= 0 &&
+  source.indexOf('render==="complete" ? "render-complete"') >= 0);
 check('keeps planner boundaries available after no-op split save',
   source.indexOf('saveEditor(); occurrence=bundle.occurrences[currentIndex]') >= 0 &&
   source.indexOf('occurrence.renderBoundaries && occurrence.renderBoundaries.length ? FormalSplitBoundaryUi.choose(occurrence.surface, occurrence.renderBoundaries)') > source.indexOf('saveEditor(); occurrence=bundle.occurrences[currentIndex]'));

@@ -22,7 +22,7 @@
 /* Minimal scalable long-text shell. Logical occurrences stay separate from render segments. */
 (function () {
     function fail(message) { throw Error(message); }
-    function statusText(occurrence) { var render=FormalMultiWorkflow.renderStatus(occurrence); if (occurrence.unsupported) return "unsupported"; if (render && render!=="complete") return "render-" + render + (occurrence.renderReasons.length ? ":" + occurrence.renderReasons.join(",") : ""); return FormalMultiWorkflow.occurrenceStatus(occurrence); }
+    function statusText(occurrence) { var render=occurrence.renderStatus||FormalMultiWorkflow.renderStatus(occurrence), input=FormalMultiWorkflow.occurrenceStatus(occurrence); if (occurrence.unsupported) return "unsupported"; if (input==="suppressed"||input==="unresolved") return input; if (render) return render==="complete" ? "render-complete" : "render-" + render + (occurrence.renderReasons.length ? ":" + occurrence.renderReasons.join(",") : ""); return input; }
     function sourceKindText(source) { return source.kind === TextType.POINTTEXT ? "POINTTEXT" : "AREATEXT"; }
     function listText(occurrence) {
         return occurrence.start + ".." + occurrence.end + "  " + occurrence.surface + "  [" + statusText(occurrence) + "]";
