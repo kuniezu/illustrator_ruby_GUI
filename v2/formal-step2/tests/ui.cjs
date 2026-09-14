@@ -132,6 +132,11 @@ check('provides bounded copyable debug console and preserves exact save failure 
   source.indexOf('function showDiagnostics(values)') >= 0 &&
   source.indexOf('while (debugLines.length > 40)') >= 0 &&
   source.indexOf('value.reason') >= 0);
+check('cumulative diagnostic suffix is appended once',
+  (() => { let shown = [], previous = []; function append(values) { let common = 0, next = values.map(String); while (common < previous.length && common < next.length && previous[common] === next[common]) common++; shown = shown.concat(next.slice(common)); previous = next; } append(['B-bridge-talk: send=true']); append(['B-bridge-talk: send=true', 'B-bridge-talk: success']); return shown.filter(x => x === 'B-bridge-talk: send=true').length === 1 && shown.length === 2; })() &&
+  source.indexOf('lastDiagnosticSequence') >= 0 &&
+  source.indexOf('common < lastDiagnosticSequence.length') >= 0 &&
+  source.indexOf('lastDiagnosticSequence = next') >= 0);
 check('guards unsupported entry paths and exposes a disposable stage file',
   source.indexOf('resolveMultiFrame') >= 0 &&
   saveClickBody.indexOf('source.kind') < 0 &&

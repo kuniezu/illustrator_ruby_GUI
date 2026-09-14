@@ -15,7 +15,7 @@ const catalogIds = [
   'ES3-01', 'ES3-02',
   'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04', 'FIT-05', 'FIT-06', 'FIT-07',
   'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12', 'LIFE-13', 'LIFE-14', 'LIFE-15', 'LIFE-16', 'LIFE-17',
-  'OBS-01', 'OBS-02', 'OBS-03', 'OBS-04', 'OBS-05', 'OBS-06', 'OBS-07', 'OBS-08', 'OBS-09', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12', 'STATE-13', 'STATE-14', 'STATE-15', 'STATE-16', 'STATE-17', 'STATE-18', 'STATE-19', 'STATE-20'
+  'OBS-01', 'OBS-02', 'OBS-03', 'OBS-04', 'OBS-05', 'OBS-06', 'OBS-07', 'OBS-08', 'OBS-09', 'OBS-10', 'OBS-11', 'HARNESS-01', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12', 'STATE-13', 'STATE-14', 'STATE-15', 'STATE-16', 'STATE-17', 'STATE-18', 'STATE-19', 'STATE-20', 'STATE-21'
 ];
 
 const coverageMap = {
@@ -61,6 +61,9 @@ const coverageMap = {
   'OBS-07': ['v2/formal-step2/tests/ui.cjs', 'retry blocked state keeps close escape enabled while disabling save/editor'],
   'OBS-08': ['v2/formal-step2/tests/ui.cjs', 'blocked UI-equivalent transition preserves revision and cannot re-fire save'],
   'OBS-09': ['v2/formal-step2/tests/persistence-adapter.cjs', 'simple bridge send false terminates as transport uncertainty without pending leak'],
+  'OBS-10': ['v2/formal-step2/tests/persistence-adapter.cjs', 'callback render status follows persisted failed or unresolved bundle authority'],
+  'OBS-11': ['v2/formal-step2/tests/ui.cjs', 'cumulative diagnostic suffix is appended once'],
+  'HARNESS-01': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated plan failure persists all item evidence while planner-complete sibling stays pending'],
   'STATE-01': ['v2/formal-step2/tests/multi.cjs', 'confirmed reading crossing actual line boundary remains unresolved and local split children need reread'],
   'STATE-02': ['v2/formal-step2/tests/persistence-adapter.cjs', 'planner render evidence is written into the durable multi note before callback'],
   'STATE-03': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated bridge reports render-failure note only after persisted readback'],
@@ -82,6 +85,7 @@ const coverageMap = {
   'STATE-18': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated terminal persistence retains confirmed hidden occurrence evidence'],
   'STATE-19': ['v2/formal-step2/tests/native-renderer.cjs', 'native renderer accepts confirmed hidden siblings as valid no-output items', 'native renderer accepts confirmed hidden siblings as valid no-output items'],
   'STATE-20': ['v2/formal-step2/tests/multi-renderer.cjs', 'renderer evaluates every occurrence before aggregating blocker status', 'renderer evaluates every occurrence before aggregating blocker status'],
+  'STATE-21': ['v2/formal-step2/tests/persistence-adapter.cjs', 'generated plan failure persists all item evidence while planner-complete sibling stays pending'],
 };
 
 const executedFiles = {};
