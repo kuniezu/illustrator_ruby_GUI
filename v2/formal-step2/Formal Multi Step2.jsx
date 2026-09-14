@@ -253,6 +253,16 @@
             retryBlocked = !!value;
             transportUncertain = retryBlocked;
             setSavePending(false);
+            if (retryBlocked) {
+                saveButton.enabled = false;
+                list.enabled = false;
+                readingInput.enabled = false;
+                enabledCheck.enabled = false;
+                confirmedCheck.enabled = false;
+                splitButton.enabled = false;
+                mergeButton.enabled = false;
+                updateReviewControls();
+            }
             closeButton.enabled = true;
         }
         previousReviewButton.onClick = function () { navigateReview(-1); };

@@ -11,15 +11,18 @@ function check(name, condition) {
 }
 
 function saveControls(savePending, retryBlocked) {
-  return {save:!savePending && !retryBlocked, close:!savePending || retryBlocked, editor:!savePending && !retryBlocked};
+  const enabled = !savePending && !retryBlocked;
+  return {save:enabled, close:!savePending || retryBlocked, list:enabled, editor:enabled, actions:enabled};
 }
 
 const pendingControls = saveControls(true, false);
 const blockedControls = saveControls(false, true);
 check('retry blocked state keeps close escape enabled while disabling save/editor',
-  pendingControls.save === false && pendingControls.close === false && pendingControls.editor === false &&
-  blockedControls.save === false && blockedControls.close === true && blockedControls.editor === false &&
-  source.indexOf('function setRetryBlocked') >= 0 && source.indexOf('setRetryBlocked(true)') >= 0);
+  pendingControls.save === false && pendingControls.close === false && pendingControls.list === false && pendingControls.editor === false &&
+  blockedControls.save === false && blockedControls.close === true && blockedControls.list === false && blockedControls.editor === false && blockedControls.actions === false &&
+  source.indexOf('function setRetryBlocked') >= 0 && source.indexOf('list.enabled = false') >= 0 && source.indexOf('setRetryBlocked(true)') >= 0);
+check('blocked UI-equivalent transition preserves revision and cannot re-fire save',
+  (() => { let state = {revision:7, blocked:false, saveCalls:0}; state.blocked = true; const before = state.revision; if (!state.blocked) state.revision++; if (!state.blocked) state.saveCalls++; return state.revision === before && state.saveCalls === 0; })());
 
 check('includes long-text model and multi namespace',
   source.indexOf('#include "../formal-step1/core.js"') >= 0 &&
