@@ -43,6 +43,7 @@ var FormalLongTextReResolution = (function () {
     function positionOf(values, value) { var i; for(i=0;i<values.length;i++) if(values[i]===value) return i; return -1; }
     function compatibleBefore(expected,actual) { return expected.length>0 && (expected===actual || (actual.length>=expected.length && actual.substring(actual.length-expected.length)===expected)); }
     function compatibleAfter(expected,actual) { return expected.length>0 && (expected===actual || (actual.length>=expected.length && actual.substring(0,expected.length)===expected)); }
+    function copySplitGuard(guard) { return guard ? {reason:guard.reason,boundaries:(guard.boundaries||[]).slice(0),unresolvedBoundaries:(guard.unresolvedBoundaries||[]).slice(0)} : null; }
     function localRunScore(bundle,group,raw,currentText) {
         var first=group[0],last=group[group.length-1],before=evidenceFor(bundle,first),after=evidenceFor(bundle,last),candidate=context(currentText,raw.start,raw.end),score=0;
         if(compatibleBefore(before.before,candidate.before)) score++;
@@ -63,7 +64,7 @@ var FormalLongTextReResolution = (function () {
                 for(r=0;r<rawMatches.length;r++) { score=localRunScore(bundle,group,rawMatches[r],current.textSnapshot); if(score.context>bestScore || (score.context===bestScore && score.position>bestPosition)) { best=rawMatches[r]; bestScore=score.context; bestPosition=score.position; tied=false; } else if(score.context===bestScore && score.position===bestPosition) tied=true; }
                 if(best && bestScore>0 && !tied) {
                     raw=best; offset=0;
-                    for(var k=0;k<group.length;k++) { source=group[k]; child={occurrenceId:raw.occurrenceId+"-local-"+k,start:raw.start+offset,end:raw.start+offset+source.surface.length,surface:source.surface,groupId:source.groupId,visible:true,enabled:true,reading:"",readingConfirmed:false,lineage:source.lineage.slice(0),localRun:true,localEvidence:true}; expanded.splice(positionOf(expanded,raw)+k,0,child); offset+=source.surface.length; }
+                    for(var k=0;k<group.length;k++) { source=group[k]; child={occurrenceId:raw.occurrenceId+"-local-"+k,start:raw.start+offset,end:raw.start+offset+source.surface.length,surface:source.surface,groupId:source.groupId,visible:true,enabled:true,reading:"",readingConfirmed:false,lineage:source.lineage.slice(0),splitGuard:copySplitGuard(source.splitGuard),localRun:true,localEvidence:true}; expanded.splice(positionOf(expanded,raw)+k,0,child); offset+=source.surface.length; }
                     expanded.splice(positionOf(expanded,raw),1);
                 }
             }
@@ -72,11 +73,11 @@ var FormalLongTextReResolution = (function () {
         return {textSnapshot:current.textSnapshot,occurrences:expanded};
     }
     function copyOccurrence(occurrence) {
-        return {occurrenceId:occurrence.occurrenceId,start:occurrence.start,end:occurrence.end,surface:occurrence.surface,groupId:occurrence.groupId,visible:occurrence.visible,enabled:occurrence.enabled,reading:occurrence.reading,readingConfirmed:occurrence.readingConfirmed,lineage:occurrence.lineage.slice(0),unsupported:!!occurrence.unsupported};
+        return {occurrenceId:occurrence.occurrenceId,start:occurrence.start,end:occurrence.end,surface:occurrence.surface,groupId:occurrence.groupId,visible:occurrence.visible,enabled:occurrence.enabled,reading:occurrence.reading,readingConfirmed:occurrence.readingConfirmed,lineage:occurrence.lineage.slice(0),unsupported:!!occurrence.unsupported,splitGuard:copySplitGuard(occurrence.splitGuard)};
     }
     function inheritedOccurrence(old,current) {
         var result=copyOccurrence(current);
-        result.occurrenceId=old.occurrenceId; result.groupId=old.groupId; result.visible=old.visible; result.enabled=old.enabled; result.reading=old.reading; result.readingConfirmed=old.readingConfirmed; result.lineage=old.lineage.slice(0);
+        result.occurrenceId=old.occurrenceId; result.groupId=old.groupId; result.visible=old.visible; result.enabled=old.enabled; result.reading=old.reading; result.readingConfirmed=old.readingConfirmed; result.lineage=old.lineage.slice(0); result.splitGuard=old.surface===current.surface?copySplitGuard(old.splitGuard):null;
         return result;
     }
     function allocateNewIdentity(current,usedIds,usedGroups,groupIds,index) {

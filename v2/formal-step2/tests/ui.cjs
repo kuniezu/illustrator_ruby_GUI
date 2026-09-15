@@ -84,7 +84,7 @@ check('connects projection to the existing observed renderer contract',
   source.indexOf('FormalMultiRenderer.specifications') >= 0 &&
   source.indexOf('FormalMultiPersistenceAdapter.saveRendered(bundle.textSnapshot') >= 0 &&
   source.indexOf('FormalMultiProjection.project') < source.indexOf('FormalMultiPersistenceAdapter.saveRendered') &&
-  source.indexOf('FormalStep2Adapter') < 0 &&
+  source.indexOf('FormalStep2Adapter') >= 0 &&
   source.indexOf('renderAdapter') < 0 &&
   source.indexOf('source.contents') < 0);
 check('passes runtime files to the host by absolute path',
@@ -168,7 +168,9 @@ check('exposes local split and merge without creating UI-owned model state',
   source.indexOf('FormalMulti.replaceOccurrences') >= 0);
 check('rejects merge that would restore a known split blocker before editor save',
   source.indexOf('FormalLongText.wouldRestoreSplitBlocker') >= 0 &&
-  source.indexOf('merge-would-restore-split-blocker') >= 0);
+  source.indexOf('currentMergePlan') >= 0 &&
+  source.indexOf('merge-guard-observation-unavailable') >= 0 &&
+  source.indexOf('FormalLongText.mergeAdjacentWithPlan') >= 0);
 check('uses click-selected UTF-16 boundaries for short and long split runs',
   source.indexOf('#include "split-boundaries.js"') >= 0 &&
   source.indexOf('FormalSplitBoundaryUi.choose(occurrence.surface)') >= 0 &&

@@ -91,14 +91,13 @@ var FormalLongText = (function () {
         next.occurrences.splice.apply(next.occurrences, [index, 1].concat(pieces));
         return validate(next);
     }
-    function mergeAdjacent(bundle, occurrenceIds) {
+    function mergeAdjacentInternal(bundle, occurrenceIds) {
         var next = clone(bundle), ids = {}, selected = [], i, j, merged;
         if (!occurrenceIds || occurrenceIds.length < 2) fail("merge-requires-adjacent-occurrences");
         for (i = 0; i < occurrenceIds.length; i++) ids[occurrenceIds[i]] = true;
         for (i = 0; i < next.occurrences.length; i++) if (ids[next.occurrences[i].occurrenceId]) selected.push(next.occurrences[i]);
         if (selected.length !== occurrenceIds.length) fail("occurrence-missing");
         for (i = 1; i < selected.length; i++) if (selected[i - 1].end !== selected[i].start) fail("merge-requires-contiguous-ranges");
-        for (i = 0; i < selected.length; i++) if (selected[i].splitGuard && selected[i].splitGuard.reason === "split-hint-required") fail("merge-would-restore-split-blocker");
         merged = cloneOccurrence(selected[0]); merged.end = selected[selected.length - 1].end; merged.surface = next.textSnapshot.substring(merged.start, merged.end); merged.groupId = selected[0].groupId; merged.lineage = [];
         for (i = 0; i < selected.length; i++) merged.lineage = merged.lineage.concat(selected[i].lineage);
         merged.reading = ""; merged.readingConfirmed = false; merged.renderStatus="pending"; merged.renderReasons=[]; merged.renderBoundaries=[]; merged.renderUnresolvedBoundaries=[];
@@ -106,6 +105,27 @@ var FormalLongText = (function () {
         for (i = next.occurrences.length - 1; i >= 0; i--) if (ids[next.occurrences[i].occurrenceId]) next.occurrences.splice(i, 1);
         next.occurrences.push(merged); next.occurrences.sort(function (a, b) { return a.start - b.start; });
         return validate(next);
+    }
+    function mergeAdjacent(bundle, occurrenceIds) {
+        var i, ids={}, occurrence;
+        if (occurrenceIds) for(i=0;i<occurrenceIds.length;i++) ids[occurrenceIds[i]]=true;
+        for(i=0;i<bundle.occurrences.length;i++) if(ids[bundle.occurrences[i].occurrenceId]) { occurrence=bundle.occurrences[i]; if(occurrence.splitGuard && occurrence.splitGuard.reason==="split-hint-required") fail("merge-would-restore-split-blocker"); }
+        return mergeAdjacentInternal(bundle, occurrenceIds);
+    }
+    function mergeAdjacentCandidate(bundle, occurrenceIds) {
+        var candidate, i, ids={}, confirmed=true;
+        for(i=0;i<(occurrenceIds||[]).length;i++) ids[occurrenceIds[i]]=true;
+        for(i=0;i<bundle.occurrences.length;i++) if(ids[bundle.occurrences[i].occurrenceId] && (bundle.occurrences[i].readingConfirmed!==true || !bundle.occurrences[i].reading)) confirmed=false;
+        candidate=mergeAdjacentInternal(bundle, occurrenceIds);
+        if(candidate.occurrences.length===1 && confirmed) { candidate.occurrences[0].readingConfirmed=true; candidate=validate(candidate); }
+        return candidate;
+    }
+    function mergeAdjacentWithPlan(bundle, occurrenceIds, plan) {
+        var candidate, projected, expectedId;
+        if(!plan || plan.status!=="complete" || !plan.results || plan.results.length!==1 || plan.results[0].status!=="complete" || !plan.results[0].decision || plan.results[0].decision.status!=="complete") fail("merge-current-plan-not-complete");
+        candidate=FormalMulti.replaceOccurrences(bundle, mergeAdjacentCandidate(bundle, occurrenceIds).occurrences); projected=FormalMultiProjection.project(candidate); expectedId=FormalMultiProjection.id(projected,projected.occurrences[0]);
+        if(plan.results[0].annotationId!==expectedId) fail("merge-current-plan-identity-mismatch");
+        return candidate;
     }
     function wouldRestoreSplitBlocker(bundle, occurrenceIds) {
         var i, j, ids={}, occurrence;
@@ -121,6 +141,6 @@ var FormalLongText = (function () {
         }
         return validate(next);
     }
-    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, wouldRestoreSplitBlocker:wouldRestoreSplitBlocker, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence, unsupportedKanjiAt:unsupportedKanjiAt, variationSelectorLength:variationSelectorLength};
+    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, mergeAdjacentCandidate:mergeAdjacentCandidate, mergeAdjacentWithPlan:mergeAdjacentWithPlan, wouldRestoreSplitBlocker:wouldRestoreSplitBlocker, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence, unsupportedKanjiAt:unsupportedKanjiAt, variationSelectorLength:variationSelectorLength};
 }());
 if (typeof module !== "undefined") module.exports = FormalLongText;
