@@ -15,13 +15,27 @@ var FormalMultiRenderer = (function () {
         };
     }
 
+    function unresolvedOccurrence(bundle, occurrence, reasons) {
+        return { annotationId: FormalMultiProjection.id(bundle, occurrence), occurrenceId: occurrence.occurrenceId, status: "unresolved", decision: {status: "unresolved", segments: []}, suppressed: false, reasons: reasons };
+    }
+
     function plan(bundle, sourceText, observation) {
         var plans = [], i, occurrence, annotation, result, hasFailed = false, hasUnresolved = false;
         for (i = 0; i < bundle.occurrences.length; i++) {
             occurrence = bundle.occurrences[i];
             annotation = findAnnotation(bundle, FormalMultiProjection.id(bundle, occurrence));
-            if (!annotation || !annotation.enabled) {
+            if (!occurrence.enabled) {
                 plans.push({ annotationId: FormalMultiProjection.id(bundle, occurrence), status: "complete", decision: { status: "complete", segments: [] }, suppressed: true, reasons: [] });
+                continue;
+            }
+            if (occurrence.unsupported || !occurrence.readingConfirmed || !occurrence.reading) {
+                result = unresolvedOccurrence(bundle, occurrence, occurrence.unsupported ? ["unsupported-occurrence"] : (occurrence.reading ? ["reading-unconfirmed"] : ["reading-unconfirmed", "reading-empty"]));
+                plans.push(result); hasUnresolved = true;
+                continue;
+            }
+            if (!annotation) {
+                result = unresolvedOccurrence(bundle, occurrence, ["annotation-missing"]);
+                plans.push(result); hasUnresolved = true;
                 continue;
             }
             result = FormalMultiOrchestration.planOne(bundle, annotation.annotationId, sourceText, observation);

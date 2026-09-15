@@ -15,7 +15,7 @@ const catalogIds = [
   'ES3-01', 'ES3-02',
   'FIT-01', 'FIT-02', 'FIT-03', 'FIT-04', 'FIT-05', 'FIT-06', 'FIT-07',
   'LIFE-01', 'LIFE-02', 'LIFE-03', 'LIFE-04', 'LIFE-05', 'LIFE-06', 'LIFE-07', 'LIFE-08', 'LIFE-09', 'LIFE-10', 'LIFE-11', 'LIFE-12', 'LIFE-13', 'LIFE-14', 'LIFE-15', 'LIFE-16', 'LIFE-17',
-  'OBS-01', 'OBS-02', 'OBS-03', 'OBS-04', 'OBS-05', 'OBS-06', 'OBS-07', 'OBS-08', 'OBS-09', 'OBS-10', 'OBS-11', 'HARNESS-01', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12', 'STATE-13', 'STATE-14', 'STATE-15', 'STATE-16', 'STATE-17', 'STATE-18', 'STATE-19', 'STATE-20', 'STATE-21', 'STATE-22', 'STATE-23', 'STATE-24', 'STATE-25', 'STATE-26', 'STATE-27'
+  'OBS-01', 'OBS-02', 'OBS-03', 'OBS-04', 'OBS-05', 'OBS-06', 'OBS-07', 'OBS-08', 'OBS-09', 'OBS-10', 'OBS-11', 'HARNESS-01', 'STATE-01', 'STATE-02', 'STATE-03', 'STATE-04', 'STATE-05', 'STATE-06', 'STATE-07', 'STATE-08', 'STATE-09', 'STATE-10', 'STATE-11', 'STATE-12', 'STATE-13', 'STATE-14', 'STATE-15', 'STATE-16', 'STATE-17', 'STATE-18', 'STATE-19', 'STATE-20', 'STATE-21', 'STATE-22', 'STATE-23', 'STATE-24', 'STATE-25', 'STATE-26', 'STATE-27', 'STATE-28'
 ];
 
 const coverageMap = {
@@ -92,6 +92,7 @@ const coverageMap = {
   'STATE-25': ['v2/formal-step2/tests/workflow.cjs', 'current complete observation permits a guarded merge while current split evidence rejects it'],
   'STATE-26': ['v2/formal-step2/tests/workflow.cjs', 'multi occurrence guarded merge selects the middle target and remains atomic on reject'],
   'STATE-27': ['v2/formal-step2/tests/workflow.cjs', 'guarded merge uses target proof when an unrelated sibling is unresolved'],
+  'STATE-28': ['v2/formal-step2/tests/persistence-adapter.cjs', 'enabled unconfirmed occurrence remains unresolved through renderer failure mapping and reopen'],
 };
 
 const executedFiles = {};
