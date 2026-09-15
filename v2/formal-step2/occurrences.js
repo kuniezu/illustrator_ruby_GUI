@@ -117,14 +117,19 @@ var FormalLongText = (function () {
         for(i=0;i<(occurrenceIds||[]).length;i++) ids[occurrenceIds[i]]=true;
         for(i=0;i<bundle.occurrences.length;i++) if(ids[bundle.occurrences[i].occurrenceId] && (bundle.occurrences[i].readingConfirmed!==true || !bundle.occurrences[i].reading)) confirmed=false;
         candidate=mergeAdjacentInternal(bundle, occurrenceIds);
-        if(candidate.occurrences.length===1 && confirmed) { candidate.occurrences[0].readingConfirmed=true; candidate=validate(candidate); }
+        if(confirmed) for(i=0;i<candidate.occurrences.length;i++) if(candidate.occurrences[i].occurrenceId===occurrenceIds[0]) { candidate.occurrences[i].readingConfirmed=true; candidate=validate(candidate); break; }
         return candidate;
     }
     function mergeAdjacentWithPlan(bundle, occurrenceIds, plan) {
-        var candidate, projected, expectedId;
-        if(!plan || plan.status!=="complete" || !plan.results || plan.results.length!==1 || plan.results[0].status!=="complete" || !plan.results[0].decision || plan.results[0].decision.status!=="complete") fail("merge-current-plan-not-complete");
-        candidate=FormalMulti.replaceOccurrences(bundle, mergeAdjacentCandidate(bundle, occurrenceIds).occurrences); projected=FormalMultiProjection.project(candidate); expectedId=FormalMultiProjection.id(projected,projected.occurrences[0]);
-        if(plan.results[0].annotationId!==expectedId) fail("merge-current-plan-identity-mismatch");
+        var candidate, projected, merged, targetId, target, expectedId, matches=[], i;
+        if(!plan || plan.status!=="complete" || !plan.results) fail("merge-current-plan-not-complete");
+        merged=mergeAdjacentCandidate(bundle, occurrenceIds); targetId=occurrenceIds[0];
+        candidate=FormalMulti.replaceOccurrences(bundle, merged.occurrences); projected=FormalMultiProjection.project(candidate);
+        for(i=0;i<projected.occurrences.length;i++) if(projected.occurrences[i].occurrenceId===targetId) target=projected.occurrences[i];
+        if(!target) fail("merge-current-plan-target-missing");
+        expectedId=FormalMultiProjection.id(projected,target);
+        for(i=0;i<plan.results.length;i++) if(plan.results[i].annotationId===expectedId) matches.push(plan.results[i]);
+        if(matches.length!==1 || matches[0].status!=="complete" || !matches[0].decision || matches[0].decision.status!=="complete") fail("merge-current-plan-target-not-complete");
         return candidate;
     }
     function wouldRestoreSplitBlocker(bundle, occurrenceIds) {

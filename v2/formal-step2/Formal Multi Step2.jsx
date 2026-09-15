@@ -214,14 +214,28 @@
             for(j=0;j<second.lineage.length;j++) if(second.lineage[j]===first.lineage[0]) return true;
             return first.lineage[0]===second.lineage[0];
         }
-        function currentMergePlan(first, second) {
-            var observation, candidate, projected;
+        function currentMergePlan(workingBundle, first, second) {
+            var observation, candidate, projected, targetId, target, expectedId, matches=[], i;
             try { observation=FormalStep2Adapter(documentRef, source).observe(); } catch(error) { fail("merge-guard-observation-unavailable"); }
             if(!observation || observation.status!=="complete") fail("merge-guard-observation-unavailable");
-            candidate=FormalMulti.replaceOccurrences(bundle,FormalLongText.mergeAdjacentCandidate(bundle,[first.occurrenceId,second.occurrenceId]).occurrences);
+            candidate=FormalMulti.replaceOccurrences(workingBundle,FormalLongText.mergeAdjacentCandidate(workingBundle,[first.occurrenceId,second.occurrenceId]).occurrences);
             projected=FormalMultiOrchestration.projectAndPlanAll(candidate,picked.text,observation);
-            if(!projected.plan || projected.plan.status!=="complete") fail("merge-would-restore-split-blocker");
+            targetId=first.occurrenceId;
+            for(i=0;i<projected.bundle.occurrences.length;i++) if(projected.bundle.occurrences[i].occurrenceId===targetId) target=projected.bundle.occurrences[i];
+            if(!target) fail("merge-current-plan-target-missing");
+            expectedId=FormalMultiProjection.id(projected.bundle,target);
+            for(i=0;i<projected.plan.results.length;i++) if(projected.plan.results[i].annotationId===expectedId) matches.push(projected.plan.results[i]);
+            if(projected.plan.status!=="complete" || matches.length!==1 || matches[0].status!=="complete" || !matches[0].decision || matches[0].decision.status!=="complete") fail("merge-would-restore-split-blocker");
             return projected.plan;
+        }
+        function editorCandidate() {
+            var next=bundle, occurrence;
+            if(currentIndex<0) return next;
+            occurrence=bundle.occurrences[currentIndex];
+            next=FormalMultiWorkflow.setOccurrenceReading(next,occurrence.occurrenceId,readingInput.text,confirmedCheck.value);
+            next=FormalMultiWorkflow.setOccurrenceEnabled(next,occurrence.occurrenceId,enabledCheck.value);
+            next.revision=editRevision+1;
+            return next;
         }
         splitButton.onClick = function () {
             var occurrence, boundaries;
@@ -236,16 +250,14 @@
             } catch(error) { stateText.text="状態: 分割失敗 / "+(error.message||error); }
         };
         mergeButton.onClick = function () {
-            var first, second, currentPlan, merged;
+            var first, second, currentPlan, merged, working;
             try {
                 if(savePending || currentIndex<0 || currentIndex+1>=bundle.occurrences.length) return;
-                first=bundle.occurrences[currentIndex]; second=bundle.occurrences[currentIndex+1];
-                saveEditor();
-                first=bundle.occurrences[currentIndex]; second=bundle.occurrences[currentIndex+1];
+                working=editorCandidate(); first=working.occurrences[currentIndex]; second=working.occurrences[currentIndex+1];
                 if(!sameLocalRoot(first,second)) fail("隣接する同一local lineageだけ結合できます");
-                if(FormalLongText.wouldRestoreSplitBlocker(bundle,[first.occurrenceId,second.occurrenceId])) { currentPlan=currentMergePlan(first,second); merged=FormalLongText.mergeAdjacentWithPlan(bundle,[first.occurrenceId,second.occurrenceId],currentPlan); }
-                else merged=FormalLongText.mergeAdjacent(bundle,[first.occurrenceId,second.occurrenceId]);
-                bundle=FormalMulti.replaceOccurrences(bundle, merged.occurrences); bundle.renderStatus="pending"; editRevision++; bundle.revision=editRevision; refreshList(); stateText.text="状態: occurrenceを局所結合しました。readingを確認して保存してください";
+                if(FormalLongText.wouldRestoreSplitBlocker(working,[first.occurrenceId,second.occurrenceId])) { currentPlan=currentMergePlan(working,first,second); merged=FormalLongText.mergeAdjacentWithPlan(working,[first.occurrenceId,second.occurrenceId],currentPlan); }
+                else merged=FormalLongText.mergeAdjacent(working,[first.occurrenceId,second.occurrenceId]);
+                bundle=FormalMulti.replaceOccurrences(working, merged.occurrences); bundle.renderStatus="pending"; editRevision=working.revision+1; bundle.revision=editRevision; refreshList(); stateText.text="状態: occurrenceを局所結合しました。readingを確認して保存してください";
             } catch(error) { stateText.text="状態: 結合失敗 / "+(error.message||error); }
         }
 
