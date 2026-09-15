@@ -120,16 +120,21 @@ var FormalLongText = (function () {
         if(confirmed) for(i=0;i<candidate.occurrences.length;i++) if(candidate.occurrences[i].occurrenceId===occurrenceIds[0]) { candidate.occurrences[i].readingConfirmed=true; candidate=validate(candidate); break; }
         return candidate;
     }
-    function mergeAdjacentWithPlan(bundle, occurrenceIds, plan) {
-        var candidate, projected, merged, targetId, target, expectedId, matches=[], i;
-        if(!plan || plan.status!=="complete" || !plan.results) fail("merge-current-plan-not-complete");
-        merged=mergeAdjacentCandidate(bundle, occurrenceIds); targetId=occurrenceIds[0];
-        candidate=FormalMulti.replaceOccurrences(bundle, merged.occurrences); projected=FormalMultiProjection.project(candidate);
+    function assertMergePlanTarget(projected, occurrenceIds, plan) {
+        var targetId=occurrenceIds[0], target, expectedId, matches=[], i;
+        if(!plan || !plan.results) fail("merge-current-plan-not-complete");
         for(i=0;i<projected.occurrences.length;i++) if(projected.occurrences[i].occurrenceId===targetId) target=projected.occurrences[i];
         if(!target) fail("merge-current-plan-target-missing");
         expectedId=FormalMultiProjection.id(projected,target);
         for(i=0;i<plan.results.length;i++) if(plan.results[i].annotationId===expectedId) matches.push(plan.results[i]);
         if(matches.length!==1 || matches[0].status!=="complete" || !matches[0].decision || matches[0].decision.status!=="complete") fail("merge-current-plan-target-not-complete");
+        return true;
+    }
+    function mergeAdjacentWithPlan(bundle, occurrenceIds, plan) {
+        var candidate, projected, merged;
+        merged=mergeAdjacentCandidate(bundle, occurrenceIds);
+        candidate=FormalMulti.replaceOccurrences(bundle, merged.occurrences); projected=FormalMultiProjection.project(candidate);
+        assertMergePlanTarget(projected, occurrenceIds, plan);
         return candidate;
     }
     function wouldRestoreSplitBlocker(bundle, occurrenceIds) {
@@ -146,6 +151,6 @@ var FormalLongText = (function () {
         }
         return validate(next);
     }
-    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, mergeAdjacentCandidate:mergeAdjacentCandidate, mergeAdjacentWithPlan:mergeAdjacentWithPlan, wouldRestoreSplitBlocker:wouldRestoreSplitBlocker, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence, unsupportedKanjiAt:unsupportedKanjiAt, variationSelectorLength:variationSelectorLength};
+    return {extract: extract, validate: validate, clone: clone, splitAt: splitAt, mergeAdjacent: mergeAdjacent, mergeAdjacentCandidate:mergeAdjacentCandidate, assertMergePlanTarget:assertMergePlanTarget, mergeAdjacentWithPlan:mergeAdjacentWithPlan, wouldRestoreSplitBlocker:wouldRestoreSplitBlocker, setGroupReading: setGroupReading, hasUnsupportedSequence:hasUnsupportedSequence, unsupportedKanjiAt:unsupportedKanjiAt, variationSelectorLength:variationSelectorLength};
 }());
 if (typeof module !== "undefined") module.exports = FormalLongText;

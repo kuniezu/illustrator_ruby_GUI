@@ -215,17 +215,12 @@
             return first.lineage[0]===second.lineage[0];
         }
         function currentMergePlan(workingBundle, first, second) {
-            var observation, candidate, projected, targetId, target, expectedId, matches=[], i;
+            var observation, candidate, projected, i;
             try { observation=FormalStep2Adapter(documentRef, source).observe(); } catch(error) { fail("merge-guard-observation-unavailable"); }
             if(!observation || observation.status!=="complete") fail("merge-guard-observation-unavailable");
             candidate=FormalMulti.replaceOccurrences(workingBundle,FormalLongText.mergeAdjacentCandidate(workingBundle,[first.occurrenceId,second.occurrenceId]).occurrences);
             projected=FormalMultiOrchestration.projectAndPlanAll(candidate,picked.text,observation);
-            targetId=first.occurrenceId;
-            for(i=0;i<projected.bundle.occurrences.length;i++) if(projected.bundle.occurrences[i].occurrenceId===targetId) target=projected.bundle.occurrences[i];
-            if(!target) fail("merge-current-plan-target-missing");
-            expectedId=FormalMultiProjection.id(projected.bundle,target);
-            for(i=0;i<projected.plan.results.length;i++) if(projected.plan.results[i].annotationId===expectedId) matches.push(projected.plan.results[i]);
-            if(projected.plan.status!=="complete" || matches.length!==1 || matches[0].status!=="complete" || !matches[0].decision || matches[0].decision.status!=="complete") fail("merge-would-restore-split-blocker");
+            FormalLongText.assertMergePlanTarget(projected.bundle,[first.occurrenceId,second.occurrenceId],projected.plan);
             return projected.plan;
         }
         function editorCandidate() {

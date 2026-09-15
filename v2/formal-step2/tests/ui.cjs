@@ -172,6 +172,8 @@ check('rejects merge that would restore a known split blocker before editor save
   source.indexOf('currentMergePlan') >= 0 &&
   source.indexOf('merge-guard-observation-unavailable') >= 0 &&
   source.indexOf('FormalLongText.mergeAdjacentWithPlan') >= 0 &&
+  source.indexOf('FormalLongText.assertMergePlanTarget') >= 0 &&
+  source.indexOf('projected.plan.status!=="complete"') < 0 &&
   source.indexOf('function editorCandidate') >= 0 &&
   source.indexOf('working=editorCandidate()') >= 0 &&
   source.indexOf('mergeCurrentPlan') < 0);
